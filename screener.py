@@ -49,12 +49,14 @@ DOCS_DIR = Path("docs")
 
 # Candidate input locations (in order)
 INPUT_CANDIDATES = [
-    (DATA_DIR / "tickers.csv", "csv"),
+    (Path("tickers.txt"), "txt"),
     (DATA_DIR / "tickers.txt", "txt"),
+    (DATA_DIR / "tickers.csv", "csv"),
     (DATA_DIR / "input.csv", "csv"),
     (Path("input.csv"), "csv"),
     (Path("tickers.csv"), "csv"),
-    (Path("tickers.txt"), "txt"),
+]
+
 ]
 
 INDEX_MAP_CSV = DATA_DIR / "index_map.csv"

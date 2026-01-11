@@ -1,35 +1,60 @@
-Ticker,Name,Country,Sector,Industry
-NOVO-B.CO,Novo Nordisk A/S,DK,Healthcare,Pharmaceuticals
-COL-B.CO,Coloplast A/S,DK,Healthcare,Medical Devices
-DEMANT.CO,Demant A/S,DK,Healthcare,Hearing Aids
-GMAB.CO,Genmab A/S,DK,Healthcare,Biotechnology
-NOVOZYMES.CO,Novozymes A/S,DK,Industrials,Specialty Chemicals
-CARL-B.CO,Carlsberg A/S,DK,Consumer Defensive,Beverages
-RBREW.CO,Royal Unibrew A/S,DK,Consumer Defensive,Beverages
-TRYG.CO,Tryg A/S,DK,Financials,Insurance
-TOP.CO,Topdanmark A/S,DK,Financials,Insurance
-ALMB.CO,Alm. Brand A/S,DK,Financials,Insurance
-DANSKE.CO,Danske Bank A/S,DK,Financials,Banks
-NDA-DK.CO,Nordea Bank Abp,DK,Financials,Banks
-JYSK.CO,Jyske Bank A/S,DK,Financials,Banks
-SYDB.CO,Sydbank A/S,DK,Financials,Banks
-SPNO.CO,Spar Nord Bank A/S,DK,Financials,Banks
-RILBA.CO,Ringkjøbing Landbobank A/S,DK,Financials,Banks
-SJF.CO,Sparekassen Sjælland-Fyn,DK,Financials,Banks
-SKJE.CO,Skjern Bank A/S,DK,Financials,Banks
-VJBA.CO,Vestjysk Bank A/S,DK,Financials,Banks
-MAERSK-B.CO,A.P. Moller - Maersk B,DK,Industrials,Shipping
-MAERSK-A.CO,A.P. Moller - Maersk A,DK,Industrials,Shipping
-DFDS.CO,DFDS A/S,DK,Industrials,Shipping
-NORDEN.CO,D/S Norden A/S,DK,Industrials,Shipping
-TORM.CO,Torm plc,DK,Energy,Oil Shipping
-HAFNI.CO,Hafnia Limited,DK,Energy,Oil Shipping
-ORSTED.CO,Ørsted A/S,DK,Utilities,Renewable Energy
-ISS.CO,ISS A/S,DK,Industrials,Facility Services
-FLS.CO,FLSmidth & Co. A/S,DK,Industrials,Engineering
-ROCK-B.CO,Rockwool A/S,DK,Industrials,Building Materials
-NKT.CO,NKT A/S,DK,Industrials,Electrical Equipment
-SCHOUW.CO,Schouw & Co. A/S,DK,Industrials,Industrial Holdings
-SOLAR-B.CO,Solar A/S,DK,Industrials,Industrial Distribution
-HH.CO,H+H International A/S,DK,Industrials,Building Materials
-JEUDAN.CO,Jeudan A/S,DK,Real Estate,Property Management
+ticker
+# --- Denmark (Copenhagen, .CO) ---
+NOVO-B.CO
+DANSKE.CO
+SYDB.CO
+SPNO.CO
+RKLB.CO
+CARL-B.CO
+COLO-B.CO
+DSV.CO
+MAERSK-B.CO
+NZYM-B.CO
+PNDORA.CO
+TRYG.CO
+TOP.CO
+GN.CO
+ISS.CO
+DEMANT.CO
+FLS.CO
+CHR.CO
+GEN.CO
+NKT.CO
+AMBUB.CO
+ROCK-B.CO
+
+# --- USA (Dividend + Banks) ---
+AAPL
+MSFT
+JNJ
+PG
+KO
+PEP
+MCD
+COST
+HD
+LOW
+V
+MA
+AVGO
+TXN
+ABBV
+NEE
+
+# --- USA Banks / Financials ---
+JPM
+BAC
+WFC
+C
+GS
+MS
+SCHW
+USB
+PNC
+TFC
+COF
+BK
+STT
+BLK
+SPGI
+ICE

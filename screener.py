@@ -135,5 +135,52 @@ cols = [c for c in ["Ticker","Name","Dividend Yield (%)","Payout Ratio (%)","PE 
 print(out[cols].head(15).to_string(index=False))
 
 out.to_csv("output.csv", index=False)
+# ---- Create simple HTML dashboard ----
+
+html_cols = [
+    "Ticker",
+    "Name",
+    "Dividend Yield (%)",
+    "Payout Ratio (%)",
+    "PE (TTM)",
+    "Score",
+    "Rating",
+    "Entry Price (Yield Target)",
+    "To Entry (%)"
+]
+
+html_df = out[html_cols].copy()
+
+html = f"""
+<html>
+<head>
+<title>Dividend Screener</title>
+<style>
+body {{ font-family: Arial; padding: 20px; }}
+table {{ border-collapse: collapse; width: 100%; }}
+th, td {{ border: 1px solid #ccc; padding: 6px; text-align: right; }}
+th {{ background: #eee; }}
+td:first-child, th:first-child {{ text-align: left; }}
+.buy {{ background: #c6efce; }}
+.hold {{ background: #fff2cc; }}
+.sell {{ background: #f4cccc; }}
+</style>
+</head>
+<body>
+
+<h1>Dividend Screener</h1>
+<p>Updated automatically via GitHub Actions</p>
+
+{html_df.to_html(index=False, classes="table")}
+</body>
+</html>
+"""
+
+from pathlib import Path
+Path("docs").mkdir(exist_ok=True)
+Path("docs/index.html").write_text(html, encoding="utf-8")
+
+print("HTML dashboard written to docs/index.html")
+
 
 print(f"Saved output.csv with {len(out)} rows and {len(out.columns)} columns")

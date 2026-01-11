@@ -4,18 +4,18 @@
 """
 Dividend Screener (DK + US) - GitHub Actions + GitHub Pages
 
-INPUT (auto-detected, first match wins; tickers.txt is preferred):
-  - tickers.txt            (root)  one ticker per line   (PREFERRED)
-  - data/tickers.txt       (one ticker per line)
-  - data/tickers.csv       (column: Ticker OR best column)
-  - data/input.csv         (column: Ticker OR best column)
-  - input.csv              (root, column: Ticker OR best column)
-  - tickers.csv            (root, column: Ticker OR best column)
+INPUT (auto-detected, tickers.txt preferred):
+  - tickers.txt              (root)  one ticker per line   (PREFERRED)
+  - data/tickers.txt         (one ticker per line)
+  - data/tickers.csv         (Ticker column OR best column)
+  - data/input.csv           (Ticker column OR best column)
+  - input.csv                (root, Ticker column OR best column)
+  - tickers.csv              (root, Ticker column OR best column)
 
-Optional:
-  - index_map.csv (root) or data/index_map.csv:
-      columns: Ticker, Indexes
-      Indexes can be pipe-separated: "S&P 500|Nasdaq 100|OMXC25"
+Optional index mapping:
+  - index_map.csv (root) or data/index_map.csv
+    columns: Ticker, Indexes
+    Indexes can be pipe-separated: "S&P 500|Nasdaq 100|OMXC25"
 
 OUTPUT:
   - data/screener_results.csv
@@ -24,7 +24,6 @@ OUTPUT:
 
 from __future__ import annotations
 
-import math
 import json
 import time
 import datetime as dt
@@ -47,7 +46,6 @@ except ImportError:
 DATA_DIR = Path("data")
 DOCS_DIR = Path("docs")
 
-# Prefer tickers.txt to avoid CSV column problems
 INPUT_CANDIDATES = [
     (Path("tickers.txt"), "txt"),
     (DATA_DIR / "tickers.txt", "txt"),
@@ -72,6 +70,12 @@ SLEEP_BETWEEN_BATCHES_SEC = 1.0
 WEIGHT_YIELD = 0.35
 WEIGHT_GROWTH = 0.35
 WEIGHT_VALUATION = 0.30
+
+# Yield sanity controls
+SPECIAL_YIELD_THRESHOLD = 0.12   # >12% treated as likely special/non-repeatable
+YIELD_CAP_FOR_MODEL = 0.12       # cap yield used for scoring & fair value
+DEFAULT_NORMALIZED_YIELD = 0.03  # used for Fair Value (Yield)
+DEFAULT_DISCOUNT_RATE = 0.08     # used for DDM
 
 
 # -------------------------
@@ -154,9 +158,6 @@ def _best_ticker_column(df: pd.DataFrame) -> str:
 
 
 def detect_and_read_tickers() -> tuple[list[str], str]:
-    """
-    Returns (tickers, source_string)
-    """
     for path, kind in INPUT_CANDIDATES:
         if not path.exists():
             continue
@@ -180,7 +181,6 @@ def detect_and_read_tickers() -> tuple[list[str], str]:
         if kind == "csv":
             df = pd.read_csv(path)
             col = "Ticker" if "Ticker" in df.columns else _best_ticker_column(df)
-
             tickers = [str(x).strip() for x in df[col].tolist()]
             tickers = [t for t in tickers if is_valid_ticker(t)]
             tickers = dedupe_preserve_order(tickers)
@@ -188,19 +188,11 @@ def detect_and_read_tickers() -> tuple[list[str], str]:
                 return tickers, f"{path} (col={col})"
 
     raise FileNotFoundError(
-        "No tickers input found. Create one of:\n"
-        " - tickers.txt (recommended)\n"
-        " - data/tickers.txt\n"
-        " - data/tickers.csv (Ticker column)\n"
-        " - input.csv / data/input.csv"
+        "No tickers input found. Create tickers.txt (recommended) or data/tickers.txt"
     )
 
 
 def read_index_map() -> dict[str, str]:
-    """
-    Reads index mapping from index_map.csv (root or data/)
-    Returns dict: ticker -> 'Index1 | Index2'
-    """
     file_path = None
     for p in INDEX_MAP_CANDIDATES:
         if p.exists():
@@ -216,7 +208,6 @@ def read_index_map() -> dict[str, str]:
         return {}
 
     if "Indexes" not in df.columns:
-        # tolerate other column names
         for alt in ["Index", "IndexName", "IndexList"]:
             if alt in df.columns:
                 df["Indexes"] = df[alt]
@@ -241,19 +232,17 @@ def clamp(x: float, lo: float, hi: float) -> float:
 
 
 # -------------------------
-# SCORING
+# SCORING + FAIR VALUE
 # -------------------------
 
 def score_row(div_yield: float | None, div_growth_5y: float | None, pe: float | None) -> float:
-    """
-    Simple composite score 0..100
-    - Yield: 0% -> 0, 6% -> 100 cap
-    - Growth: 0% -> 0, 15% -> 100 cap
-    - Valuation: PE 10 -> 100, PE 30 -> 0
-    """
+    # Yield: 0% -> 0, 6% -> 100 cap
     s_y = 0.0 if div_yield is None else clamp((div_yield / 0.06) * 100.0, 0.0, 100.0)
+
+    # Growth: 0% -> 0, 15% -> 100 cap
     s_g = 0.0 if div_growth_5y is None else clamp((div_growth_5y / 0.15) * 100.0, 0.0, 100.0)
 
+    # Valuation: PE 10 -> 100, PE 30 -> 0
     if pe is None or pe <= 0:
         s_v = 40.0
     else:
@@ -263,7 +252,10 @@ def score_row(div_yield: float | None, div_growth_5y: float | None, pe: float | 
     return float(round(score, 2))
 
 
-def recommendation(score: float, div_yield: float | None) -> str:
+def recommendation(score: float, div_yield: float | None, is_special: bool) -> str:
+    # If special dividend flagged, never recommend BUY automatically
+    if is_special:
+        return "WATCH"
     if score >= 75 and (div_yield is None or div_yield >= 0.015):
         return "BUY"
     if score >= 55:
@@ -271,16 +263,7 @@ def recommendation(score: float, div_yield: float | None) -> str:
     return "WATCH"
 
 
-# -------------------------
-# FAIR VALUE MODELS
-# -------------------------
-
-def fair_value_yield(price: float | None, dividend_yield: float | None, normalized_yield: float = 0.03) -> float | None:
-    """
-    Yield reversion model:
-      AnnualDividend = Price * DividendYield
-      FairPrice = AnnualDividend / NormalizedYield
-    """
+def fair_value_yield(price: float | None, dividend_yield: float | None, normalized_yield: float = DEFAULT_NORMALIZED_YIELD) -> float | None:
     if price is None or dividend_yield is None:
         return None
     if price <= 0 or dividend_yield <= 0 or normalized_yield <= 0:
@@ -289,22 +272,15 @@ def fair_value_yield(price: float | None, dividend_yield: float | None, normaliz
     return round(annual_dividend / normalized_yield, 2)
 
 
-def fair_value_ddm(price: float | None, dividend_yield: float | None, growth: float | None, discount_rate: float = 0.08) -> float | None:
-    """
-    Gordon Growth DDM:
-      D1 / (r - g)
-    - Caps growth to 6% long-term
-    - Uses a default growth of 2% if missing
-    """
+def fair_value_ddm(price: float | None, dividend_yield: float | None, growth: float | None, discount_rate: float = DEFAULT_DISCOUNT_RATE) -> float | None:
     if price is None or dividend_yield is None:
         return None
     if price <= 0 or dividend_yield <= 0:
         return None
 
     g = growth if growth is not None else 0.02
-    g = min(g, 0.06)
+    g = min(g, 0.06)  # cap long-term growth
     r = discount_rate
-
     if r <= g:
         return None
 
@@ -322,8 +298,21 @@ def upside_pct(price: float | None, fair_value: float | None) -> float | None:
 
 
 # -------------------------
-# YFINANCE FETCH
+# DATA FETCH (yfinance)
 # -------------------------
+
+def _normalize_fraction(v: float | None) -> float | None:
+    """
+    Fixes Yahoo inconsistencies:
+      - if v is already fraction (0.05) keep it
+      - if v is percent (5 or 7.41) convert -> 0.05 / 0.0741
+    """
+    if v is None:
+        return None
+    if v > 1:
+        return v / 100.0
+    return v
+
 
 def fetch_batch(tickers: list[str]) -> pd.DataFrame:
     t = yf.Tickers(" ".join(tickers))
@@ -348,11 +337,20 @@ def fetch_batch(tickers: list[str]) -> pd.DataFrame:
 
             pe = safe_float(info.get("trailingPE")) or safe_float(info.get("forwardPE"))
 
-            div_yield = safe_float(info.get("dividendYield"))
-            if div_yield is None:
-                div_yield = safe_float(info.get("trailingAnnualDividendYield"))
+            # --- Dividend yield robust ---
+            annual_div = safe_float(info.get("trailingAnnualDividendRate")) or safe_float(info.get("forwardAnnualDividendRate"))
 
-            # Approximate 5Y dividend growth from dividends history (CAGR)
+            div_yield = None
+            if price is not None and price > 0 and annual_div is not None and annual_div > 0:
+                div_yield = annual_div / price
+            else:
+                div_yield = safe_float(info.get("dividendYield"))
+                if div_yield is None:
+                    div_yield = safe_float(info.get("trailingAnnualDividendYield"))
+
+            div_yield = _normalize_fraction(div_yield)
+
+            # 5Y dividend growth from dividend history (CAGR)
             div_growth_5y = None
             try:
                 divs = obj.dividends
@@ -371,14 +369,16 @@ def fetch_batch(tickers: list[str]) -> pd.DataFrame:
             except Exception:
                 div_growth_5y = None
 
+            div_growth_5y = _normalize_fraction(div_growth_5y) if div_growth_5y is not None and abs(div_growth_5y) > 1 else div_growth_5y
+
             rows.append({
                 "Ticker": tk,
                 "Name": info.get("shortName") or info.get("longName") or "",
                 "Price": price,
                 "Currency": currency,
                 "PE": pe,
-                "DividendYield": div_yield,
-                "DividendGrowth5Y": div_growth_5y,
+                "DividendYield": div_yield,             # fraction, e.g. 0.035
+                "DividendGrowth5Y": div_growth_5y,      # fraction, e.g. 0.08
                 "Sector": info.get("sector") or "",
                 "Industry": info.get("industry") or "",
                 "Country": info.get("country") or "",
@@ -422,7 +422,7 @@ def build_html(df: pd.DataFrame, generated_at: str, source: str) -> str:
     css = """
     :root { --bg:#0b0f14; --card:#111826; --text:#e6edf3; --muted:#9aa4af; --line:#223042; }
     body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin:0; background:var(--bg); color:var(--text); }
-    .wrap { max-width: 1500px; margin: 0 auto; padding: 20px; }
+    .wrap { max-width: 1600px; margin: 0 auto; padding: 20px; }
     .top { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     .title { font-size: 20px; font-weight: 700; }
     .meta { color: var(--muted); font-size: 12px; }
@@ -444,10 +444,10 @@ def build_html(df: pd.DataFrame, generated_at: str, source: str) -> str:
     cols = [
         "Ticker","Name","Price","Currency","PE",
         "DividendYield","DividendGrowth5Y",
+        "SpecialDividend",
         "FairValue_Yield","FairValue_DDM","Upside_%",
         "Score","Reco","Indexes","Sector","Country"
     ]
-
     dd = df.copy()
     for c in cols:
         if c not in dd.columns:
@@ -473,12 +473,28 @@ def build_html(df: pd.DataFrame, generated_at: str, source: str) -> str:
     </div>
     <div class="controls">
       <input id="q" type="text" placeholder="Search ticker / name / index / sector..." size="34"/>
+
       <select id="reco">
         <option value="">All</option>
         <option value="BUY">BUY</option>
         <option value="HOLD">HOLD</option>
         <option value="WATCH">WATCH</option>
       </select>
+
+      <select id="special">
+        <option value="">All</option>
+        <option value="true">Special only</option>
+        <option value="false">No special</option>
+      </select>
+
+      <select id="sector">
+        <option value="">All sectors</option>
+      </select>
+
+      <select id="country">
+        <option value="">All countries</option>
+      </select>
+
       <select id="idx">
         <option value="">All indexes</option>
       </select>
@@ -497,6 +513,7 @@ def build_html(df: pd.DataFrame, generated_at: str, source: str) -> str:
           <th class="right" data-k="PE">PE</th>
           <th class="right" data-k="DividendYield">Yield</th>
           <th class="right" data-k="DividendGrowth5Y">Div G 5Y</th>
+          <th data-k="SpecialDividend">Special</th>
           <th class="right" data-k="FairValue_Yield">Fair Value (Yield)</th>
           <th class="right" data-k="FairValue_DDM">Fair Value (DDM)</th>
           <th class="right" data-k="Upside_%">Upside %</th>
@@ -536,6 +553,15 @@ function fmtPct(x, digits=1) {{
   return (n*100).toFixed(digits) + "%";
 }}
 
+function uniqueValues(key) {{
+  const set = new Set();
+  DATA.forEach(r => {{
+    const v = (r[key] || "").toString().trim();
+    if (v) set.add(v);
+  }});
+  return Array.from(set).sort();
+}}
+
 function uniqueIndexes(data) {{
   const set = new Set();
   data.forEach(r => {{
@@ -547,6 +573,9 @@ function uniqueIndexes(data) {{
 
 const qEl = document.getElementById("q");
 const recoEl = document.getElementById("reco");
+const specialEl = document.getElementById("special");
+const sectorEl = document.getElementById("sector");
+const countryEl = document.getElementById("country");
 const idxEl = document.getElementById("idx");
 const tbody = document.querySelector("#tbl tbody");
 const countEl = document.getElementById("count");
@@ -554,23 +583,37 @@ const countEl = document.getElementById("count");
 let sortKey = "Score";
 let sortDir = "desc";
 
-function rowMatches(r, q, reco, idx) {{
+function rowMatches(r, q, reco, special, sector, country, idx) {{
   const hay = (r.Ticker+" "+r.Name+" "+r.Indexes+" "+r.Sector+" "+r.Country).toLowerCase();
   if (q && !hay.includes(q)) return false;
   if (reco && String(r.Reco).toUpperCase() !== reco) return false;
+
+  if (special !== "") {{
+    const want = (special === "true");
+    const isSpec = String(r.SpecialDividend).toLowerCase() === "true";
+    if (want !== isSpec) return false;
+  }}
+
+  if (sector && String(r.Sector || "") !== sector) return false;
+  if (country && String(r.Country || "") !== country) return false;
+
   if (idx) {{
     const s = (r.Indexes || "");
     if (!s.includes(idx)) return false;
   }}
+
   return true;
 }}
 
 function render() {{
   const q = (qEl.value || "").trim().toLowerCase();
   const reco = (recoEl.value || "").trim().toUpperCase();
+  const special = (specialEl.value || "").trim();
+  const sector = (sectorEl.value || "").trim();
+  const country = (countryEl.value || "").trim();
   const idx = (idxEl.value || "").trim();
 
-  let rows = DATA.filter(r => rowMatches(r, q, reco, idx));
+  let rows = DATA.filter(r => rowMatches(r, q, reco, special, sector, country, idx));
 
   rows.sort((a,b) => {{
     const av = a[sortKey];
@@ -591,6 +634,8 @@ function render() {{
       ? ""
       : fmtNum(r["Upside_%"], 1) + "%";
 
+    const spec = (String(r.SpecialDividend).toLowerCase() === "true") ? "YES" : "";
+
     const tds = [
       r.Ticker || "",
       r.Name || "",
@@ -599,6 +644,7 @@ function render() {{
       fmtNum(r.PE, 1),
       fmtPct(r.DividendYield, 1),
       fmtPct(r.DividendGrowth5Y, 1),
+      spec,
       fmtNum(r.FairValue_Yield, 2),
       fmtNum(r.FairValue_DDM, 2),
       upside,
@@ -611,8 +657,8 @@ function render() {{
 
     tds.forEach((v, i) => {{
       const td = document.createElement("td");
-      if ([2,4,5,6,7,8,9,10].includes(i)) td.className = "right";
-      if (i === 11) {{
+      if ([2,4,5,6,8,9,10,11].includes(i)) td.className = "right";
+      if (i === 12) {{
         const span = document.createElement("span");
         span.className = "pill " + pillClass(v);
         span.textContent = v;
@@ -635,7 +681,7 @@ document.querySelectorAll("th[data-k]").forEach(th => {{
     if (sortKey === k) sortDir = (sortDir === "asc") ? "desc" : "asc";
     else {{
       sortKey = k;
-      sortDir = (k === "Ticker" || k === "Name" || k === "Reco" || k === "Indexes" || k === "Sector" || k === "Country" || k === "Currency")
+      sortDir = (k === "Ticker" || k === "Name" || k === "Reco" || k === "Indexes" || k === "Sector" || k === "Country" || k === "Currency" || k === "SpecialDividend")
         ? "asc" : "desc";
     }}
     render();
@@ -649,8 +695,22 @@ uniqueIndexes(DATA).forEach(x => {{
   idxEl.appendChild(o);
 }});
 
-[qEl, recoEl, idxEl].forEach(el => el.addEventListener("input", render));
-[qEl, recoEl, idxEl].forEach(el => el.addEventListener("change", render));
+uniqueValues("Sector").forEach(x => {{
+  const o = document.createElement("option");
+  o.value = x;
+  o.textContent = x;
+  sectorEl.appendChild(o);
+}});
+
+uniqueValues("Country").forEach(x => {{
+  const o = document.createElement("option");
+  o.value = x;
+  o.textContent = x;
+  countryEl.appendChild(o);
+}});
+
+[qEl, recoEl, specialEl, sectorEl, countryEl, idxEl].forEach(el => el.addEventListener("input", render));
+[qEl, recoEl, specialEl, sectorEl, countryEl, idxEl].forEach(el => el.addEventListener("change", render));
 
 render();
 </script>
@@ -676,28 +736,41 @@ def main() -> int:
     # Index exposure
     df["Indexes"] = df["Ticker"].map(index_map).fillna("")
 
-    # Score + recommendation
+    # Special dividend flag (based on raw yield)
+    df["SpecialDividend"] = df["DividendYield"].apply(
+        lambda y: True if (safe_float(y) is not None and safe_float(y) > SPECIAL_YIELD_THRESHOLD) else False
+    )
+
+    # Yield to use in models (cap extreme values)
+    df["YieldForModel"] = df["DividendYield"].apply(
+        lambda y: min(safe_float(y), YIELD_CAP_FOR_MODEL) if safe_float(y) is not None else None
+    )
+
+    # Score + reco (use capped yield, and demote specials)
     df["Score"] = df.apply(lambda r: score_row(
-        safe_float(r.get("DividendYield")),
+        safe_float(r.get("YieldForModel")),
         safe_float(r.get("DividendGrowth5Y")),
         safe_float(r.get("PE"))
     ), axis=1)
 
     df["Reco"] = df.apply(lambda r: recommendation(
         float(r.get("Score") or 0.0),
-        safe_float(r.get("DividendYield"))
+        safe_float(r.get("YieldForModel")),
+        bool(r.get("SpecialDividend"))
     ), axis=1)
 
-    # Fair Values + Upside
+    # Fair Values + Upside (use capped yield)
     df["FairValue_Yield"] = df.apply(lambda r: fair_value_yield(
         safe_float(r.get("Price")),
-        safe_float(r.get("DividendYield"))
+        safe_float(r.get("YieldForModel")),
+        DEFAULT_NORMALIZED_YIELD
     ), axis=1)
 
     df["FairValue_DDM"] = df.apply(lambda r: fair_value_ddm(
         safe_float(r.get("Price")),
-        safe_float(r.get("DividendYield")),
-        safe_float(r.get("DividendGrowth5Y"))
+        safe_float(r.get("YieldForModel")),
+        safe_float(r.get("DividendGrowth5Y")),
+        DEFAULT_DISCOUNT_RATE
     ), axis=1)
 
     df["Upside_%"] = df.apply(lambda r: upside_pct(

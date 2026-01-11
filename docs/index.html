@@ -1,760 +1,210 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dividend Screener</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 24px; }
-    h1 { margin: 0 0 8px; }
-    .sub { color: #555; margin-bottom: 16px; }
-    table { border-collapse: collapse; width: 100%; font-size: 14px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
-    th { background: #f4f4f4; position: sticky; top: 0; z-index: 1; }
-    tr:nth-child(even) { background: #fafafa; }
-    .badge { padding: 4px 10px; border-radius: 999px; font-weight: 600; display: inline-block; }
-    .BUY { background: #e7f6ea; border: 1px solid #7ed38a; color: #1f6b2a; }
-    .HOLD { background: #fff6e5; border: 1px solid #f3c26b; color: #7a4c00; }
-    .SELL { background: #ffe8e8; border: 1px solid #f08a8a; color: #8a1f1f; }
-    .wrap { overflow-x: auto; }
-    .note { margin-top: 10px; color:#666; font-size: 13px; }
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Dividend Screener</title>
+<style>
+    :root { --bg:#0b0f14; --card:#111826; --text:#e6edf3; --muted:#9aa4af; --line:#223042; }
+    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin:0; background:var(--bg); color:var(--text); }
+    .wrap { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    .top { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    .title { font-size: 20px; font-weight: 700; }
+    .meta { color: var(--muted); font-size: 12px; }
+    .card { margin-top: 14px; background: var(--card); border:1px solid var(--line); border-radius: 14px; padding: 14px; }
+    input, select { background:#0e1622; border:1px solid var(--line); color:var(--text); border-radius:10px; padding:10px 12px; }
+    .controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    table { width:100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding:10px 10px; border-bottom:1px solid var(--line); vertical-align:middle; }
+    th { text-align:left; font-size:12px; color: var(--muted); cursor:pointer; user-select:none; }
+    td { font-size:13px; }
+    .pill { display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; border:1px solid var(--line); }
+    .pill-green { background: rgba(26, 173, 89, 0.18); }
+    .pill-amber { background: rgba(255, 200, 64, 0.18); }
+    .pill-gray  { background: rgba(148, 163, 184, 0.12); }
+    .right { text-align:right; }
+    .small { font-size:12px; color:var(--muted); }
+    </style>
 </head>
 <body>
-  <h1>Dividend Screener</h1>
-  <div class="sub">Updated automatically via GitHub Actions • 2026-01-11 13:50 UTC</div>
-
-  <div class="wrap">
-    <table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th>Ticker</th>
-      <th>Name</th>
-      <th>Sector</th>
-      <th>Industry</th>
-      <th>Currency</th>
-      <th>Price</th>
-      <th>Market Cap (USD bn)</th>
-      <th>Dividend Rate (annual)</th>
-      <th>Dividend Yield (%)</th>
-      <th>Payout Ratio (%)</th>
-      <th>PE (TTM)</th>
-      <th>Forward PE</th>
-      <th>Target Yield (%)</th>
-      <th>Yield Entry Price</th>
-      <th>To Yield Entry (%)</th>
-      <th>Score</th>
-      <th>Rating</th>
-      <th>Updated (UTC)</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>NOVO-B.CO</td>
-      <td>Novo Nordisk B A/S</td>
-      <td>Healthcare</td>
-      <td>Drug Manufacturers - General</td>
-      <td>DKK</td>
-      <td>381.45</td>
-      <td>1,695.00</td>
-      <td>11.65</td>
-      <td>3.05</td>
-      <td>49.94</td>
-      <td>16.34</td>
-      <td>16.70</td>
-      <td>1.62</td>
-      <td>647.22</td>
-      <td>69.67</td>
-      <td>90</td>
-      <td>BUY</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>CARL-B.CO</td>
-      <td>Carlsberg B A/S</td>
-      <td>Consumer Defensive</td>
-      <td>Beverages - Brewers</td>
-      <td>DKK</td>
-      <td>845.20</td>
-      <td>112.90</td>
-      <td>27.00</td>
-      <td>3.19</td>
-      <td>53.57</td>
-      <td>16.78</td>
-      <td>13.40</td>
-      <td>2.78</td>
-      <td>874.10</td>
-      <td>3.42</td>
-      <td>90</td>
-      <td>BUY</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>DANSKE.CO</td>
-      <td>Danske Bank A/S</td>
-      <td>Financial Services</td>
-      <td>Banks - Regional</td>
-      <td>DKK</td>
-      <td>313.70</td>
-      <td>255.70</td>
-      <td>18.70</td>
-      <td>5.96</td>
-      <td>34.25</td>
-      <td>11.50</td>
-      <td>11.10</td>
-      <td>5.27</td>
-      <td>319.35</td>
-      <td>1.80</td>
-      <td>90</td>
-      <td>BUY</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>VJBA.CO</td>
-      <td>Vestjysk Bank A/S</td>
-      <td>Financial Services</td>
-      <td>Banks - Regional</td>
-      <td>DKK</td>
-      <td>7.33</td>
-      <td>9.00</td>
-      <td>0.36</td>
-      <td>4.91</td>
-      <td>59.22</td>
-      <td>12.22</td>
-      <td>12.22</td>
-      <td>2.75</td>
-      <td>11.78</td>
-      <td>60.71</td>
-      <td>90</td>
-      <td>BUY</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>ROCK-B.CO</td>
-      <td>Rockwool A/S ser. B</td>
-      <td>Industrials</td>
-      <td>Building Products &amp; Equipment</td>
-      <td>DKK</td>
-      <td>227.40</td>
-      <td>47.10</td>
-      <td>6.30</td>
-      <td>2.77</td>
-      <td>35.63</td>
-      <td>12.84</td>
-      <td>13.78</td>
-      <td>1.79</td>
-      <td>316.76</td>
-      <td>39.30</td>
-      <td>85</td>
-      <td>BUY</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>RBREW.CO</td>
-      <td>Royal UNIBREW A/S</td>
-      <td>Consumer Defensive</td>
-      <td>Beverages - Brewers</td>
-      <td>DKK</td>
-      <td>577.00</td>
-      <td>28.30</td>
-      <td>15.00</td>
-      <td>2.60</td>
-      <td>51.72</td>
-      <td>19.88</td>
-      <td>16.67</td>
-      <td>1.99</td>
-      <td>678.39</td>
-      <td>17.57</td>
-      <td>80</td>
-      <td>BUY</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>ALMB.CO</td>
-      <td>Alm. Brand A/S</td>
-      <td>Financial Services</td>
-      <td>Insurance - Diversified</td>
-      <td>DKK</td>
-      <td>18.06</td>
-      <td>25.50</td>
-      <td>0.60</td>
-      <td>3.32</td>
-      <td>85.71</td>
-      <td>25.80</td>
-      <td>15.84</td>
-      <td>2.62</td>
-      <td>20.61</td>
-      <td>14.12</td>
-      <td>65</td>
-      <td>BUY</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>TRYG.CO</td>
-      <td>Tryg A/S</td>
-      <td>Financial Services</td>
-      <td>Insurance - Diversified</td>
-      <td>DKK</td>
-      <td>159.20</td>
-      <td>96.00</td>
-      <td>8.20</td>
-      <td>5.15</td>
-      <td>100.46</td>
-      <td>20.00</td>
-      <td>16.33</td>
-      <td>4.25</td>
-      <td>173.65</td>
-      <td>9.08</td>
-      <td>55</td>
-      <td>BUY</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>JYSK.CO</td>
-      <td>Jyske Bank A/S</td>
-      <td>Financial Services</td>
-      <td>Banks - Regional</td>
-      <td>DKK</td>
-      <td>870.00</td>
-      <td>50.90</td>
-      <td>24.00</td>
-      <td>2.76</td>
-      <td>29.24</td>
-      <td>10.60</td>
-      <td>11.08</td>
-      <td>2.75</td>
-      <td>785.45</td>
-      <td>-9.72</td>
-      <td>85</td>
-      <td>HOLD</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>SOLAR-B.CO</td>
-      <td>Solar B A/S</td>
-      <td>Technology</td>
-      <td>Electronics &amp; Computer Distribution</td>
-      <td>DKK</td>
-      <td>203.00</td>
-      <td>1.60</td>
-      <td>15.00</td>
-      <td>7.39</td>
-      <td>4.25</td>
-      <td>57.51</td>
-      <td>14.35</td>
-      <td>7.27</td>
-      <td>185.69</td>
-      <td>-8.53</td>
-      <td>70</td>
-      <td>HOLD</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>MAERSK-B.CO</td>
-      <td>A.P. Møller - Mærsk B A/S</td>
-      <td>Industrials</td>
-      <td>Marine Shipping</td>
-      <td>DKK</td>
-      <td>15,105.00</td>
-      <td>222.60</td>
-      <td>1,120.00</td>
-      <td>7.41</td>
-      <td>51.91</td>
-      <td>7.53</td>
-      <td>-18.78</td>
-      <td>9.10</td>
-      <td>11,076.92</td>
-      <td>-26.67</td>
-      <td>90</td>
-      <td>SELL</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>MAERSK-A.CO</td>
-      <td>A.P. Møller - Mærsk A A/S</td>
-      <td>Industrials</td>
-      <td>Marine Shipping</td>
-      <td>DKK</td>
-      <td>15,040.00</td>
-      <td>220.70</td>
-      <td>1,120.00</td>
-      <td>7.45</td>
-      <td>51.91</td>
-      <td>7.50</td>
-      <td></td>
-      <td>9.28</td>
-      <td>10,862.07</td>
-      <td>-27.78</td>
-      <td>90</td>
-      <td>SELL</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>NDA-DK.CO</td>
-      <td>Nordea Bank Abp</td>
-      <td>Financial Services</td>
-      <td>Banks - Regional</td>
-      <td>DKK</td>
-      <td>121.95</td>
-      <td>417.30</td>
-      <td>7.01</td>
-      <td>5.75</td>
-      <td>67.63</td>
-      <td>11.74</td>
-      <td>12.05</td>
-      <td>6.70</td>
-      <td>94.16</td>
-      <td>-22.79</td>
-      <td>83</td>
-      <td>SELL</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>SYDB.CO</td>
-      <td>Sydbank A/S</td>
-      <td>Financial Services</td>
-      <td>Banks - Regional</td>
-      <td>DKK</td>
-      <td>557.00</td>
-      <td>27.30</td>
-      <td>26.88</td>
-      <td>4.83</td>
-      <td>60.95</td>
-      <td>12.63</td>
-      <td>11.05</td>
-      <td>5.16</td>
-      <td>468.84</td>
-      <td>-15.83</td>
-      <td>83</td>
-      <td>SELL</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>SKJE.CO</td>
-      <td>Skjern Bank A/S</td>
-      <td>Financial Services</td>
-      <td>Banks - Regional</td>
-      <td>DKK</td>
-      <td>296.50</td>
-      <td>2.80</td>
-      <td>3.50</td>
-      <td>1.18</td>
-      <td>13.88</td>
-      <td>11.75</td>
-      <td></td>
-      <td>2.29</td>
-      <td>137.55</td>
-      <td>-53.61</td>
-      <td>80</td>
-      <td>SELL</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>ISS.CO</td>
-      <td>ISS A/S</td>
-      <td>Industrials</td>
-      <td>Specialty Business Services</td>
-      <td>DKK</td>
-      <td>226.60</td>
-      <td>36.60</td>
-      <td>3.10</td>
-      <td>1.37</td>
-      <td>20.26</td>
-      <td>14.81</td>
-      <td>11.68</td>
-      <td>3.40</td>
-      <td>82.06</td>
-      <td>-63.79</td>
-      <td>80</td>
-      <td>SELL</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>RILBA.CO</td>
-      <td>Ringkjøbing Landbobank A/S</td>
-      <td>Financial Services</td>
-      <td>Banks - Regional</td>
-      <td>DKK</td>
-      <td>1,531.00</td>
-      <td>37.30</td>
-      <td>11.00</td>
-      <td>0.72</td>
-      <td>12.13</td>
-      <td>16.89</td>
-      <td>16.24</td>
-      <td>0.86</td>
-      <td>1,151.16</td>
-      <td>-24.81</td>
-      <td>75</td>
-      <td>SELL</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>FLS.CO</td>
-      <td>FLSmidth &amp; Co. A/S</td>
-      <td>Industrials</td>
-      <td>Specialty Industrial Machinery</td>
-      <td>DKK</td>
-      <td>486.40</td>
-      <td>26.60</td>
-      <td>8.00</td>
-      <td>1.64</td>
-      <td>33.47</td>
-      <td>20.37</td>
-      <td>17.78</td>
-      <td>2.49</td>
-      <td>289.16</td>
-      <td>-40.55</td>
-      <td>75</td>
-      <td>SELL</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>DEMANT.CO</td>
-      <td>Demant A/S</td>
-      <td>Healthcare</td>
-      <td>Medical Devices</td>
-      <td>DKK</td>
-      <td>224.20</td>
-      <td>47.80</td>
-      <td></td>
-      <td></td>
-      <td>0.00</td>
-      <td>17.98</td>
-      <td>16.07</td>
-      <td>2.75</td>
-      <td></td>
-      <td></td>
-      <td>60</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>GMAB.CO</td>
-      <td>Genmab A/S</td>
-      <td>Healthcare</td>
-      <td>Biotechnology</td>
-      <td>DKK</td>
-      <td>2,182.00</td>
-      <td>134.40</td>
-      <td></td>
-      <td></td>
-      <td>0.00</td>
-      <td>14.90</td>
-      <td>21.70</td>
-      <td>2.75</td>
-      <td></td>
-      <td></td>
-      <td>60</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>COL-B.CO</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td>2.75</td>
-      <td></td>
-      <td></td>
-      <td>50</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>NOVOZYMES.CO</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td>2.75</td>
-      <td></td>
-      <td></td>
-      <td>50</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>TOP.CO</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td>2.75</td>
-      <td></td>
-      <td></td>
-      <td>50</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>SPNO.CO</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td>2.75</td>
-      <td></td>
-      <td></td>
-      <td>50</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>SJF.CO</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td>2.75</td>
-      <td></td>
-      <td></td>
-      <td>50</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>DFDS.CO</td>
-      <td>DFDS A/S</td>
-      <td>Industrials</td>
-      <td>Marine Shipping</td>
-      <td>DKK</td>
-      <td>98.45</td>
-      <td>5.30</td>
-      <td></td>
-      <td></td>
-      <td>0.00</td>
-      <td></td>
-      <td>13.12</td>
-      <td>1.27</td>
-      <td></td>
-      <td></td>
-      <td>50</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>NORDEN.CO</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td>2.75</td>
-      <td></td>
-      <td></td>
-      <td>50</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>TORM.CO</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td>2.75</td>
-      <td></td>
-      <td></td>
-      <td>50</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>HAFNI.CO</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td>2.75</td>
-      <td></td>
-      <td></td>
-      <td>50</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>ORSTED.CO</td>
-      <td>ORSTED A/S</td>
-      <td>Utilities</td>
-      <td>Utilities - Renewable</td>
-      <td>DKK</td>
-      <td>130.45</td>
-      <td>172.30</td>
-      <td></td>
-      <td></td>
-      <td>0.00</td>
-      <td></td>
-      <td>16.91</td>
-      <td>1.81</td>
-      <td></td>
-      <td></td>
-      <td>50</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>NKT.CO</td>
-      <td>NKT A/S</td>
-      <td>Industrials</td>
-      <td>Electrical Equipment &amp; Parts</td>
-      <td>DKK</td>
-      <td>813.00</td>
-      <td>43.50</td>
-      <td></td>
-      <td></td>
-      <td>0.00</td>
-      <td>25.91</td>
-      <td>27.03</td>
-      <td>1.44</td>
-      <td></td>
-      <td></td>
-      <td>50</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>SCHOUW.CO</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td>2.75</td>
-      <td></td>
-      <td></td>
-      <td>50</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>HH.CO</td>
-      <td>H+H International A/S</td>
-      <td>Basic Materials</td>
-      <td>Building Materials</td>
-      <td>DKK</td>
-      <td>97.70</td>
-      <td>1.60</td>
-      <td></td>
-      <td></td>
-      <td>0.00</td>
-      <td></td>
-      <td>18.65</td>
-      <td>3.17</td>
-      <td></td>
-      <td></td>
-      <td>50</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-    <tr>
-      <td>JEUDAN.CO</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td>2.75</td>
-      <td></td>
-      <td></td>
-      <td>50</td>
-      <td>N/A</td>
-      <td>2026-01-11 13:50 UTC</td>
-    </tr>
-  </tbody>
-</table>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="title">Dividend Screener (DK + US)</div>
+      <div class="meta">Generated: 2026-01-11 14:37:35 • Source: input.csv</div>
+    </div>
+    <div class="controls">
+      <input id="q" type="text" placeholder="Search ticker / name / index / sector..." size="34"/>
+      <select id="reco">
+        <option value="">All</option>
+        <option value="BUY">BUY</option>
+        <option value="HOLD">HOLD</option>
+        <option value="WATCH">WATCH</option>
+      </select>
+      <select id="idx">
+        <option value="">All indexes</option>
+      </select>
+    </div>
   </div>
 
-  <div class="note">
-    Yield is computed as (Dividend Rate / Price) to avoid Yahoo/yfinance inconsistencies.
-    “Yield Entry Price” is an entry estimate based on target yield (not intrinsic value).
+  <div class="card">
+    <div class="small" id="count"></div>
+    <table id="tbl">
+      <thead>
+        <tr>
+          <th data-k="Ticker">Ticker</th>
+          <th data-k="Name">Name</th>
+          <th class="right" data-k="Price">Price</th>
+          <th data-k="Currency">CCY</th>
+          <th class="right" data-k="PE">PE</th>
+          <th class="right" data-k="DividendYield">Yield</th>
+          <th class="right" data-k="DividendGrowth5Y">Div G 5Y</th>
+          <th class="right" data-k="Score">Score</th>
+          <th data-k="Reco">Reco</th>
+          <th data-k="Indexes">Indexes</th>
+          <th data-k="Sector">Sector</th>
+          <th data-k="Country">Country</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
+</div>
 
-  <script>
-    // Convert Rating text to badges
-    document.querySelectorAll('table tbody tr').forEach(tr => {
-      const tds = tr.querySelectorAll('td');
-      if (!tds.length) return;
+<script>
+const DATA = [{"Ticker": "nan", "Name": "Nuveen New York Quality Municip", "Price": 11.37, "Currency": "USD", "PE": "", "DividendYield": 7.6, "DividendGrowth5Y": 0.07280807218764251, "Score": 63.99, "Reco": "HOLD", "Indexes": "", "Sector": "Financial Services", "Country": "United States"}];
 
-      // Find "Rating" column by header
-      const headers = Array.from(document.querySelectorAll('table thead th')).map(h => h.innerText.trim());
-      const ratingIdx = headers.indexOf('Rating');
-      if (ratingIdx >= 0) {
-        const cell = tds[ratingIdx];
-        const v = (cell.innerText || '').trim();
-        if (v === 'BUY' || v === 'HOLD' || v === 'SELL') {
-          cell.innerHTML = `<span class="badge ${v}">${v}</span>`;
-        }
+function pillClass(label) {
+  const v = (label || "").toUpperCase();
+  if (v === "BUY") return "pill-green";
+  if (v === "HOLD") return "pill-amber";
+  return "pill-gray";
+}
+
+function fmtNum(x, digits=2) {
+  if (x === "" || x === null || x === undefined) return "";
+  const n = Number(x);
+  if (!isFinite(n)) return "";
+  return n.toFixed(digits);
+}
+
+function fmtPct(x, digits=1) {
+  if (x === "" || x === null || x === undefined) return "";
+  const n = Number(x);
+  if (!isFinite(n)) return "";
+  return (n*100).toFixed(digits) + "%";
+}
+
+function uniqueIndexes(data) {
+  const set = new Set();
+  data.forEach(r => {
+    const s = (r.Indexes || "").split("|").map(x => x.trim()).filter(Boolean);
+    s.forEach(x => set.add(x));
+  });
+  return Array.from(set).sort();
+}
+
+const qEl = document.getElementById("q");
+const recoEl = document.getElementById("reco");
+const idxEl = document.getElementById("idx");
+const tbody = document.querySelector("#tbl tbody");
+const countEl = document.getElementById("count");
+
+let sortKey = "Score";
+let sortDir = "desc";
+
+function rowMatches(r, q, reco, idx) {
+  const hay = (r.Ticker+" "+r.Name+" "+r.Indexes+" "+r.Sector+" "+r.Country).toLowerCase();
+  if (q && !hay.includes(q)) return false;
+  if (reco && String(r.Reco).toUpperCase() !== reco) return false;
+  if (idx) {
+    const s = (r.Indexes || "");
+    if (!s.includes(idx)) return false;
+  }
+  return true;
+}
+
+function render() {
+  const q = (qEl.value || "").trim().toLowerCase();
+  const reco = (recoEl.value || "").trim().toUpperCase();
+  const idx = (idxEl.value || "").trim();
+
+  let rows = DATA.filter(r => rowMatches(r, q, reco, idx));
+
+  rows.sort((a,b) => {
+    const av = a[sortKey];
+    const bv = b[sortKey];
+    const an = Number(av);
+    const bn = Number(bv);
+    let cmp = 0;
+    if (isFinite(an) && isFinite(bn)) cmp = an - bn;
+    else cmp = String(av).localeCompare(String(bv));
+    return (sortDir === "asc") ? cmp : -cmp;
+  });
+
+  tbody.innerHTML = "";
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+
+    const tds = [
+      r.Ticker || "",
+      r.Name || "",
+      fmtNum(r.Price, 2),
+      r.Currency || "",
+      fmtNum(r.PE, 1),
+      fmtPct(r.DividendYield, 1),
+      fmtPct(r.DividendGrowth5Y, 1),
+      fmtNum(r.Score, 2),
+      r.Reco || "",
+      r.Indexes || "",
+      r.Sector || "",
+      r.Country || ""
+    ];
+
+    tds.forEach((v, i) => {
+      const td = document.createElement("td");
+      if ([2,4,5,6,7].includes(i)) td.className = "right";
+      if (i === 8) {
+        const span = document.createElement("span");
+        span.className = "pill " + pillClass(v);
+        span.textContent = v;
+        td.appendChild(span);
+      } else {
+        td.textContent = v;
       }
+      tr.appendChild(td);
     });
-  </script>
+
+    tbody.appendChild(tr);
+  });
+
+  countEl.textContent = rows.length + " rows";
+}
+
+document.querySelectorAll("th[data-k]").forEach(th => {
+  th.addEventListener("click", () => {
+    const k = th.getAttribute("data-k");
+    if (sortKey === k) sortDir = (sortDir === "asc") ? "desc" : "asc";
+    else {
+      sortKey = k;
+      sortDir = (k === "Ticker" || k === "Name" || k === "Reco" || k === "Indexes" || k === "Sector" || k === "Country")
+        ? "asc" : "desc";
+    }
+    render();
+  });
+});
+
+uniqueIndexes(DATA).forEach(x => {
+  const o = document.createElement("option");
+  o.value = x;
+  o.textContent = x;
+  idxEl.appendChild(o);
+});
+
+[qEl, recoEl, idxEl].forEach(el => el.addEventListener("input", render));
+[qEl, recoEl, idxEl].forEach(el => el.addEventListener("change", render));
+
+render();
+</script>
 </body>
 </html>

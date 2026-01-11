@@ -57,7 +57,6 @@ INPUT_CANDIDATES = [
     (Path("tickers.csv"), "csv"),
 ]
 
-]
 
 INDEX_MAP_CSV = DATA_DIR / "index_map.csv"
 

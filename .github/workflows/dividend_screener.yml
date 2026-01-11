@@ -25,3 +25,10 @@ jobs:
         with:
           name: dividend_results
           path: output.csv
+- name: Commit HTML dashboard
+  run: |
+    git config user.name "github-actions"
+    git config user.email "github-actions@github.com"
+    git add docs/index.html
+    git commit -m "Update live dashboard" || echo "No changes"
+    git push

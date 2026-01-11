@@ -2,15 +2,26 @@ name: Dividend Screener
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - "screener.py"
+      - "input.csv"
+      - "requirements.txt"
+      - ".github/workflows/dividend_screener.yml"
+
+permissions:
+  contents: write
 
 jobs:
   run:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -25,10 +36,15 @@ jobs:
         with:
           name: dividend_results
           path: output.csv
-- name: Commit HTML dashboard
-  run: |
-    git config user.name "github-actions"
-    git config user.email "github-actions@github.com"
-    git add docs/index.html
-    git commit -m "Update live dashboard" || echo "No changes"
-    git push
+
+      - name: Commit Pages dashboard (docs/index.html)
+        run: |
+          if [ -f "docs/index.html" ]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git add docs/index.html
+            git commit -m "Update live dashboard" || echo "No changes to commit"
+            git push
+          else
+            echo "docs/index.html not found - skipping Pages commit"
+          fi

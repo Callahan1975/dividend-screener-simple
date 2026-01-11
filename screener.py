@@ -1,293 +1,328 @@
-import os
+from __future__ import annotations
+
+import datetime as dt
 from pathlib import Path
-from datetime import datetime, timezone
 
 import pandas as pd
 import yfinance as yf
 
 
-# =========================
-# Config (tweak these)
-# =========================
-TARGET_YIELD_BUY = 2.5   # % target yield used for "Fair Value"
-ENTRY_MARGIN = 0.10      # 10% discount vs Fair Value for "Entry Buy Price"
+# -----------------------
+# Settings (tweakable)
+# -----------------------
+DEFAULT_TARGET_YIELD_PCT = 2.75   # fallback target yield if 5y avg is missing
+ENTRY_DISCOUNT_PCT = 10.0         # extra discount on the yield-entry price
+HOLD_BAND_PCT = 10.0              # if price is within 10% above entry => HOLD, else SELL
 
-# Rating logic thresholds (simple & robust)
-BUY_IF_PRICE_BELOW_ENTRY = True
-HOLD_IF_PRICE_BELOW_FAIR = True
 
-# Output paths
 ROOT = Path(__file__).resolve().parent
 INPUT_CSV = ROOT / "input.csv"
 OUTPUT_CSV = ROOT / "output.csv"
-
 DOCS_DIR = ROOT / "docs"
 DOCS_INDEX = DOCS_DIR / "index.html"
+DOCS_OUTPUT_CSV = DOCS_DIR / "output.csv"
 
 
-def read_tickers(path: Path) -> list[str]:
-    if not path.exists():
-        raise FileNotFoundError(f"Missing {path}. Create input.csv with a 'Ticker' column.")
-    df = pd.read_csv(path)
-    # Accept "Ticker" or first column
-    if "Ticker" in df.columns:
-        tickers = df["Ticker"].dropna().astype(str).str.strip().tolist()
-    else:
-        tickers = df.iloc[:, 0].dropna().astype(str).str.strip().tolist()
-    # Deduplicate while keeping order
-    seen = set()
-    out = []
-    for t in tickers:
-        if t and t not in seen:
-            seen.add(t)
-            out.append(t)
-    return out
-
-
-def safe_float(x):
+def _safe_pct(x):
+    """Convert ratios to percent safely."""
+    if x is None:
+        return None
     try:
-        if x is None:
-            return None
-        return float(x)
+        x = float(x)
+    except Exception:
+        return None
+    # If already looks like percent (e.g. 49.0), keep it
+    if x > 1.5:
+        return round(x, 2)
+    return round(x * 100.0, 2)
+
+
+def _safe_float(x, nd=2):
+    if x is None:
+        return None
+    try:
+        return round(float(x), nd)
     except Exception:
         return None
 
 
-def calc_fair_and_entry(price: float | None, div_rate: float | None):
-    """
-    Fair Value is based on target yield:
-      Fair = DividendRate / (TargetYield/100)
-      Entry = Fair * (1 - ENTRY_MARGIN)
-    """
-    if price in (None, 0) or div_rate in (None, 0):
-        return None, None, None, None
-
-    fair = div_rate / (TARGET_YIELD_BUY / 100.0)
-    entry = fair * (1 - ENTRY_MARGIN)
-
-    to_fair = (fair / price - 1) * 100
-    to_entry = (entry / price - 1) * 100
-
-    return round(fair, 2), round(entry, 2), round(to_fair, 1), round(to_entry, 1)
+def _now_utc_str():
+    return dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
 
 
-def quality_score(div_yield_pct, payout_pct, pe_ttm):
-    """
-    Simple scoring (0-100). You can refine later.
-    Emphasis: reasonable valuation + sustainable payout + decent yield.
-    """
-    score = 60
+def load_tickers(input_csv: Path) -> list[str]:
+    if not input_csv.exists():
+        raise FileNotFoundError(f"Missing {input_csv}. Create it with a column named 'ticker'.")
 
-    # Yield contribution
-    if div_yield_pct is None:
-        score -= 10
-    else:
-        if div_yield_pct >= 3.0:
-            score += 20
-        elif div_yield_pct >= 2.0:
-            score += 15
-        elif div_yield_pct >= 1.0:
-            score += 8
+    df = pd.read_csv(input_csv)
+    cols = [c.lower().strip() for c in df.columns]
+    if "ticker" not in cols:
+        raise ValueError("input.csv must contain a column named 'ticker'")
+
+    # Map real column name
+    ticker_col = df.columns[cols.index("ticker")]
+
+    tickers = (
+        df[ticker_col]
+        .astype(str)
+        .str.strip()
+        .str.upper()
+        .replace({"": None})
+        .dropna()
+        .tolist()
+    )
+
+    # Deduplicate while preserving order
+    seen = set()
+    out = []
+    for t in tickers:
+        if t not in seen:
+            out.append(t)
+            seen.add(t)
+    return out
+
+
+def compute_row(ticker: str) -> dict:
+    t = yf.Ticker(ticker)
+    info = t.info or {}
+
+    name = info.get("shortName") or info.get("longName")
+    sector = info.get("sector")
+    industry = info.get("industry")
+    currency = info.get("currency")
+
+    price = info.get("currentPrice") or info.get("regularMarketPrice")
+    price = _safe_float(price, 2)
+
+    market_cap = info.get("marketCap")
+    market_cap_bn = None
+    if market_cap is not None:
+        try:
+            market_cap_bn = round(float(market_cap) / 1e9, 1)
+        except Exception:
+            market_cap_bn = None
+
+    # Dividend rate is annual cash dividend (e.g. 5.20 USD/year)
+    dividend_rate = info.get("dividendRate")
+    dividend_rate = _safe_float(dividend_rate, 2)
+
+    # IMPORTANT:
+    # yfinance's "dividendYield" can be unreliable/None/format-shifted.
+    # So we compute yield ourselves: (annual dividend / current price) * 100
+    dividend_yield_pct = None
+    if dividend_rate is not None and price and price > 0:
+        dividend_yield_pct = round((dividend_rate / price) * 100.0, 2)
+
+    payout_ratio_pct = _safe_pct(info.get("payoutRatio"))
+
+    pe_ttm = _safe_float(info.get("trailingPE"), 2)
+    forward_pe = _safe_float(info.get("forwardPE"), 2)
+
+    # 5y avg dividend yield from Yahoo (if present) is typically already in percent (e.g. 2.64)
+    fivey_avg_yield_pct = info.get("fiveYearAvgDividendYield")
+    fivey_avg_yield_pct = _safe_float(fivey_avg_yield_pct, 2)
+
+    target_yield_pct = fivey_avg_yield_pct if fivey_avg_yield_pct is not None else DEFAULT_TARGET_YIELD_PCT
+    target_yield_dec = target_yield_pct / 100.0
+
+    # Yield-based ENTRY price (NOT intrinsic value)
+    entry_price = None
+    if dividend_rate is not None and target_yield_dec > 0:
+        entry_price = dividend_rate / target_yield_dec
+        entry_price *= (1.0 - ENTRY_DISCOUNT_PCT / 100.0)
+        entry_price = round(entry_price, 2)
+
+    to_entry_pct = None
+    if price and entry_price and price > 0:
+        to_entry_pct = round((entry_price / price - 1.0) * 100.0, 2)
+
+    # Simple rating:
+    rating = "N/A"
+    if price and entry_price:
+        if price <= entry_price:
+            rating = "BUY"
+        elif to_entry_pct is not None and to_entry_pct >= -HOLD_BAND_PCT:
+            rating = "HOLD"
         else:
-            score -= 5
+            rating = "SELL"
 
-    # Payout sustainability
-    if payout_pct is None:
-        score -= 5
-    else:
-        if payout_pct <= 60:
+    # Simple score (0-100) - you can change weights later
+    # Goal: reward reasonable payout + decent yield + not-crazy PE
+    score = 50
+    if dividend_yield_pct is not None:
+        if dividend_yield_pct >= 3.0:
             score += 15
-        elif payout_pct <= 75:
+        elif dividend_yield_pct >= 2.0:
+            score += 10
+        elif dividend_yield_pct >= 1.0:
             score += 5
-        elif payout_pct <= 90:
-            score -= 10
-        else:
-            score -= 20
 
-    # Valuation
-    if pe_ttm is None:
-        score -= 5
-    else:
-        if pe_ttm <= 18:
+    if payout_ratio_pct is not None:
+        if 0 < payout_ratio_pct <= 60:
             score += 15
-        elif pe_ttm <= 25:
+        elif 60 < payout_ratio_pct <= 80:
             score += 8
-        elif pe_ttm <= 35:
-            score -= 5
-        else:
+        elif payout_ratio_pct > 100:
             score -= 15
 
-    # Clamp
-    score = max(0, min(100, score))
-    return int(round(score))
+    if pe_ttm is not None:
+        if pe_ttm <= 18:
+            score += 10
+        elif pe_ttm <= 25:
+            score += 5
+        elif pe_ttm >= 35:
+            score -= 10
+
+    score = max(0, min(100, int(score)))
+
+    return {
+        "Ticker": ticker,
+        "Name": name,
+        "Sector": sector,
+        "Industry": industry,
+        "Currency": currency,
+        "Price": price,
+        "Market Cap (USD bn)": market_cap_bn,
+        "Dividend Rate (annual)": dividend_rate,
+        "Dividend Yield (%)": dividend_yield_pct,
+        "Payout Ratio (%)": payout_ratio_pct,
+        "PE (TTM)": pe_ttm,
+        "Forward PE": forward_pe,
+        "Target Yield (%)": round(target_yield_pct, 2) if target_yield_pct is not None else None,
+        "Yield Entry Price": entry_price,
+        "To Yield Entry (%)": to_entry_pct,
+        "Score": score,
+        "Rating": rating,
+        "Updated (UTC)": _now_utc_str(),
+    }
 
 
-def rating_from_prices(price, entry, fair):
-    """
-    BUY  = price <= entry
-    HOLD = entry < price <= fair
-    SELL = price > fair
-    """
-    if price is None or (entry is None and fair is None):
-        return "HOLD"
+def build_html(df: pd.DataFrame) -> str:
+    # Format for display
+    display_df = df.copy()
 
-    if entry is not None and BUY_IF_PRICE_BELOW_ENTRY and price <= entry:
-        return "BUY"
-    if fair is not None and HOLD_IF_PRICE_BELOW_FAIR and price <= fair:
-        return "HOLD"
-    return "SELL"
+    # Better column order (adjust if you want)
+    preferred = [
+        "Ticker", "Name", "Sector", "Industry", "Currency",
+        "Price", "Market Cap (USD bn)",
+        "Dividend Rate (annual)", "Dividend Yield (%)", "Payout Ratio (%)",
+        "PE (TTM)", "Forward PE",
+        "Target Yield (%)", "Yield Entry Price", "To Yield Entry (%)",
+        "Score", "Rating",
+        "Updated (UTC)"
+    ]
+    cols = [c for c in preferred if c in display_df.columns] + [c for c in display_df.columns if c not in preferred]
+    display_df = display_df[cols]
 
-
-def fetch_rows(tickers: list[str]) -> list[dict]:
-    rows = []
-    for ticker in tickers:
-        try:
-            t = yf.Ticker(ticker)
-            info = t.info or {}
-        except Exception:
-            info = {}
-
-        name = info.get("shortName") or info.get("longName") or ""
-        currency = info.get("currency")
-        sector = info.get("sector")
-        industry = info.get("industry")
-
-        market_cap = safe_float(info.get("marketCap"))
-        price = safe_float(info.get("currentPrice") or info.get("regularMarketPrice"))
-
-        # IMPORTANT: Use dividendRate + price to compute yield (avoids yfinance dividendYield bugs)
-        div_rate = safe_float(info.get("dividendRate"))  # annual dividend in USD
-        payout = safe_float(info.get("payoutRatio"))     # decimal (0.50 = 50%)
-        pe_ttm = safe_float(info.get("trailingPE"))
-
-        # Derived fields
-        div_yield_pct = None
-        if price not in (None, 0) and div_rate not in (None, 0):
-            div_yield_pct = (div_rate / price) * 100
-
-        payout_pct = None if payout is None else payout * 100
-
-        fair, entry, to_fair, to_entry = calc_fair_and_entry(price, div_rate)
-
-        score = quality_score(
-            div_yield_pct=div_yield_pct,
-            payout_pct=payout_pct,
-            pe_ttm=pe_ttm
-        )
-
-        rating = rating_from_prices(price, entry, fair)
-
-        rows.append({
-            "Ticker": ticker,
-            "Name": name,
-            "Sector": sector,
-            "Industry": industry,
-            "Currency": currency,
-
-            "Price": None if price is None else round(price, 2),
-            "Market Cap (USD bn)": None if market_cap is None else round(market_cap / 1e9, 1),
-
-            "Dividend Rate (annual)": None if div_rate is None else round(div_rate, 2),
-            "Dividend Yield (%)": None if div_yield_pct is None else round(div_yield_pct, 2),
-            "Payout Ratio (%)": None if payout_pct is None else round(payout_pct, 2),
-
-            "PE (TTM)": None if pe_ttm is None else round(pe_ttm, 2),
-
-            "Score": score,
-            "Rating": rating,
-
-            "Fair Value (Target Yield)": fair,
-            "Entry Buy Price": entry,
-            "To Fair (%)": to_fair,
-            "To Entry (%)": to_entry,
-        })
-
-    return rows
-
-
-def df_to_html(df: pd.DataFrame, updated_text: str) -> str:
-    # Simple styling + colored rating badges
-    css = """
-    <style>
-      body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif; margin: 24px; }
-      h1 { margin: 0 0 8px 0; }
-      .sub { color: #555; margin: 0 0 18px 0; }
-      table { border-collapse: collapse; width: 100%; }
-      th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
-      th { background: #f3f3f3; position: sticky; top: 0; }
-      td:first-child, th:first-child { text-align: left; }
-      td:nth-child(2), th:nth-child(2) { text-align: left; }
-      .badge { font-weight: 700; padding: 4px 10px; border-radius: 12px; display: inline-block; text-align: center; min-width: 60px; }
-      .BUY  { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
-      .HOLD { background: #fff8e1; color: #7a5a00; border: 1px solid #ffe082; }
-      .SELL { background: #ffebee; color: #b71c1c; border: 1px solid #ef9a9a; }
-      .small { font-size: 12px; color: #666; }
-    </style>
-    """
-
-    df2 = df.copy()
-
-    # Format Rating as badge
-    def fmt_rating(x):
+    def fmt(x):
         if pd.isna(x):
             return ""
-        x = str(x).upper()
-        cls = "HOLD"
-        if x in ("BUY", "HOLD", "SELL"):
-            cls = x
-        return f'<span class="badge {cls}">{x}</span>'
+        if isinstance(x, float):
+            return f"{x:,.2f}"
+        return str(x)
 
-    if "Rating" in df2.columns:
-        df2["Rating"] = df2["Rating"].apply(fmt_rating)
+    table_html = display_df.applymap(fmt).to_html(index=False, escape=True)
 
-    # Render HTML table (escape=False to allow badges)
-    table_html = df2.to_html(index=False, escape=False)
+    # Minimal CSS + rating badges
+    html = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dividend Screener</title>
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 24px; }}
+    h1 {{ margin: 0 0 8px; }}
+    .sub {{ color: #555; margin-bottom: 16px; }}
+    table {{ border-collapse: collapse; width: 100%; font-size: 14px; }}
+    th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }}
+    th {{ background: #f4f4f4; position: sticky; top: 0; z-index: 1; }}
+    tr:nth-child(even) {{ background: #fafafa; }}
+    .badge {{ padding: 4px 10px; border-radius: 999px; font-weight: 600; display: inline-block; }}
+    .BUY {{ background: #e7f6ea; border: 1px solid #7ed38a; color: #1f6b2a; }}
+    .HOLD {{ background: #fff6e5; border: 1px solid #f3c26b; color: #7a4c00; }}
+    .SELL {{ background: #ffe8e8; border: 1px solid #f08a8a; color: #8a1f1f; }}
+    .wrap {{ overflow-x: auto; }}
+    .note {{ margin-top: 10px; color:#666; font-size: 13px; }}
+  </style>
+</head>
+<body>
+  <h1>Dividend Screener</h1>
+  <div class="sub">Updated automatically via GitHub Actions • {_now_utc_str()}</div>
 
-    html = f"""
-    <html>
-      <head>
-        <meta charset="utf-8"/>
-        <meta name="viewport" content="width=device-width, initial-scale=1"/>
-        <title>Dividend Screener</title>
-        {css}
-      </head>
-      <body>
-        <h1>Dividend Screener</h1>
-        <p class="sub">{updated_text}</p>
-        {table_html}
-        <p class="small">Model: Fair Value based on target yield {TARGET_YIELD_BUY:.2f}% and Entry at {int(ENTRY_MARGIN*100)}% discount.</p>
-      </body>
-    </html>
-    """
+  <div class="wrap">
+    {table_html}
+  </div>
+
+  <div class="note">
+    Yield is computed as (Dividend Rate / Price) to avoid Yahoo/yfinance inconsistencies.
+    “Yield Entry Price” is an entry estimate based on target yield (not intrinsic value).
+  </div>
+
+  <script>
+    // Convert Rating text to badges
+    document.querySelectorAll('table tbody tr').forEach(tr => {{
+      const tds = tr.querySelectorAll('td');
+      if (!tds.length) return;
+
+      // Find "Rating" column by header
+      const headers = Array.from(document.querySelectorAll('table thead th')).map(h => h.innerText.trim());
+      const ratingIdx = headers.indexOf('Rating');
+      if (ratingIdx >= 0) {{
+        const cell = tds[ratingIdx];
+        const v = (cell.innerText || '').trim();
+        if (v === 'BUY' || v === 'HOLD' || v === 'SELL') {{
+          cell.innerHTML = `<span class="badge ${{v}}">${{v}}</span>`;
+        }}
+      }}
+    }});
+  </script>
+</body>
+</html>
+"""
     return html
 
 
 def main():
-    tickers = read_tickers(INPUT_CSV)
-    rows = fetch_rows(tickers)
+    DOCS_DIR.mkdir(exist_ok=True)
+
+    tickers = load_tickers(INPUT_CSV)
+    if not tickers:
+        raise ValueError("No tickers found in input.csv")
+
+    rows = []
+    errors = []
+    for ticker in tickers:
+        try:
+            rows.append(compute_row(ticker))
+        except Exception as e:
+            errors.append((ticker, str(e)))
 
     df = pd.DataFrame(rows)
 
-    # Sort: best opportunities first (closest to / below entry), then score
-    # If To Entry is negative => price below entry (good)
-    if "To Entry (%)" in df.columns:
-        df["__to_entry_sort"] = df["To Entry (%)"].fillna(9999)
-        df.sort_values(by=["__to_entry_sort", "Score"], ascending=[True, False], inplace=True)
-        df.drop(columns=["__to_entry_sort"], inplace=True)
-    else:
-        df.sort_values(by=["Score"], ascending=[False], inplace=True)
+    # Sort: best rating first, then score desc
+    rating_order = {"BUY": 0, "HOLD": 1, "SELL": 2, "N/A": 3}
+    df["_rating_sort"] = df["Rating"].map(lambda x: rating_order.get(x, 9))
+    df = df.sort_values(by=["_rating_sort", "Score"], ascending=[True, False]).drop(columns=["_rating_sort"])
 
-    # Save CSV
     df.to_csv(OUTPUT_CSV, index=False)
+    df.to_csv(DOCS_OUTPUT_CSV, index=False)
 
-    # Save live HTML in docs/
-    DOCS_DIR.mkdir(parents=True, exist_ok=True)
-    updated = datetime.now(timezone.utc).strftime("Updated automatically via GitHub Actions — %Y-%m-%d %H:%M UTC")
-    html = df_to_html(df, updated_text=updated)
+    html = build_html(df)
     DOCS_INDEX.write_text(html, encoding="utf-8")
 
-    print(f"Saved: {OUTPUT_CSV}")
-    print(f"Saved: {DOCS_INDEX}")
+    if errors:
+        # Write errors to docs too
+        err_df = pd.DataFrame(errors, columns=["Ticker", "Error"])
+        (DOCS_DIR / "errors.csv").write_text(err_df.to_csv(index=False), encoding="utf-8")
+
+        # Still exit success so you get partial results
+        print("Completed with some errors:")
+        for t, msg in errors:
+            print(f" - {t}: {msg}")
+
+    print(f"Wrote: {OUTPUT_CSV}")
+    print(f"Wrote: {DOCS_INDEX}")
 
 
 if __name__ == "__main__":

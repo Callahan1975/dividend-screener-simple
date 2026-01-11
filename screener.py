@@ -74,6 +74,7 @@ WEIGHT_VALUATION = 0.30
 # Yield sanity controls
 SPECIAL_YIELD_THRESHOLD = 0.12   # >12% treated as likely special/non-repeatable
 YIELD_CAP_FOR_MODEL = 0.12       # cap yield used for scoring & fair value
+
 DEFAULT_NORMALIZED_YIELD = 0.03  # used for Fair Value (Yield)
 DEFAULT_DISCOUNT_RATE = 0.08     # used for DDM
 
@@ -131,10 +132,6 @@ def is_valid_ticker(t: str) -> bool:
 
 
 def _best_ticker_column(df: pd.DataFrame) -> str:
-    """
-    Pick the column that yields the most valid tickers.
-    Prefer common names in ties.
-    """
     if df is None or df.empty:
         return df.columns[0]
 
@@ -187,9 +184,7 @@ def detect_and_read_tickers() -> tuple[list[str], str]:
             if tickers:
                 return tickers, f"{path} (col={col})"
 
-    raise FileNotFoundError(
-        "No tickers input found. Create tickers.txt (recommended) or data/tickers.txt"
-    )
+    raise FileNotFoundError("No tickers input found. Create tickers.txt (recommended).")
 
 
 def read_index_map() -> dict[str, str]:
@@ -231,6 +226,19 @@ def clamp(x: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, x))
 
 
+def _normalize_fraction(v: float | None) -> float | None:
+    """
+    Fix Yahoo inconsistencies:
+      - if v is fraction (0.05) keep it
+      - if v is percent (5 or 7.41) convert -> 0.05 / 0.0741
+    """
+    if v is None:
+        return None
+    if v > 1:
+        return v / 100.0
+    return v
+
+
 # -------------------------
 # SCORING + FAIR VALUE
 # -------------------------
@@ -253,7 +261,7 @@ def score_row(div_yield: float | None, div_growth_5y: float | None, pe: float | 
 
 
 def recommendation(score: float, div_yield: float | None, is_special: bool) -> str:
-    # If special dividend flagged, never recommend BUY automatically
+    # If special dividend flagged, do not auto-BUY
     if is_special:
         return "WATCH"
     if score >= 75 and (div_yield is None or div_yield >= 0.015):
@@ -301,19 +309,6 @@ def upside_pct(price: float | None, fair_value: float | None) -> float | None:
 # DATA FETCH (yfinance)
 # -------------------------
 
-def _normalize_fraction(v: float | None) -> float | None:
-    """
-    Fixes Yahoo inconsistencies:
-      - if v is already fraction (0.05) keep it
-      - if v is percent (5 or 7.41) convert -> 0.05 / 0.0741
-    """
-    if v is None:
-        return None
-    if v > 1:
-        return v / 100.0
-    return v
-
-
 def fetch_batch(tickers: list[str]) -> pd.DataFrame:
     t = yf.Tickers(" ".join(tickers))
     rows = []
@@ -337,7 +332,8 @@ def fetch_batch(tickers: list[str]) -> pd.DataFrame:
 
             pe = safe_float(info.get("trailingPE")) or safe_float(info.get("forwardPE"))
 
-            # --- Dividend yield robust ---
+            # Robust dividend yield:
+            # Prefer annual dividend / price when possible, else use Yahoo yield fields
             annual_div = safe_float(info.get("trailingAnnualDividendRate")) or safe_float(info.get("forwardAnnualDividendRate"))
 
             div_yield = None
@@ -369,7 +365,9 @@ def fetch_batch(tickers: list[str]) -> pd.DataFrame:
             except Exception:
                 div_growth_5y = None
 
-            div_growth_5y = _normalize_fraction(div_growth_5y) if div_growth_5y is not None and abs(div_growth_5y) > 1 else div_growth_5y
+            # normalize if ever returned as percent
+            if div_growth_5y is not None and abs(div_growth_5y) > 1:
+                div_growth_5y = div_growth_5y / 100.0
 
             rows.append({
                 "Ticker": tk,
@@ -422,7 +420,7 @@ def build_html(df: pd.DataFrame, generated_at: str, source: str) -> str:
     css = """
     :root { --bg:#0b0f14; --card:#111826; --text:#e6edf3; --muted:#9aa4af; --line:#223042; }
     body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin:0; background:var(--bg); color:var(--text); }
-    .wrap { max-width: 1600px; margin: 0 auto; padding: 20px; }
+    .wrap { max-width: 1700px; margin: 0 auto; padding: 20px; }
     .top { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     .title { font-size: 20px; font-weight: 700; }
     .meta { color: var(--muted); font-size: 12px; }
@@ -445,9 +443,11 @@ def build_html(df: pd.DataFrame, generated_at: str, source: str) -> str:
         "Ticker","Name","Price","Currency","PE",
         "DividendYield","DividendGrowth5Y",
         "SpecialDividend",
-        "FairValue_Yield","FairValue_DDM","Upside_%",
+        "FairValue_Yield","FairValue_DDM",
+        "Upside_Yield_%","Upside_DDM_%",
         "Score","Reco","Indexes","Sector","Country"
     ]
+
     dd = df.copy()
     for c in cols:
         if c not in dd.columns:
@@ -516,7 +516,8 @@ def build_html(df: pd.DataFrame, generated_at: str, source: str) -> str:
           <th data-k="SpecialDividend">Special</th>
           <th class="right" data-k="FairValue_Yield">Fair Value (Yield)</th>
           <th class="right" data-k="FairValue_DDM">Fair Value (DDM)</th>
-          <th class="right" data-k="Upside_%">Upside %</th>
+          <th class="right" data-k="Upside_Yield_%">Upside (Yield) %</th>
+          <th class="right" data-k="Upside_DDM_%">Upside (DDM) %</th>
           <th class="right" data-k="Score">Score</th>
           <th data-k="Reco">Reco</th>
           <th data-k="Indexes">Indexes</th>
@@ -630,11 +631,15 @@ function render() {{
   rows.forEach(r => {{
     const tr = document.createElement("tr");
 
-    const upside = (r["Upside_%"] === "" || r["Upside_%"] === null || r["Upside_%"] === undefined)
-      ? ""
-      : fmtNum(r["Upside_%"], 1) + "%";
-
     const spec = (String(r.SpecialDividend).toLowerCase() === "true") ? "YES" : "";
+
+    const upsideYield = (r["Upside_Yield_%"] === "" || r["Upside_Yield_%"] === null || r["Upside_Yield_%"] === undefined)
+      ? ""
+      : fmtNum(r["Upside_Yield_%"], 1) + "%";
+
+    const upsideDDM = (r["Upside_DDM_%"] === "" || r["Upside_DDM_%"] === null || r["Upside_DDM_%"] === undefined)
+      ? ""
+      : fmtNum(r["Upside_DDM_%"], 1) + "%";
 
     const tds = [
       r.Ticker || "",
@@ -647,7 +652,8 @@ function render() {{
       spec,
       fmtNum(r.FairValue_Yield, 2),
       fmtNum(r.FairValue_DDM, 2),
-      upside,
+      upsideYield,
+      upsideDDM,
       fmtNum(r.Score, 2),
       r.Reco || "",
       r.Indexes || "",
@@ -657,8 +663,8 @@ function render() {{
 
     tds.forEach((v, i) => {{
       const td = document.createElement("td");
-      if ([2,4,5,6,8,9,10,11].includes(i)) td.className = "right";
-      if (i === 12) {{
+      if ([2,4,5,6,8,9,10,11,12].includes(i)) td.className = "right";
+      if (i === 13) {{
         const span = document.createElement("span");
         span.className = "pill " + pillClass(v);
         span.textContent = v;
@@ -773,9 +779,14 @@ def main() -> int:
         DEFAULT_DISCOUNT_RATE
     ), axis=1)
 
-    df["Upside_%"] = df.apply(lambda r: upside_pct(
+    df["Upside_Yield_%"] = df.apply(lambda r: upside_pct(
         safe_float(r.get("Price")),
         safe_float(r.get("FairValue_Yield"))
+    ), axis=1)
+
+    df["Upside_DDM_%"] = df.apply(lambda r: upside_pct(
+        safe_float(r.get("Price")),
+        safe_float(r.get("FairValue_DDM"))
     ), axis=1)
 
     # Save CSV

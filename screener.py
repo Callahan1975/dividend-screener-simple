@@ -130,6 +130,9 @@ out["Score"], out["Rating"], out["Entry Price (Yield Target)"], out["To Entry (%
 
 # Sortér så de bedste står øverst
 out = out.sort_values(["Rating", "Score"], ascending=[True, False])
+print("\nTOP 15 (live preview)")
+cols = [c for c in ["Ticker","Name","Dividend Yield (%)","Payout Ratio (%)","PE (TTM)","Score","Rating","Entry Price (Yield Target)","To Entry (%)"] if c in out.columns]
+print(out[cols].head(15).to_string(index=False))
 
 out.to_csv("output.csv", index=False)
 

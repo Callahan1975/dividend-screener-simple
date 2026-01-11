@@ -12,8 +12,9 @@ for ticker in tickers:
     market_cap = info.get("marketCap")
     price = info.get("currentPrice") or info.get("regularMarketPrice")
 
-    div_y = info.get("dividendYield")          # decimal (0.025 = 2.5%)
-    payout = info.get("payoutRatio")           # decimal (0.50 = 50%)
+    div_rate = info.get("dividendRate")   # annual dividend in USD
+payout = info.get("payoutRatio")
+
 
     rows.append({
         "Ticker": ticker,
@@ -24,8 +25,12 @@ for ticker in tickers:
 
         "Price": price,
         "Market Cap (USD bn)": None if market_cap is None else round(market_cap / 1e9, 1),
+"Dividend Rate (annual)": div_rate,
 
-        "Dividend Yield (%)": None if div_y is None else round(div_y * 100, 2),
+"Dividend Yield (%)": None
+    if price in (None, 0) or div_rate in (None, 0)
+    else round((div_rate / price) * 100, 2),
+
         "Dividend Rate (annual)": info.get("dividendRate"),
         "Payout Ratio (%)": None if payout is None else round(payout * 100, 2),
 
@@ -36,8 +41,9 @@ for ticker in tickers:
         "EPS (TTM)": info.get("trailingEps"),
         "EPS Forward": info.get("forwardEps"),
 
-        "Revenue Growth": info.get("revenueGrowth"),
-        "Earnings Growth": info.get("earningsGrowth"),
+     "Revenue Growth (%)": None if info.get("revenueGrowth") is None else round(info.get("revenueGrowth") * 100, 1),
+"Earnings Growth (%)": None if info.get("earningsGrowth") is None else round(info.get("earningsGrowth") * 100, 1),
+
 
         "Profit Margin": info.get("profitMargins"),
         "Operating Margin": info.get("operatingMargins"),

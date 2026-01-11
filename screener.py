@@ -4,9 +4,14 @@
 """
 Dividend Screener (DK + US) - GitHub Actions friendly
 
-INPUT (choose one):
-  1) data/tickers.csv with a column named: Ticker
-  2) data/tickers.txt with one ticker per line
+INPUT (auto-detected, first match wins):
+  - data/tickers.csv   (column: Ticker)
+  - data/tickers.txt   (one ticker per line)
+  - data/input.csv     (column: Ticker OR first column)
+  - input.csv          (column: Ticker OR first column)
+  - tickers.csv        (root) (column: Ticker OR first column)
+  - tickers.txt        (root) (one ticker per line)
+
 Optional:
   - data/index_map.csv with columns:
       Ticker, Indexes
@@ -15,17 +20,10 @@ Optional:
 OUTPUT:
   - data/screener_results.csv
   - docs/index.html
-
-Notes:
-  - Works for DK tickers (e.g. NOVO-B.CO) and US tickers (e.g. V, KO).
-  - Skips invalid tickers like ".CO" and blanks.
-  - Robust to missing Yahoo fields (won't crash the run).
 """
 
 from __future__ import annotations
 
-import os
-import sys
 import math
 import json
 import time
@@ -38,19 +36,27 @@ import pandas as pd
 try:
     import yfinance as yf
 except ImportError:
-    print("Missing dependency: yfinance. Add it to your workflow pip install.")
+    print("Missing dependency: yfinance. Ensure your workflow runs: pip install yfinance pandas numpy")
     raise
 
 
 # -------------------------
-# CONFIG
+# PATHS
 # -------------------------
 
 DATA_DIR = Path("data")
 DOCS_DIR = Path("docs")
 
-TICKERS_CSV = DATA_DIR / "tickers.csv"
-TICKERS_TXT = DATA_DIR / "tickers.txt"
+# Candidate input locations (in order)
+INPUT_CANDIDATES = [
+    (DATA_DIR / "tickers.csv", "csv"),
+    (DATA_DIR / "tickers.txt", "txt"),
+    (DATA_DIR / "input.csv", "csv"),
+    (Path("input.csv"), "csv"),
+    (Path("tickers.csv"), "csv"),
+    (Path("tickers.txt"), "txt"),
+]
+
 INDEX_MAP_CSV = DATA_DIR / "index_map.csv"
 
 OUT_CSV = DATA_DIR / "screener_results.csv"
@@ -60,7 +66,7 @@ OUT_HTML = DOCS_DIR / "index.html"
 BATCH_SIZE = 40
 SLEEP_BETWEEN_BATCHES_SEC = 1.0
 
-# Basic scoring weights (tweak as you like)
+# Scoring weights
 WEIGHT_YIELD = 0.35
 WEIGHT_GROWTH = 0.35
 WEIGHT_VALUATION = 0.30
@@ -83,56 +89,73 @@ def is_valid_ticker(t: str) -> bool:
         return False
     if t.startswith("."):
         return False
-    # prevent ".CO" alone or weird fragments
+    # avoid bare suffix symbols
     if t.upper() in {".CO", ".TO", ".ST"}:
         return False
+    # avoid ".CO" without a base ticker
     if t.endswith(".CO") and len(t) <= 3:
         return False
     return True
 
 
-def read_tickers() -> list[str]:
-    tickers: list[str] = []
+def detect_and_read_tickers() -> tuple[list[str], str]:
+    """
+    Returns (tickers, source_path_str)
+    """
+    for path, kind in INPUT_CANDIDATES:
+        if not path.exists():
+            continue
 
-    if TICKERS_CSV.exists():
-        df = pd.read_csv(TICKERS_CSV)
-        # accept "Ticker" or first column
-        col = "Ticker" if "Ticker" in df.columns else df.columns[0]
-        tickers = [str(x).strip() for x in df[col].tolist()]
-    elif TICKERS_TXT.exists():
-        tickers = [line.strip() for line in TICKERS_TXT.read_text(encoding="utf-8").splitlines()]
-    else:
-        raise FileNotFoundError(
-            "No tickers input found. Create either data/tickers.csv (Ticker column) "
-            "or data/tickers.txt (one per line)."
-        )
+        if kind == "txt":
+            raw = path.read_text(encoding="utf-8").splitlines()
+            tickers = [line.strip() for line in raw]
+            tickers = [t for t in tickers if is_valid_ticker(t)]
+            tickers = dedupe_preserve_order(tickers)
+            if tickers:
+                return tickers, str(path)
 
-    tickers = [t for t in tickers if is_valid_ticker(t)]
-    # de-dup while preserving order
+        if kind == "csv":
+            df = pd.read_csv(path)
+
+            # If there's a Ticker column use it, else take the first column
+            col = "Ticker" if "Ticker" in df.columns else df.columns[0]
+            tickers = [str(x).strip() for x in df[col].tolist()]
+            tickers = [t for t in tickers if is_valid_ticker(t)]
+            tickers = dedupe_preserve_order(tickers)
+            if tickers:
+                return tickers, str(path)
+
+    raise FileNotFoundError(
+        "No tickers input found. Create one of:\n"
+        " - data/tickers.csv (Ticker column)\n"
+        " - data/tickers.txt (one per line)\n"
+        " - data/input.csv  (Ticker column or first column)\n"
+        " - input.csv (Ticker column or first column)\n"
+        " - tickers.csv / tickers.txt in repository root"
+    )
+
+
+def dedupe_preserve_order(items: list[str]) -> list[str]:
     seen = set()
-    uniq = []
-    for t in tickers:
-        if t not in seen:
-            uniq.append(t)
-            seen.add(t)
-    return uniq
+    out = []
+    for x in items:
+        if x not in seen:
+            out.append(x)
+            seen.add(x)
+    return out
 
 
 def read_index_map() -> dict[str, str]:
-    """
-    Returns dict: ticker -> "Index1 | Index2"
-    """
     if not INDEX_MAP_CSV.exists():
         return {}
     df = pd.read_csv(INDEX_MAP_CSV)
+
     if "Ticker" not in df.columns:
-        # tolerate lowercase
         df.columns = [c.strip() for c in df.columns]
     if "Ticker" not in df.columns:
         return {}
 
     if "Indexes" not in df.columns:
-        # attempt alternative names
         for alt in ["Index", "IndexName", "IndexList"]:
             if alt in df.columns:
                 df["Indexes"] = df[alt]
@@ -146,9 +169,7 @@ def read_index_map() -> dict[str, str]:
         if not is_valid_ticker(t):
             continue
         idx = "" if pd.isna(r["Indexes"]) else str(r["Indexes"]).strip()
-        # normalize separators
         idx = idx.replace(";", "|").replace(",", "|")
-        # make pretty
         idx = " | ".join([x.strip() for x in idx.split("|") if x.strip()])
         out[t] = idx
     return out
@@ -170,36 +191,20 @@ def safe_float(x) -> float | None:
         return None
 
 
-def pct(a: float | None) -> float | None:
-    if a is None:
-        return None
-    return a * 100.0
-
-
 def clamp(x: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, x))
 
 
 def score_row(div_yield: float | None, div_growth_5y: float | None, pe: float | None) -> float:
-    """
-    Simple composite score: yield + growth + valuation.
-    All sub-scores are normalized to 0..100 and weighted.
-    """
-    # Yield score: 0% -> 0, 6% -> 100 (cap)
-    if div_yield is None:
-        s_y = 0.0
-    else:
-        s_y = clamp((div_yield / 0.06) * 100.0, 0.0, 100.0)
+    # Yield: 0%->0, 6%->100 cap
+    s_y = 0.0 if div_yield is None else clamp((div_yield / 0.06) * 100.0, 0.0, 100.0)
 
-    # Growth score: 0% -> 0, 15% -> 100 (cap)
-    if div_growth_5y is None:
-        s_g = 0.0
-    else:
-        s_g = clamp((div_growth_5y / 0.15) * 100.0, 0.0, 100.0)
+    # Growth: 0%->0, 15%->100 cap
+    s_g = 0.0 if div_growth_5y is None else clamp((div_growth_5y / 0.15) * 100.0, 0.0, 100.0)
 
-    # Valuation score: PE 10 -> 100, PE 30 -> 0 (linear)
+    # Valuation: PE 10->100, PE 30->0
     if pe is None or pe <= 0:
-        s_v = 40.0  # neutral default if missing
+        s_v = 40.0
     else:
         s_v = clamp((30.0 - pe) / (30.0 - 10.0) * 100.0, 0.0, 100.0)
 
@@ -207,11 +212,7 @@ def score_row(div_yield: float | None, div_growth_5y: float | None, pe: float | 
     return float(round(score, 2))
 
 
-def recommendation(score: float, div_yield: float | None, pe: float | None) -> str:
-    """
-    Simple rule-based recommendation label.
-    """
-    # You can tune thresholds here.
+def recommendation(score: float, div_yield: float | None) -> str:
     if score >= 75 and (div_yield is None or div_yield >= 0.015):
         return "BUY"
     if score >= 55:
@@ -219,90 +220,44 @@ def recommendation(score: float, div_yield: float | None, pe: float | None) -> s
     return "WATCH"
 
 
-def pill_class(label: str) -> str:
-    label = (label or "").upper()
-    if label == "BUY":
-        return "pill-green"
-    if label == "HOLD":
-        return "pill-amber"
-    if label == "WATCH":
-        return "pill-gray"
-    return "pill-gray"
-
-
-def format_num(x, digits=2) -> str:
-    if x is None or (isinstance(x, float) and (math.isnan(x) or math.isinf(x))):
-        return ""
-    try:
-        return f"{float(x):.{digits}f}"
-    except Exception:
-        return ""
-
-
-def format_pct(x, digits=1) -> str:
-    if x is None or (isinstance(x, float) and (math.isnan(x) or math.isinf(x))):
-        return ""
-    try:
-        return f"{float(x)*100:.{digits}f}%"
-    except Exception:
-        return ""
-
-
 # -------------------------
-# DATA FETCH
+# YFINANCE FETCH
 # -------------------------
 
 def fetch_batch(tickers: list[str]) -> pd.DataFrame:
-    """
-    Pulls info via yfinance in a robust way:
-    - uses yf.Tickers for batching
-    - tolerates missing fields
-    """
     t = yf.Tickers(" ".join(tickers))
     rows = []
 
     for tk in tickers:
         try:
-            obj = t.tickers.get(tk)
-            if obj is None:
-                # fallback single
-                obj = yf.Ticker(tk)
+            obj = t.tickers.get(tk) or yf.Ticker(tk)
 
-            info = {}
+            # fast_info might fail; guard
             try:
-                info = obj.fast_info or {}
+                fast = obj.fast_info or {}
+            except Exception:
+                fast = {}
+
+            # info might fail; guard
+            try:
+                info = obj.info or {}
             except Exception:
                 info = {}
 
-            # Full info (can be slow/fail) -> guard hard
-            full = {}
-            try:
-                full = obj.info or {}
-            except Exception:
-                full = {}
+            price = safe_float(fast.get("last_price")) or safe_float(info.get("currentPrice")) or safe_float(info.get("regularMarketPrice"))
+            currency = (fast.get("currency") or info.get("currency") or "").strip()
 
-            # Price
-            price = safe_float(info.get("last_price")) or safe_float(full.get("currentPrice")) or safe_float(full.get("regularMarketPrice"))
-            currency = (info.get("currency") or full.get("currency") or "").strip()
+            pe = safe_float(info.get("trailingPE")) or safe_float(info.get("forwardPE"))
 
-            # Valuation
-            pe = safe_float(full.get("trailingPE")) or safe_float(full.get("forwardPE"))
-
-            # Dividend yield:
-            # Yahoo: full["dividendYield"] is fraction (0.03 = 3%)
-            div_yield = safe_float(full.get("dividendYield"))
-            # Some tickers have "yield" or "trailingAnnualDividendYield"
+            div_yield = safe_float(info.get("dividendYield"))
             if div_yield is None:
-                div_yield = safe_float(full.get("trailingAnnualDividendYield"))
+                div_yield = safe_float(info.get("trailingAnnualDividendYield"))
 
-            # 5y dividend growth:
-            # Yahoo doesn't provide a consistent "5y dividend growth" field for all.
-            # We'll approximate using dividends history if available.
+            # Estimate 5Y dividend growth from dividend history (CAGR)
             div_growth_5y = None
             try:
                 divs = obj.dividends
                 if divs is not None and len(divs) > 0:
-                    # yearly sums for last 6 years to compute 5y CAGR
                     s = divs.copy()
                     s.index = pd.to_datetime(s.index)
                     yearly = s.resample("Y").sum()
@@ -317,25 +272,20 @@ def fetch_batch(tickers: list[str]) -> pd.DataFrame:
             except Exception:
                 div_growth_5y = None
 
-            name = full.get("shortName") or full.get("longName") or ""
-            sector = full.get("sector") or ""
-            industry = full.get("industry") or ""
-            country = full.get("country") or ""
-            exchange = full.get("exchange") or full.get("fullExchangeName") or ""
-
             rows.append({
                 "Ticker": tk,
-                "Name": name,
+                "Name": info.get("shortName") or info.get("longName") or "",
                 "Price": price,
                 "Currency": currency,
                 "PE": pe,
-                "DividendYield": div_yield,          # fraction
-                "DividendGrowth5Y": div_growth_5y,   # fraction
-                "Sector": sector,
-                "Industry": industry,
-                "Country": country,
-                "Exchange": exchange,
+                "DividendYield": div_yield,
+                "DividendGrowth5Y": div_growth_5y,
+                "Sector": info.get("sector") or "",
+                "Industry": info.get("industry") or "",
+                "Country": info.get("country") or "",
+                "Exchange": info.get("exchange") or info.get("fullExchangeName") or "",
             })
+
         except Exception as e:
             rows.append({
                 "Ticker": tk,
@@ -356,37 +306,23 @@ def fetch_batch(tickers: list[str]) -> pd.DataFrame:
 
 
 def fetch_all(tickers: list[str]) -> pd.DataFrame:
-    all_frames = []
+    frames = []
     for i in range(0, len(tickers), BATCH_SIZE):
-        batch = tickers[i:i+BATCH_SIZE]
-        df = fetch_batch(batch)
-        all_frames.append(df)
+        batch = tickers[i:i + BATCH_SIZE]
+        frames.append(fetch_batch(batch))
         if i + BATCH_SIZE < len(tickers):
             time.sleep(SLEEP_BETWEEN_BATCHES_SEC)
-    return pd.concat(all_frames, ignore_index=True) if all_frames else pd.DataFrame()
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
 # -------------------------
-# HTML DASHBOARD
+# HTML DASHBOARD (no ${cls} issues)
 # -------------------------
 
-def render_cell(value: str, css_class: str = "") -> str:
-    if value is None:
-        return ""
-    v = str(value)
-    if v.strip() == "":
-        return ""
-    if css_class:
-        return '<span class="pill ' + css_class + '">' + v + '</span>'
-    return v
-
-
-def build_html(df: pd.DataFrame, generated_at: str) -> str:
-    # Minimal, fast client-side filtering/search/sort (no external libs).
+def build_html(df: pd.DataFrame, generated_at: str, source: str) -> str:
     css = """
     :root { --bg:#0b0f14; --card:#111826; --text:#e6edf3; --muted:#9aa4af; --line:#223042; }
-    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-           margin:0; background:var(--bg); color:var(--text); }
+    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin:0; background:var(--bg); color:var(--text); }
     .wrap { max-width: 1400px; margin: 0 auto; padding: 20px; }
     .top { display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     .title { font-size: 20px; font-weight: 700; }
@@ -404,25 +340,17 @@ def build_html(df: pd.DataFrame, generated_at: str) -> str:
     .pill-gray  { background: rgba(148, 163, 184, 0.12); }
     .right { text-align:right; }
     .small { font-size:12px; color:var(--muted); }
-    .badge { color: var(--muted); font-size:12px; }
-    .row-muted { color: var(--muted); }
     """
 
-    # Prepare rows for JS
-    safe_cols = [
-        "Ticker","Name","Price","Currency","PE","DividendYield","DividendGrowth5Y",
-        "Score","Reco","Indexes","Sector","Country"
-    ]
+    cols = ["Ticker","Name","Price","Currency","PE","DividendYield","DividendGrowth5Y","Score","Reco","Indexes","Sector","Country"]
     dd = df.copy()
-    for c in safe_cols:
+    for c in cols:
         if c not in dd.columns:
             dd[c] = ""
-
-    # JSON rows for JS rendering
-    records = dd[safe_cols].replace({np.nan: ""}).to_dict(orient="records")
+    records = dd[cols].replace({np.nan: ""}).to_dict(orient="records")
     data_json = json.dumps(records)
 
-    html = f"""<!doctype html>
+    return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
@@ -435,7 +363,7 @@ def build_html(df: pd.DataFrame, generated_at: str) -> str:
   <div class="top">
     <div>
       <div class="title">Dividend Screener (DK + US)</div>
-      <div class="meta">Generated: {generated_at}</div>
+      <div class="meta">Generated: {generated_at} • Source: {source}</div>
     </div>
     <div class="controls">
       <input id="q" type="text" placeholder="Search ticker / name / index / sector..." size="34"/>
@@ -472,10 +400,6 @@ def build_html(df: pd.DataFrame, generated_at: str) -> str:
       </thead>
       <tbody></tbody>
     </table>
-  </div>
-
-  <div class="meta" style="margin-top:12px;">
-    Tip: sort by clicking headers. Dashboard is static (GitHub Pages).
   </div>
 </div>
 
@@ -589,43 +513,34 @@ function render() {{
   countEl.textContent = rows.length + " rows";
 }}
 
-function wireSorting() {{
-  document.querySelectorAll("th[data-k]").forEach(th => {{
-    th.addEventListener("click", () => {{
-      const k = th.getAttribute("data-k");
-      if (sortKey === k) sortDir = (sortDir === "asc") ? "desc" : "asc";
-      else {{
-        sortKey = k;
-        sortDir = (k === "Ticker" || k === "Name" || k === "Reco" || k === "Indexes" || k === "Sector" || k === "Country")
-          ? "asc" : "desc";
-      }}
-      render();
-    }});
+document.querySelectorAll("th[data-k]").forEach(th => {{
+  th.addEventListener("click", () => {{
+    const k = th.getAttribute("data-k");
+    if (sortKey === k) sortDir = (sortDir === "asc") ? "desc" : "asc";
+    else {{
+      sortKey = k;
+      sortDir = (k === "Ticker" || k === "Name" || k === "Reco" || k === "Indexes" || k === "Sector" || k === "Country")
+        ? "asc" : "desc";
+    }}
+    render();
   }});
-}}
+}});
 
-function initIndexFilter() {{
-  const opts = uniqueIndexes(DATA);
-  opts.forEach(x => {{
-    const o = document.createElement("option");
-    o.value = x;
-    o.textContent = x;
-    idxEl.appendChild(o);
-  }});
-}}
+uniqueIndexes(DATA).forEach(x => {{
+  const o = document.createElement("option");
+  o.value = x;
+  o.textContent = x;
+  idxEl.appendChild(o);
+}});
 
 [qEl, recoEl, idxEl].forEach(el => el.addEventListener("input", render));
 [qEl, recoEl, idxEl].forEach(el => el.addEventListener("change", render));
 
-initIndexFilter();
-wireSorting();
 render();
 </script>
-
 </body>
 </html>
 """
-    return html
 
 
 # -------------------------
@@ -635,45 +550,33 @@ render();
 def main() -> int:
     ensure_dirs()
 
-    tickers = read_tickers()
-    if not tickers:
-        print("No valid tickers found.")
-        return 1
+    tickers, source = detect_and_read_tickers()
+    print(f"Tickers loaded: {len(tickers)} from {source}")
 
     index_map = read_index_map()
 
-    print(f"Tickers: {len(tickers)}")
     df = fetch_all(tickers)
 
-    # Add index exposure column
     df["Indexes"] = df["Ticker"].map(index_map).fillna("")
-
-    # Score + reco
     df["Score"] = df.apply(lambda r: score_row(
         safe_float(r.get("DividendYield")),
         safe_float(r.get("DividendGrowth5Y")),
         safe_float(r.get("PE"))
     ), axis=1)
-
     df["Reco"] = df.apply(lambda r: recommendation(
-        safe_float(r.get("Score")) or 0.0,
-        safe_float(r.get("DividendYield")),
-        safe_float(r.get("PE"))
+        float(r.get("Score") or 0.0),
+        safe_float(r.get("DividendYield"))
     ), axis=1)
-
-    # Sort output
-    df = df.sort_values(["Reco", "Score"], ascending=[True, False]).reset_index(drop=True)
 
     # Save CSV
     OUT_CSV.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(OUT_CSV, index=False, encoding="utf-8")
+    df.sort_values(["Reco", "Score"], ascending=[True, False]).to_csv(OUT_CSV, index=False, encoding="utf-8")
     print(f"Wrote: {OUT_CSV}")
 
-    # Write HTML dashboard
+    # Save HTML
     generated_at = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    html = build_html(df, generated_at)
     OUT_HTML.parent.mkdir(parents=True, exist_ok=True)
-    OUT_HTML.write_text(html, encoding="utf-8")
+    OUT_HTML.write_text(build_html(df, generated_at, source), encoding="utf-8")
     print(f"Wrote: {OUT_HTML}")
 
     return 0

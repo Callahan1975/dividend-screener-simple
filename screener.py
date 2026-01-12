@@ -5,9 +5,9 @@ from __future__ import annotations
 
 import os
 import sys
-import json
 import math
 import time
+import html
 import traceback
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Tuple
@@ -160,8 +160,7 @@ def _clean_url_line(line: str) -> str:
     s = _strip_inline_comment(line)
     if not s or s.startswith("#"):
         return ""
-    s = s.strip()
-    return s
+    return s.strip()
 
 
 def _read_lines_clean(path: str) -> List[str]:
@@ -201,7 +200,7 @@ def _fetch_tickers_from_url(url: str) -> List[str]:
         r.raise_for_status()
         out: List[str] = []
         for ln in r.text.splitlines():
-            t = _clean_ticker_line(ln)  # treat remote file as ticker file => URLs ignored too
+            t = _clean_ticker_line(ln)  # remote treated as ticker file (URLs ignored)
             if t:
                 out.append(t)
         return out
@@ -438,8 +437,38 @@ def _portfolio_action(is_in_portfolio: bool, action: str) -> str:
 
 
 # -----------------------------
-# HTML Generation (array-of-arrays + forced row length)
+# HTML Generation (STATIC TABLE = DataTables can’t break)
 # -----------------------------
+def _fmt_num2(v: Any) -> str:
+    x = _safe_float(v)
+    return "" if x is None else f"{x:,.2f}"
+
+
+def _fmt_pct2(v: Any) -> str:
+    x = _safe_float(v)
+    return "" if x is None else f"{x:,.2f}%"
+
+
+def _fmt_mcap(v: Any) -> str:
+    x = _safe_float(v)
+    if x is None:
+        return ""
+    ax = abs(x)
+    if ax >= 1e12:
+        return f"{x/1e12:,.2f}T"
+    if ax >= 1e9:
+        return f"{x/1e9:,.2f}B"
+    if ax >= 1e6:
+        return f"{x/1e6:,.2f}M"
+    if ax >= 1e3:
+        return f"{x/1e3:,.2f}K"
+    return f"{x:,.0f}"
+
+
+def _html_escape(s: Any) -> str:
+    return html.escape(_safe_str(s))
+
+
 def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     columns = [
         "Ticker","Alias","Name","Country","Currency","Exchange","Sector",
@@ -453,44 +482,27 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
         if c not in df.columns:
             df[c] = ""
 
-    df2 = df[columns].copy().where(pd.notnull(df), None)
+    # Build static tbody rows with safe formatting
+    pct_cols = {"DividendYield_%","PayoutRatio_%","Upside_%","Upside_Yield_%","TotalReturnEst_%"}
+    num2_cols = {"Price","DividendRate","PE","TargetMeanPrice","52W_Low","52W_High"}
 
-    raw_rows = df2.values.tolist()
-    ncol = len(columns)
-
-    # Force each row to correct length (prevents DataTables unknown parameter "13")
-    data_rows: List[List[Any]] = []
-    for r in raw_rows:
-        if not isinstance(r, list):
-            r = [r]
-        if len(r) < ncol:
-            r = r + [None] * (ncol - len(r))
-        elif len(r) > ncol:
-            r = r[:ncol]
-        data_rows.append(r)
-
-    data_json = json.dumps(data_rows, ensure_ascii=False)
+    body_rows: List[str] = []
+    for _, r in df[columns].iterrows():
+        tds: List[str] = []
+        for c in columns:
+            val = r.get(c)
+            if c in pct_cols:
+                cell = _fmt_pct2(val)
+            elif c in num2_cols:
+                cell = _fmt_num2(val)
+            elif c == "MarketCap":
+                cell = _fmt_mcap(val)
+            else:
+                cell = _safe_str(val)
+            tds.append(f"<td>{_html_escape(cell)}</td>")
+        body_rows.append("<tr>" + "".join(tds) + "</tr>")
 
     filter_cols = ["Country","Currency","Sector","Exchange","InIndex","Reco","Action","PortfolioAction"]
-    col_index = {c: i for i, c in enumerate(columns)}
-    filter_meta = [(c, col_index[c]) for c in filter_cols if c in col_index]
-    filter_meta_json = json.dumps(filter_meta, ensure_ascii=False)
-
-    pct_cols = {"DividendYield_%","PayoutRatio_%","Upside_%","Upside_Yield_%","TotalReturnEst_%"}
-    num_2_cols = {"Price","DividendRate","PE","TargetMeanPrice","52W_Low","52W_High"}
-    market_cap_col = "MarketCap"
-
-    col_defs = []
-    for idx, c in enumerate(columns):
-        if c in pct_cols:
-            col_defs.append({"targets": idx, "render": "function(data,type,row){return renderPercent(data,type);}"} )
-        elif c == market_cap_col:
-            col_defs.append({"targets": idx, "render": "function(data,type,row){return renderMarketCap(data,type);}"} )
-        elif c in num_2_cols:
-            col_defs.append({"targets": idx, "render": "function(data,type,row){return renderNumber2(data,type);}"} )
-
-    col_defs_js = json.dumps(col_defs, ensure_ascii=False)
-
     filter_html = "\n".join(
         [f"""
         <div class="filter">
@@ -535,6 +547,11 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     table.dataTable {{ width:100% !important; color:var(--text); background:transparent; }}
     table.dataTable thead th {{ color:var(--muted); border-bottom:1px solid var(--border) !important; }}
     table.dataTable tbody td {{ border-top:1px solid rgba(255,255,255,0.06) !important; }}
+    .dataTables_wrapper .dataTables_filter input,
+    .dataTables_wrapper .dataTables_length select {{
+      background:rgba(255,255,255,0.04) !important; color:var(--text) !important; border:1px solid var(--border) !important;
+      border-radius:10px !important; padding:6px 10px !important; outline:none;
+    }}
   </style>
 </head>
 
@@ -549,7 +566,9 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     <div class="tableWrap">
       <table id="screener" class="display" style="width:100%">
         <thead><tr>{''.join([f'<th>{c}</th>' for c in columns])}</tr></thead>
-        <tbody></tbody>
+        <tbody>
+          {''.join(body_rows)}
+        </tbody>
       </table>
     </div>
   </div>
@@ -559,59 +578,23 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
   <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
 
   <script>
-    const DATA = {data_json};
-    const COLS = {json.dumps(columns, ensure_ascii=False)};
-    const FILTER_COLS = {filter_meta_json};
-
-    function asNumber(x) {{
-      if (x === null || x === undefined) return null;
-      if (typeof x === "number") return isFinite(x) ? x : null;
-      const s = String(x).trim();
-      if (!s) return null;
-      const v = Number(s);
-      return isFinite(v) ? v : null;
-    }}
-
-    const nf2 = new Intl.NumberFormat(undefined, {{ minimumFractionDigits:2, maximumFractionDigits:2 }});
-    const nf0 = new Intl.NumberFormat(undefined, {{ maximumFractionDigits:0 }});
-
-    function renderNumber2(data, type) {{
-      const v = asNumber(data);
-      if (v === null) return (type === "sort") ? -Infinity : "";
-      return (type === "sort") ? v : nf2.format(v);
-    }}
-    function renderPercent(data, type) {{
-      const v = asNumber(data);
-      if (v === null) return (type === "sort") ? -Infinity : "";
-      return (type === "sort") ? v : (nf2.format(v) + "%");
-    }}
-    function renderMarketCap(data, type) {{
-      const v = asNumber(data);
-      if (v === null) return (type === "sort") ? -Infinity : "";
-      if (type === "sort") return v;
-      const abs = Math.abs(v);
-      if (abs >= 1e12) return nf2.format(v/1e12) + "T";
-      if (abs >= 1e9)  return nf2.format(v/1e9)  + "B";
-      if (abs >= 1e6)  return nf2.format(v/1e6)  + "M";
-      if (abs >= 1e3)  return nf2.format(v/1e3)  + "K";
-      return nf0.format(v);
-    }}
+    const COLS = {columns};
+    const FILTERS = {filter_cols};
 
     $(document).ready(function() {{
       const dt = $('#screener').DataTable({{
-        data: DATA,
-        columns: COLS.map(t => ({{ title: t }})),
         pageLength: 50,
         order: [[ COLS.indexOf("TotalReturnEst_%"), "desc" ]],
         fixedHeader: true,
         deferRender: true,
-        autoWidth: false,
-        columnDefs: {col_defs_js},
+        autoWidth: false
       }});
 
-      FILTER_COLS.forEach(([name, idx]) => {{
+      // Dropdown filters
+      FILTERS.forEach((name) => {{
+        const idx = COLS.indexOf(name);
         const sel = document.getElementById("flt_" + name);
-        if (!sel) return;
+        if (!sel || idx < 0) return;
 
         const values = new Set();
         dt.column(idx).data().each(function(v) {{

@@ -1,0 +1,15 @@
+base_currency: "DKK"
+
+# Max vægt pr aktie i din portefølje
+max_weight: 0.08      # 8% = TRIM hvis over
+target_weight: 0.05  # 5% = ønsket vægt
+min_weight: 0.02     # 2% = underweight
+
+quality:
+  min_dividend_years: 5
+  max_payout_ratio: 0.80
+  require_positive_fcf: true
+
+valuation:
+  buy_fair_value_upside_min: 0.10
+  trim_overvaluation_min: 0.20

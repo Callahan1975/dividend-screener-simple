@@ -314,34 +314,24 @@ def build_html(df: pd.DataFrame, updated: str) -> str:
 
     data_json = df.to_dict(orient="records")
 
-    # Indices for numeric formatting (safe if missing)
     def idx(name: str) -> int | None:
         return cols.index(name) if name in cols else None
 
-    idx_price = idx("Price")
-    idx_pe = idx("PE")
-    idx_fv = idx("FairValue_Yield")
-    idx_ownv = idx("OwnedValue")
-    idx_shares = idx("OwnedShares")
-
-    idx_yield = idx("DividendYield")          # numeric percent
-    idx_divg = idx("DividendGrowth5Y")        # numeric percent
-    idx_up = idx("Upside_Yield_%")            # numeric percent
-    idx_score = idx("Score")
-    idx_weight = idx("Weight")                # 0..1
-
     render_cfg = {
-        "price": idx_price,
-        "pe": idx_pe,
-        "fv": idx_fv,
-        "ownv": idx_ownv,
-        "shares": idx_shares,
-        "yield": idx_yield,
-        "divg": idx_divg,
-        "up": idx_up,
-        "score": idx_score,
-        "weight": idx_weight,
+        "price": idx("Price"),
+        "pe": idx("PE"),
+        "fv": idx("FairValue_Yield"),
+        "ownv": idx("OwnedValue"),
+        "shares": idx("OwnedShares"),
+        "yield": idx("DividendYield"),
+        "divg": idx("DividendGrowth5Y"),
+        "up": idx("Upside_Yield_%"),
+        "score": idx("Score"),
+        "weight": idx("Weight"),
     }
+
+    # ✅ FIX HER: ingen {{ }} — kun almindelige dicts
+    columns_js = json.dumps([{"title": c, "data": c} for c in cols])
 
     return f"""<!doctype html>
 <html lang="en">
@@ -380,7 +370,7 @@ def build_html(df: pd.DataFrame, updated: str) -> str:
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
   <script>
-    const columns = {json.dumps([{{"title": c, "data": c}} for c in cols])};
+    const columns = {columns_js};
     const data = {json.dumps(data_json)};
     const filterIdxs = {json.dumps(filter_idxs)};
     const idx = {json.dumps(render_cfg)};
@@ -415,7 +405,6 @@ def build_html(df: pd.DataFrame, updated: str) -> str:
     $(document).ready(function() {{
       const columnDefs = [];
 
-      // Price-like
       ["price","fv","ownv"].forEach(k => {{
         if (idx[k] !== null) {{
           columnDefs.push({{
@@ -428,7 +417,6 @@ def build_html(df: pd.DataFrame, updated: str) -> str:
         }}
       }});
 
-      // PE (2 decimals)
       if (idx.pe !== null) {{
         columnDefs.push({{
           targets: idx.pe,
@@ -439,7 +427,6 @@ def build_html(df: pd.DataFrame, updated: str) -> str:
         }});
       }}
 
-      // Shares (2 decimals)
       if (idx.shares !== null) {{
         columnDefs.push({{
           targets: idx.shares,
@@ -450,7 +437,6 @@ def build_html(df: pd.DataFrame, updated: str) -> str:
         }});
       }}
 
-      // Yield / DivGrowth / Upside are already numeric percent
       ["yield","divg","up"].forEach(k => {{
         if (idx[k] !== null) {{
           columnDefs.push({{
@@ -463,7 +449,6 @@ def build_html(df: pd.DataFrame, updated: str) -> str:
         }}
       }});
 
-      // Score (1 decimal)
       if (idx.score !== null) {{
         columnDefs.push({{
           targets: idx.score,
@@ -474,7 +459,6 @@ def build_html(df: pd.DataFrame, updated: str) -> str:
         }});
       }}
 
-      // Weight (0..1)
       if (idx.weight !== null) {{
         columnDefs.push({{
           targets: idx.weight,
@@ -494,7 +478,6 @@ def build_html(df: pd.DataFrame, updated: str) -> str:
         deferRender: true
       }});
 
-      // Add filter row
       const thead = $('#tbl thead');
       const headerRow = thead.find('tr').first();
       const filterRow = $('<tr class="filters"></tr>').appendTo(thead);
@@ -567,11 +550,11 @@ def main():
             "Ticker": t,
             "Name": q.get("Name", ""),
             "Price": price,
-            "DividendYield": (yld * 100) if yld is not None else None,          # numeric percent
-            "DividendGrowth5Y": (divg * 100) if divg is not None else None,     # numeric percent
+            "DividendYield": (yld * 100) if yld is not None else None,
+            "DividendGrowth5Y": (divg * 100) if divg is not None else None,
             "PE": pe,
             "FairValue_Yield": fv,
-            "Upside_Yield_%": (up * 100) if up is not None else None,           # numeric percent
+            "Upside_Yield_%": (up * 100) if up is not None else None,
             "Score": score,
             "Reco": reco,
             "Action": act,

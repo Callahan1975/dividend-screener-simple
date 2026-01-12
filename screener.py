@@ -7,19 +7,10 @@ Outputs:
 - data/screener_results.csv
 - docs/index.html (DataTables + dropdown filters + nice formatting)
 
-Stability goals:
-- Correct DividendYield scaling (avoid 115% / 700% issues)
-- Non-crashing yfinance fetch (skip tickers with 404 / Quote not found)
-- Reasonable upside from analyst targetMeanPrice (when available)
-- Dropdown filters: Country/Currency/Sector/Exchange/InIndex/Reco/Action/PortfolioAction
-- Nice formatting: 2 decimals, percent as % in HTML
-
-Ticker universe expansion (no workflow edits needed):
-1) tickers.txt (required)
-2) data/tickers_master.txt (optional)            -> add more tickers locally
-3) data/tickers_live_url.txt (optional)          -> 1-line URL to remote tickers list
-4) env var TICKERS_URL (optional)                -> remote tickers list
-If remote fetch fails => fallback continues.
+Fixes in this version:
+- STRIPS inline comments in tickers lists (e.g. "FRC # delisted" -> "FRC")
+- STRIPS anything after first whitespace token (e.g. "NA.TO (note...)" -> "NA.TO")
+- Adds no-cache meta tags to HTML to reduce GitHub Pages stale caching issues
 """
 
 from __future__ import annotations
@@ -37,7 +28,7 @@ import pandas as pd
 
 try:
     import yfinance as yf
-except Exception as e:
+except Exception:
     print("ERROR: yfinance import failed. Ensure it's installed in your workflow.")
     raise
 
@@ -98,21 +89,6 @@ def _safe_str(x: Any) -> str:
     return str(x).strip()
 
 
-def _read_lines(path: str) -> List[str]:
-    if not os.path.exists(path):
-        return []
-    with open(path, "r", encoding="utf-8") as f:
-        lines = [ln.strip() for ln in f.readlines()]
-    out = []
-    for ln in lines:
-        if not ln:
-            continue
-        if ln.startswith("#"):
-            continue
-        out.append(ln)
-    return out
-
-
 def _ensure_dir(path: str) -> None:
     d = os.path.dirname(path)
     if d and not os.path.exists(d):
@@ -122,15 +98,7 @@ def _ensure_dir(path: str) -> None:
 def _normalize_dividend_yield(raw: Any) -> Optional[float]:
     """
     Normalize dividend yield to a fraction (e.g. 0.035 for 3.5%).
-    yfinance can return:
-      - 0.035 (already fraction)
-      - 3.5 (percent)
-      - 350 (scaled percent*100)
-      - 700, 115 etc (bad scaling)
-    Strategy:
-      - if yield <= 1.5 -> treat as fraction (0..1.5 = 0%..150%)
-      - if 1.5 < yield <= 100 -> treat as percent -> /100
-      - if yield > 100 -> treat as (percent*100) -> /10000
+    Handles common scaling issues (e.g. 115, 700).
     """
     v = _safe_float(raw)
     if v is None or v < 0:
@@ -171,20 +139,54 @@ def _round2(x: Optional[float]) -> Optional[float]:
 
 
 # -----------------------------
-# Ticker universe (local + live)
+# Ticker parsing (IMPORTANT FIX)
 # -----------------------------
+def _clean_ticker_line(line: str) -> str:
+    """
+    Makes ticker lists idiot-proof:
+    - removes inline comments after '#'
+      e.g. "FRC # delisted" -> "FRC"
+    - takes only the first whitespace-separated token
+      e.g. "NA.TO (use Toronto)" -> "NA.TO"
+    """
+    s = (line or "").strip()
+    if not s:
+        return ""
+    if s.startswith("#"):
+        return ""
+
+    # remove inline comment
+    if "#" in s:
+        s = s.split("#", 1)[0].strip()
+
+    if not s:
+        return ""
+
+    # take only first token (kills any leftover notes)
+    s = s.split()[0].strip()
+    return s
+
+
+def _read_lines_clean(path: str) -> List[str]:
+    if not os.path.exists(path):
+        return []
+    out: List[str] = []
+    with open(path, "r", encoding="utf-8") as f:
+        for ln in f:
+            t = _clean_ticker_line(ln)
+            if t:
+                out.append(t)
+    return out
+
+
 def _read_live_url_from_file(path: str) -> str:
-    """
-    Reads a 1-line URL from data/tickers_live_url.txt (optional).
-    Allows "live place" without touching workflows.
-    """
     if not os.path.exists(path):
         return ""
     try:
         with open(path, "r", encoding="utf-8") as f:
             for ln in f:
-                s = ln.strip()
-                if s and not s.startswith("#"):
+                s = _clean_ticker_line(ln)
+                if s:
                     return s
     except Exception:
         return ""
@@ -192,24 +194,19 @@ def _read_live_url_from_file(path: str) -> str:
 
 
 def _fetch_tickers_from_url(url: str) -> List[str]:
-    """
-    Fetch tickers list from URL (raw text: one ticker per line).
-    If requests isn't installed or fetch fails => returns [].
-    """
     if not url:
         return []
     if requests is None:
-        print("WARNING: requests not installed; cannot fetch live tickers URL. Skipping.")
+        print("WARNING: requests not installed; cannot fetch live tickers URL. Skipping live.")
         return []
     try:
-        r = requests.get(url, timeout=20)
+        r = requests.get(url, timeout=25)
         r.raise_for_status()
-        lines = [ln.strip() for ln in r.text.splitlines()]
-        out = []
-        for ln in lines:
-            if not ln or ln.startswith("#"):
-                continue
-            out.append(ln)
+        out: List[str] = []
+        for ln in r.text.splitlines():
+            t = _clean_ticker_line(ln)
+            if t:
+                out.append(t)
         return out
     except Exception as e:
         print(f"WARNING: Failed to fetch tickers from URL ({url}): {e}")
@@ -221,7 +218,7 @@ def _merge_unique_keep_order(lists: List[List[str]]) -> List[str]:
     out: List[str] = []
     for lst in lists:
         for x in lst:
-            s = str(x).strip()
+            s = (x or "").strip()
             if not s:
                 continue
             if s in seen:
@@ -232,18 +229,9 @@ def _merge_unique_keep_order(lists: List[List[str]]) -> List[str]:
 
 
 def _read_all_tickers() -> List[str]:
-    """
-    Build tickers universe from:
-      - tickers.txt (required baseline)
-      - data/tickers_master.txt (optional)
-      - data/tickers_live_url.txt -> URL -> remote list (optional)
-      - env var TICKERS_URL -> remote list (optional)
-    Robust: never crash; always at least returns tickers.txt lines (or empty if missing).
-    """
-    base = _read_lines(TICKERS_TXT)
-    master = _read_lines(MASTER_TICKERS_TXT)
+    base = _read_lines_clean(TICKERS_TXT)
+    master = _read_lines_clean(MASTER_TICKERS_TXT)
 
-    # Live URL resolution
     url_env = os.environ.get("TICKERS_URL", "").strip()
     url_file = _read_live_url_from_file(LIVE_TICKERS_URL_TXT)
     url = url_env or url_file
@@ -252,11 +240,11 @@ def _read_all_tickers() -> List[str]:
 
     merged = _merge_unique_keep_order([base, master, live])
 
-    if url:
-        print(f"[{_now_utc_str()}] Tickers sources: base={len(base)}, master={len(master)}, live={len(live)} (url={'env' if url_env else 'file'}) -> merged={len(merged)}")
-    else:
-        print(f"[{_now_utc_str()}] Tickers sources: base={len(base)}, master={len(master)} -> merged={len(merged)}")
+    src = "env" if url_env else ("file" if url_file else "none")
+    print(f"[{_now_utc_str()}] Tickers sources: base={len(base)}, master={len(master)}, live={len(live)}, url_source={src} -> merged={len(merged)}")
 
+    # Helpful debug: show a few tickers so you can verify comments are stripped
+    print(f"[{_now_utc_str()}] Sample tickers: {merged[:12]}")
     return merged
 
 
@@ -264,14 +252,6 @@ def _read_all_tickers() -> List[str]:
 # Alias / index map / portfolio
 # -----------------------------
 def _load_alias_map(alias_csv: str) -> pd.DataFrame:
-    """
-    Supports flexible columns, e.g.:
-      - ticker, alias
-      - Ticker, Alias
-      - ticker, yahoo_ticker, alias
-    Produces:
-      - input_ticker, yahoo_ticker, alias
-    """
     if not os.path.exists(alias_csv):
         return pd.DataFrame(columns=["input_ticker", "yahoo_ticker", "alias"])
 
@@ -408,7 +388,7 @@ def _fetch_one(ticker: str, pause_s: float = 0.0) -> Tuple[Optional[Dict[str, An
         low_52 = _safe_float(_first_non_null(fast.get("year_low"), info.get("fiftyTwoWeekLow")))
         high_52 = _safe_float(_first_non_null(fast.get("year_high"), info.get("fiftyTwoWeekHigh")))
 
-        data = {
+        return {
             "Name": name,
             "Price": price,
             "Currency": currency,
@@ -423,8 +403,7 @@ def _fetch_one(ticker: str, pause_s: float = 0.0) -> Tuple[Optional[Dict[str, An
             "Reco": reco,
             "52W_Low": low_52,
             "52W_High": high_52,
-        }
-        return data, None
+        }, None
 
     except Exception as e:
         return None, str(e)
@@ -446,7 +425,6 @@ def _calc_total_return_est(div_yield: Optional[float], upside: Optional[float]) 
 
 
 def _make_action(total_return_est: Optional[float], div_yield: Optional[float]) -> str:
-    # Simple and predictable thresholds (easy to tune later)
     if total_return_est is None:
         if div_yield is not None:
             if div_yield >= 0.04:
@@ -466,47 +444,20 @@ def _make_action(total_return_est: Optional[float], div_yield: Optional[float]) 
 
 def _portfolio_action(is_in_portfolio: bool, action: str) -> str:
     if is_in_portfolio:
-        if action == "WATCH":
-            return "REVIEW"
-        return "HOLD"
-    else:
-        if action in ("BUY", "STRONG_BUY"):
-            return "NEW_CANDIDATE"
-        return ""
+        return "REVIEW" if action == "WATCH" else "HOLD"
+    return "NEW_CANDIDATE" if action in ("BUY", "STRONG_BUY") else ""
 
 
 # -----------------------------
-# HTML Generation (DataTables)
+# HTML Generation
 # -----------------------------
 def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     columns = [
-        "Ticker",
-        "Alias",
-        "Name",
-        "Country",
-        "Currency",
-        "Exchange",
-        "Sector",
-        "InIndex",
-        "Indexes",
-        "Portfolio",
-        "PortfolioAction",
-        "Reco",
-        "Action",
-        "Price",
-        "DividendYield_%",
-        "DividendRate",
-        "PayoutRatio_%",
-        "PE",
-        "TargetMeanPrice",
-        "Upside_%",
-        "Upside_Yield_%",
-        "TotalReturnEst_%",
-        "MarketCap",
-        "52W_Low",
-        "52W_High",
-        "Status",
-        "Error",
+        "Ticker","Alias","Name","Country","Currency","Exchange","Sector",
+        "InIndex","Indexes","Portfolio","PortfolioAction","Reco","Action",
+        "Price","DividendYield_%","DividendRate","PayoutRatio_%","PE","TargetMeanPrice",
+        "Upside_%","Upside_Yield_%","TotalReturnEst_%","MarketCap","52W_Low","52W_High",
+        "Status","Error",
     ]
 
     for c in columns:
@@ -516,24 +467,18 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     records = df[columns].to_dict(orient="records")
     data_json = json.dumps(records, ensure_ascii=False)
 
-    filter_cols = ["Country", "Currency", "Sector", "Exchange", "InIndex", "Reco", "Action", "PortfolioAction"]
-
+    filter_cols = ["Country","Currency","Sector","Exchange","InIndex","Reco","Action","PortfolioAction"]
     filter_html = "\n".join(
-        [
-            f"""
-            <div class="filter">
-              <label for="flt_{c}">{c}</label>
-              <select id="flt_{c}">
-                <option value="">All</option>
-              </select>
-            </div>
-            """.strip()
-            for c in filter_cols
-        ]
+        [f"""
+        <div class="filter">
+          <label for="flt_{c}">{c}</label>
+          <select id="flt_{c}"><option value="">All</option></select>
+        </div>
+        """.strip() for c in filter_cols]
     )
 
-    pct_cols = {"DividendYield_%", "PayoutRatio_%", "Upside_%", "Upside_Yield_%", "TotalReturnEst_%"}
-    num_2_cols = {"Price", "DividendRate", "PE", "TargetMeanPrice", "52W_Low", "52W_High"}
+    pct_cols = {"DividendYield_%","PayoutRatio_%","Upside_%","Upside_Yield_%","TotalReturnEst_%"}
+    num_2_cols = {"Price","DividendRate","PE","TargetMeanPrice","52W_Low","52W_High"}
     market_cap_col = "MarketCap"
 
     col_defs = []
@@ -552,6 +497,12 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <!-- Reduce stale caching on GitHub Pages -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
+
   <title>Dividend Screener (DK + US)</title>
 
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css"/>
@@ -559,89 +510,30 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
 
   <style>
     :root {{
-      --bg: #0b0f19;
-      --panel: #121a2a;
-      --text: #e8eefc;
-      --muted: #a9b6d3;
-      --border: rgba(255,255,255,0.12);
+      --bg:#0b0f19; --panel:#121a2a; --text:#e8eefc; --muted:#a9b6d3; --border:rgba(255,255,255,0.12);
     }}
-    body {{
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-    }}
-    header {{
-      padding: 20px 18px 12px;
-      border-bottom: 1px solid var(--border);
-      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0));
-    }}
-    header h1 {{ margin: 0; font-size: 18px; }}
-    header .meta {{ margin-top: 6px; font-size: 12px; color: var(--muted); }}
-
-    .wrap {{ padding: 14px 14px 28px; }}
-
+    body {{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); }}
+    header {{ padding:20px 18px 12px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0)); }}
+    header h1 {{ margin:0; font-size:18px; }}
+    header .meta {{ margin-top:6px; font-size:12px; color:var(--muted); }}
+    .wrap {{ padding:14px 14px 28px; }}
     .filters {{
-      display: grid;
-      grid-template-columns: repeat(8, minmax(120px, 1fr));
-      gap: 10px;
-      padding: 12px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      margin-bottom: 12px;
+      display:grid; grid-template-columns:repeat(8, minmax(120px,1fr)); gap:10px; padding:12px;
+      background:var(--panel); border:1px solid var(--border); border-radius:14px; margin-bottom:12px;
     }}
-    .filter label {{ display:block; font-size: 11px; color: var(--muted); margin-bottom: 6px; }}
+    .filter label {{ display:block; font-size:11px; color:var(--muted); margin-bottom:6px; }}
     .filter select {{
-      width: 100%;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.04);
-      color: var(--text);
-      outline: none;
+      width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--border);
+      background:rgba(255,255,255,0.04); color:var(--text); outline:none;
     }}
-
-    .tableWrap {{
-      padding: 12px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-    }}
-
-    table.dataTable {{ width: 100% !important; color: var(--text); background: transparent; }}
-    table.dataTable thead th {{ color: var(--muted); border-bottom: 1px solid var(--border) !important; }}
-    table.dataTable tbody td {{ border-top: 1px solid rgba(255,255,255,0.06) !important; }}
-
+    .tableWrap {{ padding:12px; background:var(--panel); border:1px solid var(--border); border-radius:14px; }}
+    table.dataTable {{ width:100% !important; color:var(--text); background:transparent; }}
+    table.dataTable thead th {{ color:var(--muted); border-bottom:1px solid var(--border) !important; }}
+    table.dataTable tbody td {{ border-top:1px solid rgba(255,255,255,0.06) !important; }}
     .dataTables_wrapper .dataTables_filter input,
     .dataTables_wrapper .dataTables_length select {{
-      background: rgba(255,255,255,0.04) !important;
-      color: var(--text) !important;
-      border: 1px solid var(--border) !important;
-      border-radius: 10px !important;
-      padding: 6px 10px !important;
-      outline: none;
-    }}
-
-    .pill {{
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.14);
-      font-size: 12px;
-      white-space: nowrap;
-    }}
-    .pill.buy {{ border-color: rgba(110,168,254,0.7); }}
-    .pill.strong_buy {{ border-color: rgba(46,204,113,0.7); }}
-    .pill.hold {{ border-color: rgba(241,196,15,0.7); }}
-    .pill.watch {{ border-color: rgba(255,255,255,0.20); }}
-    .pill.review {{ border-color: rgba(231,76,60,0.7); }}
-
-    @media (max-width: 1200px) {{
-      .filters {{ grid-template-columns: repeat(4, minmax(140px, 1fr)); }}
-    }}
-    @media (max-width: 720px) {{
-      .filters {{ grid-template-columns: repeat(2, minmax(140px, 1fr)); }}
+      background:rgba(255,255,255,0.04) !important; color:var(--text) !important; border:1px solid var(--border) !important;
+      border-radius:10px !important; padding:6px 10px !important; outline:none;
     }}
   </style>
 </head>
@@ -653,15 +545,10 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
   </header>
 
   <div class="wrap">
-    <div class="filters" id="filters">
-      {filter_html}
-    </div>
-
+    <div class="filters">{filter_html}</div>
     <div class="tableWrap">
       <table id="screener" class="display" style="width:100%">
-        <thead>
-          <tr>{''.join([f'<th>{c}</th>' for c in columns])}</tr>
-        </thead>
+        <thead><tr>{''.join([f'<th>{c}</th>' for c in columns])}</tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -683,51 +570,33 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
       return isFinite(v) ? v : null;
     }}
 
-    const nf2 = new Intl.NumberFormat(undefined, {{ minimumFractionDigits: 2, maximumFractionDigits: 2 }});
-    const nf0 = new Intl.NumberFormat(undefined, {{ maximumFractionDigits: 0 }});
+    const nf2 = new Intl.NumberFormat(undefined, {{ minimumFractionDigits:2, maximumFractionDigits:2 }});
+    const nf0 = new Intl.NumberFormat(undefined, {{ maximumFractionDigits:0 }});
 
     function renderNumber2(data, type) {{
       const v = asNumber(data);
       if (v === null) return (type === "sort") ? -Infinity : "";
       return (type === "sort") ? v : nf2.format(v);
     }}
-
     function renderPercent(data, type) {{
       const v = asNumber(data);
       if (v === null) return (type === "sort") ? -Infinity : "";
       return (type === "sort") ? v : (nf2.format(v) + "%");
     }}
-
     function renderMarketCap(data, type) {{
       const v = asNumber(data);
       if (v === null) return (type === "sort") ? -Infinity : "";
       if (type === "sort") return v;
-
       const abs = Math.abs(v);
-      if (abs >= 1e12) return nf2.format(v / 1e12) + "T";
-      if (abs >= 1e9)  return nf2.format(v / 1e9)  + "B";
-      if (abs >= 1e6)  return nf2.format(v / 1e6)  + "M";
-      if (abs >= 1e3)  return nf2.format(v / 1e3)  + "K";
+      if (abs >= 1e12) return nf2.format(v/1e12) + "T";
+      if (abs >= 1e9)  return nf2.format(v/1e9)  + "B";
+      if (abs >= 1e6)  return nf2.format(v/1e6)  + "M";
+      if (abs >= 1e3)  return nf2.format(v/1e3)  + "K";
       return nf0.format(v);
-    }}
-
-    function renderActionPill(data, type) {{
-      const s = (data ?? "").toString();
-      if (type === "sort") return s;
-      if (!s) return "";
-      const key = s.toLowerCase();
-      let cls = "pill";
-      if (key === "strong_buy") cls += " strong_buy";
-      else if (key === "buy") cls += " buy";
-      else if (key === "hold") cls += " hold";
-      else if (key === "watch") cls += " watch";
-      else if (key === "review") cls += " review";
-      return `<span class="${{cls}}">${{s}}</span>`;
     }}
 
     $(document).ready(function() {{
       const columns = {json.dumps(columns, ensure_ascii=False)}.map(c => ({{ data: c }}));
-
       const dt = $('#screener').DataTable({{
         data: DATA,
         columns: columns,
@@ -739,26 +608,10 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
         columnDefs: {col_defs_js},
       }});
 
-      // Pill renderers for Action / PortfolioAction
-      const actionIdx = columns.findIndex(x => x.data === "Action");
-      if (actionIdx >= 0) {{
-        dt.column(actionIdx).settings()[0].aoColumns[actionIdx].mRender = function(data,type,row) {{
-          return renderActionPill(data,type);
-        }};
-      }}
-      const pActionIdx = columns.findIndex(x => x.data === "PortfolioAction");
-      if (pActionIdx >= 0) {{
-        dt.column(pActionIdx).settings()[0].aoColumns[pActionIdx].mRender = function(data,type,row) {{
-          return renderActionPill(data,type);
-        }};
-      }}
-
-      // Dropdown filters
       const filterCols = {json.dumps(filter_cols, ensure_ascii=False)};
       filterCols.forEach(colName => {{
         const idx = columns.findIndex(x => x.data === colName);
         if (idx < 0) return;
-
         const sel = document.getElementById("flt_" + colName);
         if (!sel) return;
 
@@ -767,21 +620,16 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
           const s = (v ?? "").toString().trim();
           if (s) values.add(s);
         }});
-
-        Array.from(values).sort((a,b) => a.localeCompare(b)).forEach(v => {{
+        Array.from(values).sort((a,b)=>a.localeCompare(b)).forEach(v => {{
           const opt = document.createElement("option");
-          opt.value = v;
-          opt.textContent = v;
+          opt.value = v; opt.textContent = v;
           sel.appendChild(opt);
         }});
 
         sel.addEventListener("change", () => {{
           const val = sel.value;
-          if (!val) {{
-            dt.column(idx).search("").draw();
-          }} else {{
-            dt.column(idx).search("^" + val.replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&') + "$", true, false).draw();
-          }}
+          if (!val) dt.column(idx).search("").draw();
+          else dt.column(idx).search("^" + val.replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&') + "$", true, false).draw();
         }});
       }});
     }});
@@ -797,13 +645,11 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
 def main() -> int:
     print(f"[{_now_utc_str()}] Starting screener.py")
 
-    # Read tickers (expanded)
     raw_tickers = _read_all_tickers()
     if not raw_tickers:
         print(f"ERROR: No tickers found. Ensure {TICKERS_TXT} exists and has tickers.")
         return 2
 
-    # Load alias mapping (DK tickers with .CO expected here)
     alias_df = _load_alias_map(ALIAS_CSV)
     alias_by_input: Dict[str, str] = {}
     yahoo_by_input: Dict[str, str] = {}
@@ -816,17 +662,11 @@ def main() -> int:
             yahoo_by_input[inp] = yah or inp
             alias_by_input[inp] = ali
 
-    # Expand tickers through alias map:
-    # If raw ticker is "NOVO-B" and alias map says "NOVO-B.CO", we use that.
     tickers: List[Tuple[str, str]] = []
     for t in raw_tickers:
-        t_clean = t.strip()
-        if not t_clean:
-            continue
-        yahoo_t = yahoo_by_input.get(t_clean, t_clean)
-        tickers.append((t_clean, yahoo_t))
+        yahoo_t = yahoo_by_input.get(t, t)
+        tickers.append((t, yahoo_t))
 
-    # Optional index map + portfolio
     index_map = _load_index_map(INDEX_MAP_CSV)
     portfolio_set = _load_portfolio_holdings()
 
@@ -842,33 +682,17 @@ def main() -> int:
         if data is None:
             failures += 1
             rows.append({
-                "Ticker": yahoo_ticker,
-                "Alias": alias,
-                "Name": "",
-                "Country": country,
-                "Currency": "",
-                "Exchange": "",
-                "Sector": "",
-                "InIndex": "",
-                "Indexes": "",
+                "Ticker": yahoo_ticker, "Alias": alias, "Name": "",
+                "Country": country, "Currency": "", "Exchange": "", "Sector": "",
+                "InIndex": "", "Indexes": "",
                 "Portfolio": "Yes" if yahoo_ticker in portfolio_set else "No",
                 "PortfolioAction": "",
-                "Reco": "",
-                "Action": "",
-                "Price": None,
-                "DividendYield_%": None,
-                "DividendRate": None,
-                "PayoutRatio_%": None,
-                "PE": None,
-                "TargetMeanPrice": None,
-                "Upside_%": None,
-                "Upside_Yield_%": None,
-                "TotalReturnEst_%": None,
-                "MarketCap": None,
-                "52W_Low": None,
-                "52W_High": None,
-                "Status": "ERROR",
-                "Error": err or "Unknown error",
+                "Reco": "", "Action": "",
+                "Price": None, "DividendYield_%": None, "DividendRate": None, "PayoutRatio_%": None,
+                "PE": None, "TargetMeanPrice": None,
+                "Upside_%": None, "Upside_Yield_%": None, "TotalReturnEst_%": None,
+                "MarketCap": None, "52W_Low": None, "52W_High": None,
+                "Status": "ERROR", "Error": err or "Unknown error",
             })
             print(f"  - FAIL {yahoo_ticker}: {err}")
             continue
@@ -890,12 +714,9 @@ def main() -> int:
 
         div_yield_pct = (div_yield * 100.0) if div_yield is not None else None
         upside_pct = (upside * 100.0) if upside is not None else None
-
-        # Upside_Yield_% should not stick at 0: define as DividendYield_% + Upside_%
         upside_yield_pct = None
         if div_yield_pct is not None or upside_pct is not None:
             upside_yield_pct = (div_yield_pct or 0.0) + (upside_pct or 0.0)
-
         total_return_pct = (total_return_est * 100.0) if total_return_est is not None else None
 
         rows.append({
@@ -912,59 +733,45 @@ def main() -> int:
             "PortfolioAction": p_action,
             "Reco": _safe_str(data.get("Reco")),
             "Action": action,
-
             "Price": _round2(price),
-
             "DividendYield_%": _round2(div_yield_pct),
             "DividendRate": _round2(_safe_float(data.get("DividendRate"))),
             "PayoutRatio_%": _round2((payout * 100.0) if payout is not None else None),
-
             "PE": _round2(_safe_float(data.get("PE"))),
             "TargetMeanPrice": _round2(target),
             "Upside_%": _round2(upside_pct),
             "Upside_Yield_%": _round2(upside_yield_pct),
             "TotalReturnEst_%": _round2(total_return_pct),
-
             "MarketCap": _safe_float(data.get("MarketCap")),
             "52W_Low": _round2(_safe_float(data.get("52W_Low"))),
             "52W_High": _round2(_safe_float(data.get("52W_High"))),
-
             "Status": "OK",
             "Error": "",
         })
 
-        print(f"  - OK   {yahoo_ticker}: DY={_round2(div_yield_pct)}%, Upside={_round2(upside_pct)}%")
-
     df = pd.DataFrame(rows)
 
-    # Sort: TotalReturnEst_% desc, then DividendYield_% desc
     df["TotalReturnEst_%_sort"] = pd.to_numeric(df.get("TotalReturnEst_%"), errors="coerce")
     df["DividendYield_%_sort"] = pd.to_numeric(df.get("DividendYield_%"), errors="coerce")
-
     df = df.sort_values(
         by=["Status", "TotalReturnEst_%_sort", "DividendYield_%_sort"],
         ascending=[True, False, False],
         na_position="last",
     ).drop(columns=["TotalReturnEst_%_sort", "DividendYield_%_sort"], errors="ignore")
 
-    # Output CSV
     _ensure_dir(OUT_CSV)
     df.to_csv(OUT_CSV, index=False, encoding="utf-8")
     print(f"[{_now_utc_str()}] Wrote CSV: {OUT_CSV} ({len(df)} rows, {failures} failures)")
 
-    # Output HTML
     _ensure_dir(OUT_HTML)
-    html = _html_page(df, generated_at=_now_utc_str())
     with open(OUT_HTML, "w", encoding="utf-8") as f:
-        f.write(html)
+        f.write(_html_page(df, generated_at=_now_utc_str()))
     print(f"[{_now_utc_str()}] Wrote HTML: {OUT_HTML}")
 
-    # Never fail job because some tickers fail; only fail if everything fails
     ok_rows = int((df["Status"] == "OK").sum()) if "Status" in df.columns else 0
     if ok_rows == 0:
         print("ERROR: No successful ticker fetches. Failing job.")
         return 3
-
     return 0
 
 

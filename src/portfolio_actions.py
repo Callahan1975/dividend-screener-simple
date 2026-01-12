@@ -33,7 +33,11 @@ def decide_actions(df: pd.DataFrame, rules: dict) -> pd.DataFrame:
     trim_overval = float(v.get("trim_overvaluation_min", 0.20))
 
     out["UpsidePct"] = pd.to_numeric(out.get("UpsidePct"), errors="coerce").fillna(0.0)
-    out["PayoutRatio"] = pd.to_numeric(out.get("PayoutRatio"), errors="coerce").fillna(0.0)
+    if "PayoutRatio" in out.columns:
+    out["PayoutRatio"] = pd.to_numeric(out["PayoutRatio"], errors="coerce").fillna(0.0)
+else:
+    out["PayoutRatio"] = 0.0
+
     out["DividendYears"] = pd.to_numeric(out.get("DividendYears"), errors="coerce").fillna(0.0)
     out["FCFPositive"] = out.get("FCFPositive", True)
 

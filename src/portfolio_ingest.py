@@ -14,8 +14,10 @@ def load_snowball_csv(path: str) -> pd.DataFrame:
 
 def detect_format(df: pd.DataFrame) -> str:
     cols = set(df.columns)
+    # Snowball transactions template
     if {"Event", "Date", "Symbol", "Price", "Quantity", "Currency"}.issubset(cols):
         return "transactions"
+    # holdings-like export
     if ("Symbol" in cols or "Ticker" in cols) and (("Shares" in cols) or ("Quantity" in cols)):
         return "holdings"
     return "unknown"
@@ -23,9 +25,11 @@ def detect_format(df: pd.DataFrame) -> str:
 def positions_from_holdings(df: pd.DataFrame) -> pd.DataFrame:
     symbol_col = "Symbol" if "Symbol" in df.columns else "Ticker"
     qty_col = "Shares" if "Shares" in df.columns else "Quantity"
+
     pos = df[[symbol_col, qty_col]].rename(columns={symbol_col: "Symbol", qty_col: "Shares"}).copy()
     pos["Symbol"] = pos["Symbol"].astype(str).str.strip()
     pos["Shares"] = pd.to_numeric(pos["Shares"], errors="coerce").fillna(0.0)
+
     pos = pos.groupby("Symbol", as_index=False)["Shares"].sum()
     pos = pos[pos["Shares"].abs() > 1e-9]
     return pos
@@ -50,6 +54,7 @@ def positions_from_transactions(df: pd.DataFrame) -> pd.DataFrame:
         sym = row.Symbol
         holdings.setdefault(sym, 0.0)
 
+        # Split handling (simple): multiplier is in Price
         if row.Event in TRANSACTION_EVENTS_SPLIT and row.Price > 0:
             holdings[sym] = holdings[sym] * float(row.Price)
         else:

@@ -66,9 +66,35 @@ def positions_from_transactions(df: pd.DataFrame) -> pd.DataFrame:
 
 def build_positions(path: str) -> pd.DataFrame:
     df = load_snowball_csv(path)
+
+    # --- Flexible Snowball format support ---
+    # We only need Symbol/Ticker + Shares to integrate portfolio context.
+    candidates_symbol = ["Symbol", "Ticker", "Holding", "ISIN"]
+    candidates_shares = ["Shares", "Share in portfolio", "Quantity"]
+
+    def find_col(cols, names):
+        for n in names:
+            if n in cols:
+                return n
+        return None
+
+    symbol_col = find_col(df.columns, candidates_symbol)
+    shares_col = find_col(df.columns, candidates_shares)
+
+    if symbol_col and shares_col:
+        pos = pd.DataFrame({
+            "Symbol": df[symbol_col].astype(str).str.strip(),
+            "Shares": pd.to_numeric(df[shares_col], errors="coerce").fillna(0.0),
+        })
+        pos = pos[pos["Shares"].abs() > 1e-9]
+        return pos
+
+    # Fallback to legacy detection (old Snowball formats)
     fmt = detect_format(df)
     if fmt == "transactions":
         return positions_from_transactions(df)
     if fmt == "holdings":
         return positions_from_holdings(df)
+
     raise ValueError(f"Unknown Snowball CSV format. Columns={list(df.columns)}")
+

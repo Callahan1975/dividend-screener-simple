@@ -107,31 +107,60 @@ def _normalize_dividend_yield(raw: Any) -> Optional[float]:
     v = _safe_float(raw)
     if v is None or v < 0:
         return None
+    # fraction already
     if v <= 1.5:
         return v
+    # percent
     if v <= 100:
         return v / 100.0
+    # percent*100
     return v / 10000.0
 
 
 def _infer_country_from_ticker(yahoo_ticker: str) -> str:
-    t = yahoo_ticker.upper()
-    return "DK" if t.endswith(".CO") else "US"
+    return "DK" if yahoo_ticker.upper().endswith(".CO") else "US"
 
 
 # -----------------------------
-# Ticker parsing (IMPORTANT)
+# Ticker parsing (robust)
 # -----------------------------
-def _clean_ticker_line(line: str) -> str:
-    s = (line or "").strip()
-    if not s or s.startswith("#"):
+def _strip_inline_comment(s: str) -> str:
+    s = (s or "").strip()
+    if not s:
         return ""
     if "#" in s:
         s = s.split("#", 1)[0].strip()
+    return s
+
+
+def _clean_ticker_line(line: str) -> str:
+    """
+    For ticker files:
+    - remove inline comments after '#'
+    - take first token only
+    - ignore URLs (http/https) so they never become tickers
+    """
+    s = _strip_inline_comment(line)
+    if not s or s.startswith("#"):
+        return ""
+    s = s.split()[0].strip()
     if not s:
         return ""
-    # only first token
-    s = s.split()[0].strip()
+    if s.lower().startswith("http://") or s.lower().startswith("https://"):
+        return ""  # IMPORTANT: never treat URLs as tickers
+    return s
+
+
+def _clean_url_line(line: str) -> str:
+    """
+    For live-url file ONLY:
+    - remove inline comments after '#'
+    - allow http/https
+    """
+    s = _strip_inline_comment(line)
+    if not s or s.startswith("#"):
+        return ""
+    s = s.strip()
     return s
 
 
@@ -153,7 +182,7 @@ def _read_live_url_from_file(path: str) -> str:
     try:
         with open(path, "r", encoding="utf-8") as f:
             for ln in f:
-                s = _clean_ticker_line(ln)
+                s = _clean_url_line(ln)
                 if s:
                     return s
     except Exception:
@@ -168,11 +197,11 @@ def _fetch_tickers_from_url(url: str) -> List[str]:
         print("WARNING: requests not installed; cannot fetch live tickers URL. Skipping live.")
         return []
     try:
-        r = requests.get(url, timeout=25)
+        r = requests.get(url, timeout=30)
         r.raise_for_status()
         out: List[str] = []
         for ln in r.text.splitlines():
-            t = _clean_ticker_line(ln)
+            t = _clean_ticker_line(ln)  # treat remote file as ticker file => URLs ignored too
             if t:
                 out.append(t)
         return out
@@ -207,7 +236,7 @@ def _read_all_tickers() -> List[str]:
 
     src = "env" if url_env else ("file" if url_file else "none")
     print(f"[{_now_utc_str()}] Tickers sources: base={len(base)}, master={len(master)}, live={len(live)}, url_source={src} -> merged={len(merged)}")
-    print(f"[{_now_utc_str()}] Sample tickers: {merged[:12]}")
+    print(f"[{_now_utc_str()}] Sample tickers: {merged[:15]}")
     return merged
 
 
@@ -326,7 +355,6 @@ def _fetch_one(ticker: str, pause_s: float = 0.0) -> Tuple[Optional[Dict[str, An
 
         price = _safe_float(_first_non_null(
             fast.get("last_price"),
-            fast.get("lastPrice"),
             info.get("regularMarketPrice"),
             info.get("currentPrice"),
             info.get("previousClose"),
@@ -410,7 +438,7 @@ def _portfolio_action(is_in_portfolio: bool, action: str) -> str:
 
 
 # -----------------------------
-# HTML Generation (ARRAY-OF-ARRAYS = ultra-stable)
+# HTML Generation (array-of-arrays + forced row length)
 # -----------------------------
 def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     columns = [
@@ -425,24 +453,28 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
         if c not in df.columns:
             df[c] = ""
 
-    # Build data as rows in fixed column order -> DataTables cannot complain about missing keys
-    # Keep None for numeric columns so renderers can sort correctly (we'll pass nulls in JSON)
-    df2 = df[columns].copy()
+    df2 = df[columns].copy().where(pd.notnull(df), None)
 
-    # Convert NaN -> None for JSON
-    df2 = df2.where(pd.notnull(df2), None)
-    data_rows = df2.values.tolist()
+    raw_rows = df2.values.tolist()
+    ncol = len(columns)
+
+    # Force each row to correct length (prevents DataTables unknown parameter "13")
+    data_rows: List[List[Any]] = []
+    for r in raw_rows:
+        if not isinstance(r, list):
+            r = [r]
+        if len(r) < ncol:
+            r = r + [None] * (ncol - len(r))
+        elif len(r) > ncol:
+            r = r[:ncol]
+        data_rows.append(r)
+
     data_json = json.dumps(data_rows, ensure_ascii=False)
 
     filter_cols = ["Country","Currency","Sector","Exchange","InIndex","Reco","Action","PortfolioAction"]
-    filter_html = "\n".join(
-        [f"""
-        <div class="filter">
-          <label for="flt_{c}">{c}</label>
-          <select id="flt_{c}"><option value="">All</option></select>
-        </div>
-        """.strip() for c in filter_cols]
-    )
+    col_index = {c: i for i, c in enumerate(columns)}
+    filter_meta = [(c, col_index[c]) for c in filter_cols if c in col_index]
+    filter_meta_json = json.dumps(filter_meta, ensure_ascii=False)
 
     pct_cols = {"DividendYield_%","PayoutRatio_%","Upside_%","Upside_Yield_%","TotalReturnEst_%"}
     num_2_cols = {"Price","DividendRate","PE","TargetMeanPrice","52W_Low","52W_High"}
@@ -459,21 +491,23 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
 
     col_defs_js = json.dumps(col_defs, ensure_ascii=False)
 
-    # Column index helper for filters
-    col_index = {c: i for i, c in enumerate(columns)}
-    filter_col_indexes = [col_index[c] for c in filter_cols if c in col_index]
-    filter_meta_json = json.dumps(list(zip(filter_cols, filter_col_indexes)), ensure_ascii=False)
+    filter_html = "\n".join(
+        [f"""
+        <div class="filter">
+          <label for="flt_{c}">{c}</label>
+          <select id="flt_{c}"><option value="">All</option></select>
+        </div>
+        """.strip() for c in filter_cols]
+    )
 
     return f"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="0"/>
-
   <title>Dividend Screener (DK + US)</title>
 
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css"/>
@@ -501,11 +535,6 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     table.dataTable {{ width:100% !important; color:var(--text); background:transparent; }}
     table.dataTable thead th {{ color:var(--muted); border-bottom:1px solid var(--border) !important; }}
     table.dataTable tbody td {{ border-top:1px solid rgba(255,255,255,0.06) !important; }}
-    .dataTables_wrapper .dataTables_filter input,
-    .dataTables_wrapper .dataTables_length select {{
-      background:rgba(255,255,255,0.04) !important; color:var(--text) !important; border:1px solid var(--border) !important;
-      border-radius:10px !important; padding:6px 10px !important; outline:none;
-    }}
   </style>
 </head>
 
@@ -580,7 +609,6 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
         columnDefs: {col_defs_js},
       }});
 
-      // Dropdown filters
       FILTER_COLS.forEach(([name, idx]) => {{
         const sel = document.getElementById("flt_" + name);
         if (!sel) return;

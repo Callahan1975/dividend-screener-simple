@@ -1,131 +1,119 @@
-"""
-Portfolio-aware screener wrapper.
-
-- Imports the existing screener logic from screener.py
-- Runs it to produce df
-- Adds Snowball portfolio context + ADD/BUY/HOLD/TRIM/AVOID using config/portfolio_rules.yml
-- Writes a separate output CSV so the original workflow remains safe.
-"""
-
 import os
+from pathlib import Path
 import pandas as pd
+import yfinance as yf
 import yaml
 
 from src.portfolio_ingest import build_positions
 from src.portfolio_actions import apply_portfolio_context, decide_actions
 
-# --- Paths ---
-SNOWBALL_PATH = "data/portfolio/Snowball.csv"   # your file name (capital S)
+# ---------------- CONFIG ----------------
+TICKERS_FILE = "tickers.txt"
+SNOWBALL_PATH = "data/portfolio/Snowball.csv"
 RULES_PATH = "config/portfolio_rules.yml"
 ALIAS_PATH = "data/portfolio/ticker_alias.csv"
 
-# --- Output (separate file, safer) ---
-OUT_CSV_PORTFOLIO = "data/screener_results/screener_results_portfolio.csv"
+OUT_CSV = Path("data/screener_results/screener_results.csv")
+# ---------------------------------------
 
-def _to_ratio(x):
-    """Convert percent-like numbers to ratio. 12.3 -> 0.123; 0.12 stays 0.12"""
+
+def read_tickers(path):
+    out = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            s = line.strip()
+            if not s or s.startswith("#"):
+                continue
+            out.append(s.split()[0])
+    return sorted(set(out))
+
+
+def safe_float(x, default=0.0):
+    try:
+        return float(x)
+    except Exception:
+        return default
+
+
+def to_ratio(x):
     try:
         x = float(x)
     except Exception:
         return 0.0
-    return x / 100.0 if abs(x) > 1.0 else x
+    return x / 100 if abs(x) > 1 else x
 
-def _apply_aliases(pos_df: pd.DataFrame) -> pd.DataFrame:
-    """Map Snowball symbols to the screener tickers using ticker_alias.csv (first 2 columns)."""
+
+def load_alias_map():
     if not os.path.exists(ALIAS_PATH):
-        return pos_df
-
+        return {}
     try:
-        alias_df = pd.read_csv(ALIAS_PATH)
-        alias_df.columns = [c.strip() for c in alias_df.columns]
-        cols = list(alias_df.columns)
-        if len(cols) < 2:
-            return pos_df
-
-        alias_col, ticker_col = cols[0], cols[1]
-        mapping = dict(
-            zip(
-                alias_df[alias_col].astype(str).str.strip(),
-                alias_df[ticker_col].astype(str).str.strip(),
-            )
-        )
-        out = pos_df.copy()
-        out["Symbol"] = out["Symbol"].astype(str).str.strip().map(lambda s: mapping.get(s, s))
-        return out
+        df = pd.read_csv(ALIAS_PATH)
+        df.columns = [c.strip() for c in df.columns]
+        if len(df.columns) < 2:
+            return {}
+        return dict(zip(df.iloc[:, 0], df.iloc[:, 1]))
     except Exception:
-        return pos_df
+        return {}
 
-def _add_upsidepct(df: pd.DataFrame) -> pd.DataFrame:
-    """Create UpsidePct ratio column (0.10=10%) from existing Upside columns."""
-    out = df.copy()
-
-    if "Ticker" not in out.columns and "Symbol" in out.columns:
-        out["Ticker"] = out["Symbol"]
-
-    if "Upside_Yield_%" in out.columns and "Upside_DDM_%" in out.columns:
-        out["UpsidePct"] = out[["Upside_Yield_%", "Upside_DDM_%"]].max(axis=1).apply(_to_ratio)
-    elif "Upside_Yield_%" in out.columns:
-        out["UpsidePct"] = out["Upside_Yield_%"].apply(_to_ratio)
-    elif "Upside_DDM_%" in out.columns:
-        out["UpsidePct"] = out["Upside_DDM_%"].apply(_to_ratio)
-    else:
-        out["UpsidePct"] = 0.0
-
-    return out
-
-def add_portfolio_actions(df: pd.DataFrame) -> pd.DataFrame:
-    """Attach OwnedShares/Weight and compute PortfolioAction."""
-    out = df.copy()
-
-    # keep original action columns (from your current screener)
-    if "Action" in out.columns:
-        out["ScreenerAction"] = out["Action"]
-
-    out = _add_upsidepct(out)
-
-    # if missing required files, just return df with safe defaults
-    if not (os.path.exists(SNOWBALL_PATH) and os.path.exists(RULES_PATH)):
-        out["OwnedShares"] = 0
-        out["OwnedValue"] = 0
-        out["Weight"] = 0
-        out["PortfolioAction"] = "HOLD"
-        return out
-
-    pos_df = build_positions(SNOWBALL_PATH)
-    pos_df = _apply_aliases(pos_df)
-
-    with open(RULES_PATH, "r") as f:
-        rules = yaml.safe_load(f) or {}
-
-    out = apply_portfolio_context(out, pos_df)
-    out = decide_actions(out, rules)
-
-    # decide_actions writes into "Action"
-    out["PortfolioAction"] = out["Action"]
-
-    # keep both; final Action becomes portfolio-driven
-    if "ScreenerAction" in out.columns:
-        out["Action"] = out["PortfolioAction"]
-
-    return out
 
 def main():
-    # Import your existing screener and run it to get df.
-    # Your screener.py already builds df and writes output when executed as a script.
-    # We need a function to call; easiest: import and call a "run()" if it exists.
-    # If it doesn't exist, we fallback to running screener.py as a module is tricky.
-    #
-    # Therefore: we expect screener.py exposes a function `run_screener()` returning df.
-    # If not, follow instructions below to add that small function (safe, minimal).
-    from screener import run_screener  # type: ignore
+    # 1) Load tickers
+    tickers = read_tickers(TICKERS_FILE)
 
-    df = run_screener()
-    df2 = add_portfolio_actions(df)
+    rows = []
+    for t in tickers:
+        try:
+            info = yf.Ticker(t).info or {}
+        except Exception:
+            info = {}
 
-    os.makedirs(os.path.dirname(OUT_CSV_PORTFOLIO), exist_ok=True)
-    df2.to_csv(OUT_CSV_PORTFOLIO, index=False, encoding="utf-8")
+        rows.append({
+            "Ticker": t,
+            "Price": safe_float(
+                info.get("currentPrice")
+                or info.get("regularMarketPrice")
+                or info.get("previousClose")
+            ),
+            "DividendYield": safe_float(info.get("dividendYield")),
+            "PE": safe_float(info.get("trailingPE"), None),
+        })
 
-    print(f"Wrote: {OUT_CSV_PORTFOLIO} ({len(df2)} rows)")
+    df = pd.DataFrame(rows)
+    df["YieldPct"] = (df["DividendYield"] * 100).round(2)
+
+    # Simple upside proxy (kan raffineres senere)
+    df["UpsidePct"] = df["YieldPct"].apply(lambda y: 0.15 if y >= 3 else 0.05)
+
+    # Required columns for portfolio engine
+    df["DividendYears"] = 20
+    df["FCFPositive"] = True
+
+    # 2) Portfolio integration
+    if os.path.exists(SNOWBALL_PATH) and os.path.exists(RULES_PATH):
+        pos_df = build_positions(SNOWBALL_PATH)
+
+        alias_map = load_alias_map()
+        if alias_map:
+            pos_df["Symbol"] = pos_df["Symbol"].map(lambda s: alias_map.get(s, s))
+
+        with open(RULES_PATH, "r") as f:
+            rules = yaml.safe_load(f) or {}
+
+        df = apply_portfolio_context(df, pos_df)
+        df = decide_actions(df, rules)
+
+        df["PortfolioAction"] = df["Action"]
+    else:
+        df["OwnedShares"] = 0
+        df["OwnedValue"] = 0
+        df["Weight"] = 0
+        df["PortfolioAction"] = "HOLD"
+        df["Action"] = "HOLD"
+
+    OUT_CSV.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(OUT_CSV, index=False, encoding="utf-8")
+    print(f"Wrote {OUT_CSV} ({len(df)} rows)")
+
 
 if __name__ == "__main__":
     main()

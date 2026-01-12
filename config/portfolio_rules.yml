@@ -1,15 +1,16 @@
-base_currency: "DKK"
+max_position_weight: 0.06
+min_position_weight: 0.01
+trim_over: 1.20
+add_under: 0.80
 
-# Max vægt pr aktie i din portefølje
-max_weight: 0.08      # 8% = TRIM hvis over
-target_weight: 0.05  # 5% = ønsket vægt
-min_weight: 0.02     # 2% = underweight
+buy_score_min: 70
+add_score_min: 60
+avoid_score_max: 45
 
-quality:
-  min_dividend_years: 5
-  max_payout_ratio: 0.80
-  require_positive_fcf: true
+buy_upside_min: 0.07
+add_upside_min: 0.03
 
-valuation:
-  buy_fair_value_upside_min: 0.10
-  trim_overvaluation_min: 0.20
+always_hold:
+  - V
+  - TSLA
+  - LLY

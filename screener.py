@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Dividend Screener (DK + US) - robust GitHub Actions runner
-Outputs:
-- data/screener_results.csv
-- docs/index.html (DataTables + dropdown filters + nice formatting)
-
-Fixes in this version:
-- STRIPS inline comments in tickers lists (e.g. "FRC # delisted" -> "FRC")
-- STRIPS anything after first whitespace token (e.g. "NA.TO (note...)" -> "NA.TO")
-- Adds no-cache meta tags to HTML to reduce GitHub Pages stale caching issues
-"""
-
 from __future__ import annotations
 
 import os
@@ -32,7 +20,6 @@ except Exception:
     print("ERROR: yfinance import failed. Ensure it's installed in your workflow.")
     raise
 
-# Optional: requests for live tickers URL (won't break if not installed)
 try:
     import requests  # type: ignore
 except Exception:
@@ -40,7 +27,7 @@ except Exception:
 
 
 # -----------------------------
-# Paths (repo-relative)
+# Paths
 # -----------------------------
 TICKERS_TXT = "tickers.txt"
 MASTER_TICKERS_TXT = os.path.join("data", "tickers_master.txt")          # optional
@@ -95,28 +82,6 @@ def _ensure_dir(path: str) -> None:
         os.makedirs(d, exist_ok=True)
 
 
-def _normalize_dividend_yield(raw: Any) -> Optional[float]:
-    """
-    Normalize dividend yield to a fraction (e.g. 0.035 for 3.5%).
-    Handles common scaling issues (e.g. 115, 700).
-    """
-    v = _safe_float(raw)
-    if v is None or v < 0:
-        return None
-    if v <= 1.5:
-        return v
-    if v <= 100:
-        return v / 100.0
-    return v / 10000.0
-
-
-def _infer_country_from_ticker(yahoo_ticker: str) -> str:
-    t = yahoo_ticker.upper()
-    if t.endswith(".CO"):
-        return "DK"
-    return "US"
-
-
 def _first_non_null(*vals: Any) -> Any:
     for v in vals:
         if v is None:
@@ -138,31 +103,34 @@ def _round2(x: Optional[float]) -> Optional[float]:
         return None
 
 
+def _normalize_dividend_yield(raw: Any) -> Optional[float]:
+    v = _safe_float(raw)
+    if v is None or v < 0:
+        return None
+    if v <= 1.5:
+        return v
+    if v <= 100:
+        return v / 100.0
+    return v / 10000.0
+
+
+def _infer_country_from_ticker(yahoo_ticker: str) -> str:
+    t = yahoo_ticker.upper()
+    return "DK" if t.endswith(".CO") else "US"
+
+
 # -----------------------------
-# Ticker parsing (IMPORTANT FIX)
+# Ticker parsing (IMPORTANT)
 # -----------------------------
 def _clean_ticker_line(line: str) -> str:
-    """
-    Makes ticker lists idiot-proof:
-    - removes inline comments after '#'
-      e.g. "FRC # delisted" -> "FRC"
-    - takes only the first whitespace-separated token
-      e.g. "NA.TO (use Toronto)" -> "NA.TO"
-    """
     s = (line or "").strip()
-    if not s:
+    if not s or s.startswith("#"):
         return ""
-    if s.startswith("#"):
-        return ""
-
-    # remove inline comment
     if "#" in s:
         s = s.split("#", 1)[0].strip()
-
     if not s:
         return ""
-
-    # take only first token (kills any leftover notes)
+    # only first token
     s = s.split()[0].strip()
     return s
 
@@ -219,9 +187,7 @@ def _merge_unique_keep_order(lists: List[List[str]]) -> List[str]:
     for lst in lists:
         for x in lst:
             s = (x or "").strip()
-            if not s:
-                continue
-            if s in seen:
+            if not s or s in seen:
                 continue
             seen.add(s)
             out.append(s)
@@ -237,13 +203,10 @@ def _read_all_tickers() -> List[str]:
     url = url_env or url_file
 
     live = _fetch_tickers_from_url(url) if url else []
-
     merged = _merge_unique_keep_order([base, master, live])
 
     src = "env" if url_env else ("file" if url_file else "none")
     print(f"[{_now_utc_str()}] Tickers sources: base={len(base)}, master={len(master)}, live={len(live)}, url_source={src} -> merged={len(merged)}")
-
-    # Helpful debug: show a few tickers so you can verify comments are stripped
     print(f"[{_now_utc_str()}] Sample tickers: {merged[:12]}")
     return merged
 
@@ -282,7 +245,6 @@ def _load_alias_map(alias_csv: str) -> pd.DataFrame:
     out["input_ticker"] = out["input_ticker"].astype(str).str.strip()
     out["yahoo_ticker"] = out["yahoo_ticker"].astype(str).str.strip()
     out["alias"] = out["alias"].astype(str).str.strip()
-
     out = out[out["yahoo_ticker"] != ""].drop_duplicates(subset=["yahoo_ticker"], keep="first")
     return out
 
@@ -305,7 +267,6 @@ def _load_index_map(path: str) -> Dict[str, str]:
 
     c_ticker = pick("ticker", "symbol", "yahoo_ticker", "yahoo")
     c_indexes = pick("indexes", "index", "inindex", "indices")
-
     if c_ticker is None or c_indexes is None:
         return {}
 
@@ -449,7 +410,7 @@ def _portfolio_action(is_in_portfolio: bool, action: str) -> str:
 
 
 # -----------------------------
-# HTML Generation
+# HTML Generation (ARRAY-OF-ARRAYS = ultra-stable)
 # -----------------------------
 def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     columns = [
@@ -464,8 +425,14 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
         if c not in df.columns:
             df[c] = ""
 
-    records = df[columns].to_dict(orient="records")
-    data_json = json.dumps(records, ensure_ascii=False)
+    # Build data as rows in fixed column order -> DataTables cannot complain about missing keys
+    # Keep None for numeric columns so renderers can sort correctly (we'll pass nulls in JSON)
+    df2 = df[columns].copy()
+
+    # Convert NaN -> None for JSON
+    df2 = df2.where(pd.notnull(df2), None)
+    data_rows = df2.values.tolist()
+    data_json = json.dumps(data_rows, ensure_ascii=False)
 
     filter_cols = ["Country","Currency","Sector","Exchange","InIndex","Reco","Action","PortfolioAction"]
     filter_html = "\n".join(
@@ -492,13 +459,17 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
 
     col_defs_js = json.dumps(col_defs, ensure_ascii=False)
 
+    # Column index helper for filters
+    col_index = {c: i for i, c in enumerate(columns)}
+    filter_col_indexes = [col_index[c] for c in filter_cols if c in col_index]
+    filter_meta_json = json.dumps(list(zip(filter_cols, filter_col_indexes)), ensure_ascii=False)
+
     return f"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
 
-  <!-- Reduce stale caching on GitHub Pages -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="0"/>
@@ -560,6 +531,8 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
 
   <script>
     const DATA = {data_json};
+    const COLS = {json.dumps(columns, ensure_ascii=False)};
+    const FILTER_COLS = {filter_meta_json};
 
     function asNumber(x) {{
       if (x === null || x === undefined) return null;
@@ -596,23 +569,20 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     }}
 
     $(document).ready(function() {{
-      const columns = {json.dumps(columns, ensure_ascii=False)}.map(c => ({{ data: c }}));
       const dt = $('#screener').DataTable({{
         data: DATA,
-        columns: columns,
+        columns: COLS.map(t => ({{ title: t }})),
         pageLength: 50,
-        order: [[ columns.findIndex(x => x.data === "TotalReturnEst_%"), "desc" ]],
+        order: [[ COLS.indexOf("TotalReturnEst_%"), "desc" ]],
         fixedHeader: true,
         deferRender: true,
         autoWidth: false,
         columnDefs: {col_defs_js},
       }});
 
-      const filterCols = {json.dumps(filter_cols, ensure_ascii=False)};
-      filterCols.forEach(colName => {{
-        const idx = columns.findIndex(x => x.data === colName);
-        if (idx < 0) return;
-        const sel = document.getElementById("flt_" + colName);
+      // Dropdown filters
+      FILTER_COLS.forEach(([name, idx]) => {{
+        const sel = document.getElementById("flt_" + name);
         if (!sel) return;
 
         const values = new Set();
@@ -653,7 +623,6 @@ def main() -> int:
     alias_df = _load_alias_map(ALIAS_CSV)
     alias_by_input: Dict[str, str] = {}
     yahoo_by_input: Dict[str, str] = {}
-
     for _, r in alias_df.iterrows():
         inp = _safe_str(r.get("input_ticker"))
         yah = _safe_str(r.get("yahoo_ticker"))
@@ -678,7 +647,6 @@ def main() -> int:
         country = _infer_country_from_ticker(yahoo_ticker)
 
         data, err = _fetch_one(yahoo_ticker, pause_s=0.0)
-
         if data is None:
             failures += 1
             rows.append({
@@ -694,7 +662,6 @@ def main() -> int:
                 "MarketCap": None, "52W_Low": None, "52W_High": None,
                 "Status": "ERROR", "Error": err or "Unknown error",
             })
-            print(f"  - FAIL {yahoo_ticker}: {err}")
             continue
 
         price = _safe_float(data.get("Price"))

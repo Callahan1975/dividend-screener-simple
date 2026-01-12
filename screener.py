@@ -2,573 +2,593 @@
 # -*- coding: utf-8 -*-
 
 """
-Dividend Screener (DK + US) – Portfolio-aware dashboard
+Dividend Screener (DK + US) — Stable, portfolio-aware, with header dropdown filters.
 
-Fixes:
-- Percent fields (DividendYield, DividendGrowth5Y, Upside_*) are normalized so you never get 300%+ yields by mistake.
-- Generates docs/index.html with built-in filters (DataTables + dropdown filters).
-- Integrates Snowball portfolio CSV + rules => PortfolioAction = ADD/BUY/HOLD/TRIM/AVOID.
-
-Files expected:
-- tickers.txt
-- data/portfolio/Snowball.csv
-- data/portfolio/ticker_alias.csv   (alias,ticker)
-- config/portfolio_rules.yml
 Outputs:
 - data/screener_results.csv
-- docs/index.html
+- docs/index.html   (DataTables with dropdown filters in column headers)
+
+Key fixes:
+- DividendYield is calculated as Trailing-12M dividends / Price (not yfinance info["dividendYield"])
+- Adds filterable columns: Country, Currency, Sector, InIndex, Owned (+ portfolio columns if Snowball present)
 """
 
 from __future__ import annotations
 
 import os
+import re
 import math
+import json
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 import yfinance as yf
-import yaml
-
-# -------------------------
-# Paths
-# -------------------------
-ROOT = Path(__file__).resolve().parent
-
-TICKERS_TXT = ROOT / "tickers.txt"
-OUT_CSV = ROOT / "data" / "screener_results.csv"
-OUT_HTML = ROOT / "docs" / "index.html"
-
-SNOWBALL_PATH = ROOT / "data" / "portfolio" / "Snowball.csv"
-ALIAS_PATH = ROOT / "data" / "portfolio" / "ticker_alias.csv"
-RULES_PATH = ROOT / "config" / "portfolio_rules.yml"
 
 
-# -------------------------
-# Helpers
-# -------------------------
-def safe_float(x):
+# -----------------------
+# Paths / files
+# -----------------------
+BASE = Path(__file__).resolve().parent
+
+TICKERS_TXT = BASE / "tickers.txt"
+INDEX_MAP_CSV = BASE / "index_map.csv"
+OUT_CSV = BASE / "data" / "screener_results.csv"
+OUT_HTML = BASE / "docs" / "index.html"
+
+# Optional portfolio inputs
+SNOWBALL_CSV = BASE / "data" / "portfolio" / "Snowball.csv"
+TICKER_ALIAS_CSV = BASE / "data" / "ticker_alias.csv"
+PORTFOLIO_RULES_YML = BASE / "config" / "portfolio_rules.yml"
+
+
+# -----------------------
+# Utilities
+# -----------------------
+def now_utc_str() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+
+def safe_float(x) -> float | None:
     try:
         if x is None:
             return None
-        if isinstance(x, (int, float, np.integer, np.floating)):
-            if np.isnan(x):
-                return None
-            return float(x)
-        s = str(x).strip()
-        if s == "" or s.lower() in {"nan", "none"}:
+        if isinstance(x, str) and x.strip() == "":
             return None
-        return float(s)
+        v = float(x)
+        if math.isnan(v) or math.isinf(v):
+            return None
+        return v
     except Exception:
         return None
 
 
-def normalize_pct(value):
-    """
-    Normalize percent-like inputs into "percent points" (e.g., 3.4 means 3.4%).
-    Rules:
-      - None -> None
-      - if abs(value) <= 1.5 => treat as fraction (0.034) and multiply by 100
-      - else => already percent points (3.4) keep as-is
-    """
-    v = safe_float(value)
-    if v is None:
-        return None
-    if abs(v) <= 1.5:
-        return v * 100.0
-    return v
-
-
-def fmt_pct(v, digits=1):
-    v = safe_float(v)
-    if v is None:
+def pct_str(x: float | None, digits: int = 1) -> str:
+    if x is None:
         return ""
-    return f"{v:.{digits}f}%"
+    return f"{x*100:.{digits}f}%"
 
 
-def read_tickers(path: Path) -> list[str]:
+def num_str(x: float | None, digits: int = 2) -> str:
+    if x is None:
+        return ""
+    return f"{x:.{digits}f}"
+
+
+def read_tickers_txt(path: Path) -> list[str]:
+    """
+    Supports sections + comments.
+    Example:
+      # DK
+      NOVO-B.CO
+      PNDORA.CO
+
+      # US
+      V
+      AAPL
+    """
     if not path.exists():
         raise FileNotFoundError(f"Missing {path}")
-    tickers = []
+
+    tickers: list[str] = []
     for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
+        s = line.strip()
+        if not s or s.startswith("#"):
             continue
-        tickers.append(line)
-    return tickers
-
-
-def yahoo_price(info: dict) -> float | None:
-    # yfinance info keys vary; try common ones
-    for k in ["currentPrice", "regularMarketPrice", "previousClose"]:
-        if k in info and info[k] is not None:
-            return safe_float(info[k])
-    return None
-
-
-def get_company_name(info: dict, fallback: str) -> str:
-    for k in ["shortName", "longName"]:
-        if k in info and info[k]:
-            return str(info[k])
-    return fallback
-
-
-def get_payout_ratio(info: dict) -> float | None:
-    # payout ratio is usually a fraction (0.45) or already percent-ish depending on source
-    v = info.get("payoutRatio", None)
-    return safe_float(v)
-
-
-def get_pe(info: dict) -> float | None:
-    for k in ["trailingPE", "forwardPE"]:
-        v = safe_float(info.get(k))
-        if v is not None and v > 0:
-            return v
-    return None
-
-
-def dividend_growth_5y(ticker: yf.Ticker) -> float | None:
-    """
-    Approx 5Y dividend growth from annual sums.
-    Returns fraction (0.10 = 10%) internally; we normalize later.
-    """
-    try:
-        div = ticker.dividends
-        if div is None or len(div) < 8:
-            return None
-        # yearly totals
-        yearly = div.resample("Y").sum()
-        if len(yearly) < 6:
-            return None
-        # last 6 years gives 5 intervals
-        last = yearly.iloc[-1]
-        first = yearly.iloc[-6]
-        first = float(first) if first is not None else 0.0
-        last = float(last) if last is not None else 0.0
-        if first <= 0 or last <= 0:
-            return None
-        cagr = (last / first) ** (1 / 5) - 1
-        if not np.isfinite(cagr):
-            return None
-        return float(cagr)
-    except Exception:
-        return None
-
-
-def fair_value_yield(price: float | None, yield_for_model_pct: float | None) -> float | None:
-    """
-    Very simple fair value from yield.
-    If yield_for_model is percent points (e.g., 3.0), then FV = annual_div / (yield_for_model/100).
-    We approximate annual_div = price * (current_yield/100) if we have yield_for_model same as current (fallback).
-    """
-    if price is None or price <= 0:
-        return None
-    y = safe_float(yield_for_model_pct)
-    if y is None or y <= 0:
-        return None
-    # This is "price" level that would correspond to that yield if dividends unchanged.
-    # So fair value from yield is: FV = price * (current_yield / y_model).
-    # We'll do this outside when we have both yields.
-    return None
-
-
-def upside_pct(price: float | None, fair: float | None) -> float | None:
-    if price is None or fair is None or price <= 0:
-        return None
-    return (fair / price - 1.0)
-
-
-# -------------------------
-# Portfolio ingest + actions
-# -------------------------
-def load_alias_map(path: Path) -> dict[str, str]:
-    if not path.exists():
-        return {}
-    df = pd.read_csv(path)
-    # expected headers: alias,ticker
-    cols = {c.lower(): c for c in df.columns}
-    if "alias" not in cols or "ticker" not in cols:
-        return {}
-    a = df[cols["alias"]].astype(str).str.strip()
-    t = df[cols["ticker"]].astype(str).str.strip()
-    out = {}
-    for aa, tt in zip(a, t):
-        if aa and tt and aa.lower() != "nan" and tt.lower() != "nan":
-            out[aa] = tt
+        # allow inline comments: "AAPL  # Apple"
+        s = re.split(r"\s+#", s, maxsplit=1)[0].strip()
+        if s:
+            tickers.append(s)
+    # de-dupe keep order
+    seen = set()
+    out = []
+    for t in tickers:
+        if t not in seen:
+            out.append(t)
+            seen.add(t)
     return out
 
 
-def build_positions_from_snowball(path: Path, alias_map: dict[str, str]) -> pd.DataFrame:
+def infer_country(ticker: str) -> str:
+    # Robust + simple: .CO -> DK, else assume US
+    t = ticker.upper()
+    if t.endswith(".CO"):
+        return "DK"
+    return "US"
+
+
+def load_index_map(path: Path) -> dict[str, str]:
     """
-    Snowball exports can differ. We handle the common "Holdings" style where there is a Symbol + Shares or Quantity.
-    If your Snowball has different headers, we’ll still keep this tolerant by searching for likely columns.
+    index_map.csv expected: columns [Ticker, Index] OR [ticker, index]
+    Returns dict {ticker -> index_string}
     """
     if not path.exists():
-        return pd.DataFrame(columns=["Ticker", "Shares"])
+        return {}
+    df = pd.read_csv(path)
+    cols = {c.lower(): c for c in df.columns}
+    if "ticker" not in cols:
+        return {}
+    ticker_col = cols["ticker"]
+    index_col = cols.get("index")
+    if not index_col:
+        # allow second column fallback
+        other_cols = [c for c in df.columns if c != ticker_col]
+        if not other_cols:
+            return {}
+        index_col = other_cols[0]
+    m = {}
+    for _, r in df.iterrows():
+        t = str(r[ticker_col]).strip()
+        idx = str(r[index_col]).strip()
+        if t and t.lower() != "nan":
+            m[t] = "" if idx.lower() == "nan" else idx
+    return m
+
+
+def load_alias_map(path: Path) -> dict[str, str]:
+    """
+    data/ticker_alias.csv with columns: snowball,yahoo
+    Maps Snowball symbol -> Yahoo symbol
+    """
+    if not path.exists():
+        return {}
+    df = pd.read_csv(path)
+    low = {c.lower(): c for c in df.columns}
+    if "snowball" not in low or "yahoo" not in low:
+        return {}
+    a = {}
+    for _, r in df.iterrows():
+        s = str(r[low["snowball"]]).strip()
+        y = str(r[low["yahoo"]]).strip()
+        if s and y and s.lower() != "nan" and y.lower() != "nan":
+            a[s] = y
+    return a
+
+
+# -----------------------
+# Portfolio: Snowball ingest (tolerant)
+# -----------------------
+def load_snowball_positions(path: Path, alias_map: dict[str, str]) -> pd.DataFrame:
+    """
+    Reads Snowball export and returns DataFrame with columns: Ticker, OwnedShares
+    Accepts many formats by guessing column names.
+    """
+    if not path.exists():
+        return pd.DataFrame(columns=["Ticker", "OwnedShares"])
 
     df = pd.read_csv(path)
+    cols_l = {c.lower().strip(): c for c in df.columns}
 
-    # Find symbol column
+    # Try to find symbol column
+    sym_candidates = ["symbol", "ticker", "holding", "isin", "name"]
     sym_col = None
-    for c in df.columns:
-        cl = c.strip().lower()
-        if cl in {"symbol", "ticker", "instrument", "name"}:
-            sym_col = c
+    for k in sym_candidates:
+        if k in cols_l:
+            sym_col = cols_l[k]
             break
     if sym_col is None:
-        # fallback: if there is a 'Holding' column with symbols
-        for c in df.columns:
-            if "symbol" in c.lower() or "ticker" in c.lower():
-                sym_col = c
-                break
-    if sym_col is None:
-        # cannot parse
-        return pd.DataFrame(columns=["Ticker", "Shares"])
+        # fallback: first column
+        sym_col = df.columns[0]
 
-    # Find shares/quantity
+    # Try to find shares/qty column
+    qty_candidates = ["shares", "quantity", "antal", "units", "ownedshares"]
     qty_col = None
-    for c in df.columns:
-        cl = c.strip().lower()
-        if cl in {"shares", "quantity", "antal", "units"}:
-            qty_col = c
+    for k in qty_candidates:
+        if k in cols_l:
+            qty_col = cols_l[k]
             break
-        if "share" in cl and qty_col is None:
-            qty_col = c
+
     if qty_col is None:
-        return pd.DataFrame(columns=["Ticker", "Shares"])
+        # If no shares column, assume not usable
+        return pd.DataFrame(columns=["Ticker", "OwnedShares"])
 
-    pos = df[[sym_col, qty_col]].copy()
-    pos.columns = ["Ticker", "Shares"]
-    pos["Ticker"] = pos["Ticker"].astype(str).str.strip()
-    pos["Shares"] = pd.to_numeric(pos["Shares"], errors="coerce").fillna(0.0)
+    tmp = df[[sym_col, qty_col]].copy()
+    tmp.columns = ["SnowballSymbol", "OwnedShares"]
+    tmp["SnowballSymbol"] = tmp["SnowballSymbol"].astype(str).str.strip()
+    tmp["OwnedShares"] = pd.to_numeric(tmp["OwnedShares"], errors="coerce").fillna(0.0)
 
-    # apply alias mapping to Yahoo tickers
-    pos["Ticker"] = pos["Ticker"].map(lambda x: alias_map.get(x, x))
+    # Map via alias if given (SnowballSymbol -> Yahoo ticker)
+    tmp["Ticker"] = tmp["SnowballSymbol"].map(lambda x: alias_map.get(x, x))
+    tmp["Ticker"] = tmp["Ticker"].astype(str).str.strip()
 
-    # aggregate
-    pos = pos.groupby("Ticker", as_index=False)["Shares"].sum()
-    pos = pos[pos["Shares"].abs() > 1e-9]
+    pos = tmp.groupby("Ticker", as_index=False)["OwnedShares"].sum()
+    pos = pos[pos["OwnedShares"].abs() > 1e-9].copy()
     return pos
 
 
-def apply_portfolio_context(df: pd.DataFrame, positions: pd.DataFrame) -> pd.DataFrame:
-    out = df.copy()
-    out["OwnedShares"] = 0.0
-    out["OwnedValue"] = 0.0
-    out["Weight"] = 0.0
-
-    if positions is None or positions.empty:
-        return out
-
-    pos_map = dict(zip(positions["Ticker"], positions["Shares"]))
-    out["OwnedShares"] = out["Ticker"].map(lambda t: float(pos_map.get(t, 0.0)))
-    out["OwnedValue"] = out["OwnedShares"] * pd.to_numeric(out["Price"], errors="coerce").fillna(0.0)
-
-    total = float(out["OwnedValue"].sum())
-    if total > 0:
-        out["Weight"] = out["OwnedValue"] / total
-    else:
-        out["Weight"] = 0.0
-
-    return out
-
-
-def decide_portfolio_actions(df: pd.DataFrame, rules: dict) -> pd.DataFrame:
+# -----------------------
+# Dividend/yield metrics (stable)
+# -----------------------
+def trailing_12m_dividend_and_yield(ticker: str, price: float | None) -> tuple[float | None, float | None]:
     """
-    Produces PortfolioAction using simple rules:
-      - If not owned: BUY if Reco is Strong/Ok and upside positive; else AVOID
-      - If owned: HOLD by default
-      - TRIM if weight > max_weight or payout ratio too high
-      - ADD if owned but under min_weight and still attractive
+    Uses yfinance dividends series. Annual = sum of last 365 days dividends.
+    Yield = annual_div / price.
     """
-    out = df.copy()
-
-    # Defaults
-    max_weight = float(rules.get("max_weight", 0.08))  # 8%
-    min_add_weight = float(rules.get("min_add_weight", 0.02))  # 2%
-    trim_weight = float(rules.get("trim_weight", max_weight))
-    payout_trim = float(rules.get("payout_ratio_trim", 0.85))  # 85% payout ratio (fraction)
-
-    def classify(row):
-        owned = float(row.get("OwnedShares", 0.0)) > 0
-        w = safe_float(row.get("Weight")) or 0.0
-        reco = str(row.get("Reco") or "").strip().upper()
-        upside = safe_float(row.get("Upside_Yield_%"))  # percent points
-        payout = safe_float(row.get("PayoutRatio"))
-        # payout might be fraction; if it's > 1.5 we interpret as percent points and convert
-        if payout is not None and payout > 1.5:
-            payout = payout / 100.0
-
-        attractive = (reco in {"STRONG", "OK"}) and (upside is None or upside >= 0)
-
-        if not owned:
-            return "BUY" if attractive else "AVOID"
-
-        # owned logic:
-        if w >= trim_weight:
-            return "TRIM"
-        if payout is not None and payout >= payout_trim:
-            return "TRIM"
-        if attractive and w < min_add_weight:
-            return "ADD"
-        return "HOLD"
-
-    out["PortfolioAction"] = out.apply(classify, axis=1)
-    return out
+    if price is None or price <= 0:
+        return None, None
+    try:
+        t = yf.Ticker(ticker)
+        div = t.dividends
+        if div is None or len(div) == 0:
+            return 0.0, 0.0
+        cutoff = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(days=365)
+        div = div[div.index.tz_localize(None) >= cutoff]
+        ann = float(div.sum()) if len(div) else 0.0
+        y = ann / price if price > 0 else None
+        return ann, y
+    except Exception:
+        return None, None
 
 
-# -------------------------
-# Core screener
-# -------------------------
-def build_screener_df(tickers: list[str]) -> pd.DataFrame:
-    rows = []
-    for t in tickers:
-        tk = yf.Ticker(t)
+def dividend_growth_5y_cagr(ticker: str) -> float | None:
+    """
+    Approximates dividend growth from yearly dividend totals (calendar years).
+    Uses last 6 calendar years: CAGR from year-5 to last year.
+    """
+    try:
+        t = yf.Ticker(ticker)
+        div = t.dividends
+        if div is None or len(div) == 0:
+            return None
+        div = div.copy()
+        div.index = div.index.tz_localize(None)
+        # group by calendar year
+        yearly = div.groupby(div.index.year).sum().sort_index()
+        # Need at least 6 years to compute 5y CAGR robustly
+        if len(yearly) < 6:
+            return None
+        last_year = int(yearly.index.max())
+        start_year = last_year - 5
+        if start_year not in yearly.index:
+            return None
+        start = float(yearly.loc[start_year])
+        end = float(yearly.loc[last_year])
+        if start <= 0 or end <= 0:
+            return None
+        cagr = (end / start) ** (1 / 5) - 1
+        return cagr
+    except Exception:
+        return None
+
+
+def fetch_quote_fields(ticker: str) -> dict:
+    """
+    Fetches stable fields with fallbacks.
+    """
+    out = {"Ticker": ticker}
+    try:
+        tk = yf.Ticker(ticker)
+        fi = tk.fast_info if hasattr(tk, "fast_info") else {}
+
+        price = safe_float(fi.get("last_price")) or safe_float(fi.get("lastPrice"))
+        if price is None:
+            # fallback: history
+            h = tk.history(period="5d")
+            if len(h):
+                price = safe_float(h["Close"].iloc[-1])
+
+        out["Price"] = price
+
         info = {}
         try:
-            info = tk.get_info()
+            info = tk.info or {}
         except Exception:
             info = {}
 
-        price = yahoo_price(info)
-        name = get_company_name(info, t)
+        out["Name"] = info.get("shortName") or info.get("longName") or ""
+        out["Currency"] = info.get("currency") or fi.get("currency") or ""
+        out["Sector"] = info.get("sector") or ""
+        out["Exchange"] = info.get("exchange") or info.get("fullExchangeName") or ""
+        out["PE"] = safe_float(info.get("trailingPE")) or safe_float(info.get("forwardPE"))
 
-        dy = info.get("dividendYield", None)  # usually fraction
-        dy_pct = normalize_pct(dy)
-
-        dgr = dividend_growth_5y(tk)  # fraction
-        dgr_pct = normalize_pct(dgr)
-
-        payout = get_payout_ratio(info)  # fraction (usually)
-        pe = get_pe(info)
-
-        # Simple "yield model" = current yield (percent points), used for fair value yield
-        yield_for_model = dy_pct
-
-        # fair value from yield: FV = price * (current_yield / model_yield) -> here equals price (so not useful)
-        # Instead we use a conservative "target yield" = max(current_yield, 3.0) just as example.
-        # You can tweak later in rules. This keeps FV stable and avoids insane upside.
-        target_yield = max((dy_pct or 0.0), 3.0) if dy_pct is not None else 3.0
-        # approximate FV_yield: price * (dy_pct / target_yield)
-        fair_yield = None
-        if price is not None and price > 0 and dy_pct is not None and target_yield > 0:
-            fair_yield = price * (dy_pct / target_yield)
-
-        upside_yield = normalize_pct(upside_pct(price, fair_yield))  # careful: upside_pct returns fraction
-        # upside_pct returns fraction, normalize_pct will convert to percent points (x100)
-
-        rows.append(
-            {
-                "Ticker": t,
-                "Name": name,
-                "Price": price,
-                "DividendYield": dy_pct,          # percent points
-                "DividendGrowth5Y": dgr_pct,      # percent points
-                "PayoutRatio": payout,            # fraction
-                "PE": pe,
-                "FairValue_Yield": fair_yield,
-                "Upside_Yield_%": upside_yield,   # percent points
-            }
-        )
-
-    df = pd.DataFrame(rows)
-
-    # score + reco
-    def score_row(r):
-        y = safe_float(r["DividendYield"]) or 0.0
-        g = safe_float(r["DividendGrowth5Y"]) or 0.0
-        pe = safe_float(r["PE"])
-        pe_pen = 0.0 if (pe is None or pe <= 0) else min(20.0, max(0.0, (pe - 15.0) * 0.5))
-        return max(0.0, min(100.0, (y * 8.0 + g * 2.0) - pe_pen))
-
-    df["Score"] = df.apply(score_row, axis=1)
-
-    def reco_label(score):
-        s = safe_float(score) or 0.0
-        if s >= 70:
-            return "Strong"
-        if s >= 50:
-            return "Ok"
-        if s >= 35:
-            return "Weak"
-        return "Avoid"
-
-    df["Reco"] = df["Score"].map(reco_label)
-    df["Action"] = df["Reco"].map(lambda r: "BUY" if r in {"Strong", "Ok"} else "HOLD")
-
-    # Pretty display columns (string)
-    df["DividendYield"] = df["DividendYield"].map(lambda v: fmt_pct(v, 1))
-    df["DividendGrowth5Y"] = df["DividendGrowth5Y"].map(lambda v: fmt_pct(v, 1))
-    df["Upside_Yield_%"] = df["Upside_Yield_%"].map(lambda v: fmt_pct(v, 1))
-    df["PayoutRatio"] = df["PayoutRatio"].map(lambda v: "" if safe_float(v) is None else f"{safe_float(v):.2f}")
-    df["PE"] = df["PE"].map(lambda v: "" if safe_float(v) is None else f"{safe_float(v):.2f}")
-    df["FairValue_Yield"] = df["FairValue_Yield"].map(lambda v: "" if safe_float(v) is None else f"{safe_float(v):.2f}")
-    df["Price"] = df["Price"].map(lambda v: "" if safe_float(v) is None else f"{safe_float(v):.2f}")
-
-    return df
+    except Exception:
+        # leave fields empty
+        pass
+    return out
 
 
-# -------------------------
-# Dashboard HTML (with filters)
-# -------------------------
-def write_dashboard_html(df: pd.DataFrame, out_html: Path):
-    updated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+# -----------------------
+# Scoring / fair value model (simple but non-zero)
+# -----------------------
+def clamp(x: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, x))
 
-    # DataTables + dropdown filters for key columns
-    html = f"""<!doctype html>
+
+def fair_value_from_yield(annual_div: float | None, current_yield: float | None, price: float | None) -> tuple[float | None, float | None]:
+    """
+    Fair value using a target yield.
+    If current yield is high, fair yield should usually be lower -> higher fair value.
+    We use: target_yield = clamp(current_yield * 0.8, 0.015, 0.08)
+    FairValue = annual_div / target_yield
+    Upside% = (FairValue - price) / price
+    """
+    if annual_div is None or price is None or price <= 0:
+        return None, None
+    if current_yield is None:
+        # assume 3% if unknown
+        target = 0.03
+    else:
+        target = clamp(current_yield * 0.8, 0.015, 0.08)
+    if target <= 0:
+        return None, None
+    fv = annual_div / target
+    up = (fv - price) / price
+    return fv, up
+
+
+def score_row(yield_t12: float | None, divg_5y: float | None, pe: float | None) -> float:
+    """
+    Simple normalized score (0..100).
+    """
+    y = 0.0 if yield_t12 is None else clamp(yield_t12, 0, 0.12) / 0.12  # 0..1
+    g = 0.0 if divg_5y is None else clamp(divg_5y, -0.10, 0.20)  # -0.1..0.2
+    g = (g + 0.10) / 0.30  # 0..1
+    p = 0.5
+    if pe is not None and pe > 0:
+        # lower PE better (within reason)
+        p = 1 - clamp((pe - 8) / (30 - 8), 0, 1)  # 8->1, 30->0
+    # weights
+    s = 100 * (0.45 * y + 0.35 * g + 0.20 * p)
+    return float(clamp(s, 0, 100))
+
+
+def reco_label(score: float) -> str:
+    if score >= 80:
+        return "Strong"
+    if score >= 65:
+        return "Ok"
+    return "Weak"
+
+
+def action_label(upside: float | None, score: float) -> str:
+    if upside is None:
+        return "HOLD"
+    if upside >= 0.15 and score >= 70:
+        return "BUY"
+    if upside <= -0.10:
+        return "AVOID"
+    return "HOLD"
+
+
+def portfolio_action(owned: bool, weight: float | None, base_action: str) -> str:
+    """
+    Very safe default portfolio logic:
+    - If owned => HOLD (unless overweight then TRIM)
+    - If not owned => follow base action
+    """
+    if owned:
+        if weight is not None and weight >= 0.12:  # 12% cap default
+            return "TRIM"
+        return "HOLD"
+    return base_action
+
+
+# -----------------------
+# HTML (DataTables + header dropdowns)
+# -----------------------
+def build_html(df: pd.DataFrame, updated: str) -> str:
+    # DataTables expects JSON rows
+    cols = list(df.columns)
+
+    # Which columns get header dropdown filters:
+    filter_cols = [
+        "Country",
+        "Currency",
+        "Sector",
+        "InIndex",
+        "Owned",
+        "Reco",
+        "Action",
+        "PortfolioAction",
+    ]
+    filter_idxs = [cols.index(c) for c in filter_cols if c in cols]
+
+    data_json = df.to_dict(orient="records")
+
+    return f"""<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Dividend Screener (DK + US)</title>
 
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-dt@2.1.8/css/dataTables.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css"/>
   <style>
     body {{
-      font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      margin: 24px;
+      font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      padding: 18px;
     }}
     h1 {{ margin: 0 0 6px 0; }}
-    .meta {{ color: #666; margin-bottom: 16px; }}
-    .filters {{
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin: 12px 0 16px 0;
-      align-items: center;
+    .meta {{ color: #666; margin-bottom: 14px; }}
+    table.dataTable thead th {{
+      white-space: nowrap;
     }}
-    .filters label {{
+    thead tr.filters th {{
+      padding: 6px 8px !important;
+    }}
+    select.dt-filter {{
+      width: 100%;
       font-size: 12px;
-      color: #333;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
     }}
-    select {{
-      padding: 6px 8px;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-      min-width: 180px;
-    }}
-    table.dataTable tbody td {{ vertical-align: top; }}
   </style>
 </head>
 <body>
   <h1>Dividend Screener (DK + US)</h1>
   <div class="meta">Updated: {updated}</div>
 
-  <div class="filters">
-    <label>Reco
-      <select id="fReco"><option value="">All</option></select>
-    </label>
-    <label>Action
-      <select id="fAction"><option value="">All</option></select>
-    </label>
-    <label>PortfolioAction
-      <select id="fPort"><option value="">All</option></select>
-    </label>
-  </div>
+  <table id="tbl" class="display" style="width:100%"></table>
 
-  {df.to_html(index=False, escape=False, table_id="tbl", classes="display", border=0)}
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
-  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/datatables.net@2.1.8/js/dataTables.min.js"></script>
   <script>
-    function fillSelectFromColumn(table, colIdx, selectId) {{
-      const api = table;
-      const data = new Set();
-      api.column(colIdx).data().each(function(v) {{
-        if (v !== null && v !== undefined && String(v).trim() !== "") data.add(String(v).trim());
-      }});
-      const sel = document.getElementById(selectId);
-      Array.from(data).sort().forEach(v => {{
-        const opt = document.createElement('option');
-        opt.value = v;
-        opt.textContent = v;
-        sel.appendChild(opt);
-      }});
-    }}
+    const columns = {json.dumps([{"title": c, "data": c} for c in cols])};
+    const data = {json.dumps(data_json)};
+
+    const filterIdxs = {json.dumps(filter_idxs)};
 
     $(document).ready(function() {{
       const table = $('#tbl').DataTable({{
+        data: data,
+        columns: columns,
         pageLength: 50,
-        order: []
+        order: [],
+        deferRender: true
       }});
 
-      // Find column indexes by header text
-      function colIndex(name) {{
-        let idx = -1;
-        $('#tbl thead th').each(function(i) {{
-          if ($(this).text().trim() === name) idx = i;
-        }});
-        return idx;
-      }}
+      // Add a second header row for filters
+      const thead = $('#tbl thead');
+      const headerRow = thead.find('tr').first();
+      const filterRow = $('<tr class="filters"></tr>').appendTo(thead);
 
-      const recoCol = colIndex("Reco");
-      const actionCol = colIndex("Action");
-      const portCol = colIndex("PortfolioAction");
+      headerRow.find('th').each(function(i) {{
+        const th = $('<th></th>');
+        if (filterIdxs.includes(i)) {{
+          const sel = $('<select class="dt-filter"><option value=""></option></select>');
+          th.append(sel);
 
-      if (recoCol >= 0) fillSelectFromColumn(table, recoCol, "fReco");
-      if (actionCol >= 0) fillSelectFromColumn(table, actionCol, "fAction");
-      if (portCol >= 0) fillSelectFromColumn(table, portCol, "fPort");
+          // build unique list
+          const uniq = new Set();
+          table.column(i).data().each(function(v) {{
+            if (v !== null && v !== undefined && String(v).trim() !== "") {{
+              uniq.add(String(v));
+            }}
+          }});
+          Array.from(uniq).sort().forEach(function(v) {{
+            sel.append($('<option></option>').attr('value', v).text(v));
+          }});
 
-      function applySelectFilter(selectId, colIdx) {{
-        document.getElementById(selectId).addEventListener('change', function() {{
-          const val = this.value;
-          if (!val) {{
-            table.column(colIdx).search('').draw();
-          }} else {{
-            table.column(colIdx).search('^' + val.replace(/[.*+?^{{}}()|[\\]\\\\]/g, '\\\\$&') + '$', true, false).draw();
-          }}
-        }});
-      }}
-
-      if (recoCol >= 0) applySelectFilter("fReco", recoCol);
-      if (actionCol >= 0) applySelectFilter("fAction", actionCol);
-      if (portCol >= 0) applySelectFilter("fPort", portCol);
+          sel.on('change', function() {{
+            const val = $.fn.dataTable.util.escapeRegex($(this).val());
+            table.column(i).search(val ? '^' + val + '$' : '', true, false).draw();
+          }});
+        }}
+        filterRow.append(th);
+      }});
     }});
   </script>
 </body>
 </html>
 """
-    out_html.parent.mkdir(parents=True, exist_ok=True)
-    out_html.write_text(html, encoding="utf-8")
 
 
-# -------------------------
+# -----------------------
 # Main
-# -------------------------
+# -----------------------
 def main():
-    tickers = read_tickers(TICKERS_TXT)
-    df = build_screener_df(tickers)
+    tickers = read_tickers_txt(TICKERS_TXT)
+    index_map = load_index_map(INDEX_MAP_CSV)
+    alias_map = load_alias_map(TICKER_ALIAS_CSV)
 
-    # Portfolio integration
-    alias_map = load_alias_map(ALIAS_PATH)
-    positions = build_positions_from_snowball(SNOWBALL_PATH, alias_map)
+    # portfolio positions (optional)
+    pos = load_snowball_positions(SNOWBALL_CSV, alias_map)
+    pos_map = dict(zip(pos["Ticker"], pos["OwnedShares"])) if len(pos) else {}
 
-    rules = {}
-    if RULES_PATH.exists():
-        rules = yaml.safe_load(RULES_PATH.read_text(encoding="utf-8")) or {}
+    rows: list[dict] = []
 
-    df = apply_portfolio_context(df, positions)
-    df = decide_portfolio_actions(df, rules)
+    # Fetch per ticker (simple loop = stable)
+    for t in tickers:
+        q = fetch_quote_fields(t)
+        price = safe_float(q.get("Price"))
 
-    # Ensure column order with portfolio columns last-ish
-    preferred = [
-        "Ticker","Name","Price","DividendYield","DividendGrowth5Y","PayoutRatio","PE",
-        "FairValue_Yield","Upside_Yield_%","Score","Reco","Action",
-        "OwnedShares","OwnedValue","Weight","PortfolioAction"
-    ]
-    cols = [c for c in preferred if c in df.columns] + [c for c in df.columns if c not in preferred]
-    df = df[cols]
+        ann_div, yld = trailing_12m_dividend_and_yield(t, price)
+        divg = dividend_growth_5y_cagr(t)
 
+        fv, up = fair_value_from_yield(ann_div, yld, price)
+
+        pe = safe_float(q.get("PE"))
+        score = score_row(yld, divg, pe)
+        reco = reco_label(score)
+        act = action_label(up, score)
+
+        country = infer_country(t)
+        in_index = index_map.get(t, "")
+
+        owned_shares = float(pos_map.get(t, 0.0)) if t in pos_map else 0.0
+        owned = "Yes" if owned_shares > 0 else "No"
+        owned_value = owned_shares * price if (price is not None) else 0.0
+
+        rows.append({
+            "Ticker": t,
+            "Name": q.get("Name", ""),
+            "Price": price,
+            "DividendYield": (yld * 100) if yld is not None else None,          # numeric percent for sorting
+            "DividendGrowth5Y": (divg * 100) if divg is not None else None,     # numeric percent
+            "PE": pe,
+            "FairValue_Yield": fv,
+            "Upside_Yield_%": (up * 100) if up is not None else None,           # numeric percent
+            "Score": score,
+            "Reco": reco,
+            "Action": act,
+
+            "Country": country,
+            "Currency": q.get("Currency", ""),
+            "Sector": q.get("Sector", ""),
+            "Exchange": q.get("Exchange", ""),
+            "InIndex": in_index,
+
+            "OwnedShares": owned_shares,
+            "Owned": owned,
+            "OwnedValue": owned_value,   # calculated later as weight too
+        })
+
+    df = pd.DataFrame(rows)
+
+    # Portfolio weights (if any holdings)
+    total_value = float(df["OwnedValue"].sum()) if "OwnedValue" in df.columns else 0.0
+    if total_value > 0:
+        df["Weight"] = df["OwnedValue"] / total_value
+    else:
+        df["Weight"] = 0.0
+
+    # PortfolioAction
+    df["PortfolioAction"] = df.apply(
+        lambda r: portfolio_action(
+            owned=(r.get("Owned") == "Yes"),
+            weight=safe_float(r.get("Weight")),
+            base_action=str(r.get("Action") or "HOLD"),
+        ),
+        axis=1
+    )
+
+    # Format-friendly duplicates (optional)
+    # Keep numeric columns numeric for sorting in DataTables, but also add pretty strings if you want.
+    # For now we keep numeric and let DataTables show raw; you can format later if desired.
+
+    # Ensure folders
     OUT_CSV.parent.mkdir(parents=True, exist_ok=True)
+    OUT_HTML.parent.mkdir(parents=True, exist_ok=True)
+
+    # Save CSV
     df.to_csv(OUT_CSV, index=False, encoding="utf-8")
 
-    write_dashboard_html(df, OUT_HTML)
+    # Save HTML
+    html = build_html(df, now_utc_str())
+    OUT_HTML.write_text(html, encoding="utf-8")
 
-    print(f"Wrote: {OUT_CSV}")
+    print(f"Wrote: {OUT_CSV} ({len(df)} rows)")
     print(f"Wrote: {OUT_HTML}")
 
 

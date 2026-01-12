@@ -1,0 +1,1 @@
+https://raw.githubusercontent.com/<user>/<repo>/main/universe_all.txt

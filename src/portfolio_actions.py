@@ -1,172 +1,140 @@
-# src/portfolio_actions.py
-# Portfolio integration + action engine (ADD / BUY / HOLD / TRIM / AVOID)
-#
-# This file is intentionally defensive:
-# - Works even if some columns are missing
-# - Never calls .fillna() on scalars
-# - Handles both "Ticker" and "Symbol" naming
-# - Uses Snowball positions with columns: Symbol, Shares
-
 from __future__ import annotations
 
+from pathlib import Path
 import pandas as pd
+import numpy as np
+import yaml
 
 
-def _ensure_col(df: pd.DataFrame, col: str, default):
-    """Ensure df has a column; if missing, create with default."""
-    if col not in df.columns:
-        df[col] = default
-    return df
+DEFAULT_RULES = {
+    # portfolio sizing
+    "max_position_weight": 0.06,   # 6% max per position
+    "min_position_weight": 0.01,   # 1% min "starter"
+    "trim_over": 1.20,             # trim if weight > 1.2 * max
+    "add_under": 0.80,             # add if weight < 0.8 * min (and you like it)
+    # thresholds using screener metrics
+    "buy_score_min": 70.0,
+    "add_score_min": 60.0,
+    "avoid_score_max": 45.0,
+    "buy_upside_min": 0.07,
+    "add_upside_min": 0.03,
+    # optional: always hold these tickers (never AVOID)
+    "always_hold": [],
+}
 
 
-def _safe_numeric(series, default=0.0):
-    """Convert to numeric safely; if scalar given, return scalar."""
-    if isinstance(series, pd.Series):
-        return pd.to_numeric(series, errors="coerce").fillna(default)
-    # scalar
+def load_rules(rules_path: Path) -> dict:
+    if rules_path is None or not Path(rules_path).exists():
+        return dict(DEFAULT_RULES)
     try:
-        return float(series)
+        d = yaml.safe_load(Path(rules_path).read_text(encoding="utf-8")) or {}
+        out = dict(DEFAULT_RULES)
+        out.update(d)
+        # normalize list
+        out["always_hold"] = list(out.get("always_hold") or [])
+        return out
     except Exception:
-        return default
+        return dict(DEFAULT_RULES)
 
 
-def _normalize_symbol(s: str) -> str:
-    return str(s).strip().upper()
+def _safe_series_numeric(df: pd.DataFrame, col: str) -> pd.Series:
+    if col in df.columns:
+        return pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+    return pd.Series([0.0] * len(df), index=df.index)
 
 
-def apply_portfolio_context(screen_df: pd.DataFrame, pos_df: pd.DataFrame) -> pd.DataFrame:
+def apply_portfolio_actions(
+    screener_df: pd.DataFrame,
+    positions_df: pd.DataFrame,
+    rules: dict,
+) -> pd.DataFrame:
     """
-    Attach portfolio context columns to the screener dataframe:
-    - OwnedShares
-    - OwnedValue (OwnedShares * Price if Price exists else 0)
-    - Weight (OwnedValue / total)
+    Adds:
+      OwnedShares, OwnedValue, Weight, PortfolioAction
+    Keeps:
+      Action as baseline screener action
     """
-    out = screen_df.copy()
+    out = screener_df.copy()
 
-    # Determine key in screener (Ticker preferred)
-    key_col = "Ticker" if "Ticker" in out.columns else ("Symbol" if "Symbol" in out.columns else None)
-    if key_col is None:
-        # No key to merge; return safe defaults
-        _ensure_col(out, "OwnedShares", 0.0)
-        _ensure_col(out, "OwnedValue", 0.0)
-        _ensure_col(out, "Weight", 0.0)
-        return out
+    # Ensure baseline Action exists
+    if "Action" not in out.columns:
+        out["Action"] = "HOLD"
 
-    # Prepare merge keys
-    out[key_col] = out[key_col].astype(str).map(_normalize_symbol)
+    # normalize tickers
+    out["Ticker"] = out["Ticker"].astype(str).str.strip()
 
-    pos = pos_df.copy()
-    if "Symbol" not in pos.columns:
-        # Can't use positions without symbol column
-        _ensure_col(out, "OwnedShares", 0.0)
-        _ensure_col(out, "OwnedValue", 0.0)
-        _ensure_col(out, "Weight", 0.0)
-        return out
+    # positions
+    pos = positions_df.copy() if positions_df is not None else pd.DataFrame(columns=["Ticker", "Shares"])
+    if not pos.empty:
+        pos["Ticker"] = pos["Ticker"].astype(str).str.strip()
+        pos["Shares"] = pd.to_numeric(pos["Shares"], errors="coerce").fillna(0.0)
+        pos = pos[pos["Shares"].abs() > 1e-9].copy()
 
-    pos["Symbol"] = pos["Symbol"].astype(str).map(_normalize_symbol)
-    if "Shares" not in pos.columns:
-        pos["Shares"] = 0.0
-    pos["Shares"] = _safe_numeric(pos["Shares"], 0.0)
+    # merge shares
+    out = out.merge(pos[["Ticker", "Shares"]], on="Ticker", how="left")
+    out.rename(columns={"Shares": "OwnedShares"}, inplace=True)
+    out["OwnedShares"] = pd.to_numeric(out["OwnedShares"], errors="coerce").fillna(0.0)
 
-    # Aggregate (in case multiple rows per symbol)
-    pos_agg = pos.groupby("Symbol", as_index=False)["Shares"].sum()
-    pos_agg.rename(columns={"Symbol": key_col, "Shares": "OwnedShares"}, inplace=True)
+    # owned value uses price
+    price = _safe_series_numeric(out, "Price")
+    out["OwnedValue"] = out["OwnedShares"] * price
 
-    # Merge into screener
-    out = out.merge(pos_agg, on=key_col, how="left")
-    out["OwnedShares"] = _safe_numeric(out.get("OwnedShares"), 0.0)
-
-    # OwnedValue
-    if "Price" in out.columns:
-        out["Price"] = _safe_numeric(out["Price"], 0.0)
-        out["OwnedValue"] = out["OwnedShares"] * out["Price"]
-    else:
-        out["OwnedValue"] = 0.0
-
-    total = float(out["OwnedValue"].sum()) if "OwnedValue" in out.columns else 0.0
-    if total > 0:
-        out["Weight"] = out["OwnedValue"] / total
-    else:
+    total = float(out["OwnedValue"].sum())
+    if total <= 0:
         out["Weight"] = 0.0
-
-    return out
-
-
-def decide_actions(screen_df: pd.DataFrame, rules: dict | None = None) -> pd.DataFrame:
-    """
-    Decide portfolio-aware Action: ADD / BUY / HOLD / TRIM / AVOID
-
-    This uses robust defaults if rules are missing.
-
-    Expected optional keys in rules (all optional):
-      - max_position_weight: float (e.g., 0.08)
-      - trim_weight: float (e.g., 0.06)  -> TRIM if weight >= this
-      - add_weight: float (e.g., 0.02)   -> ADD if owned and weight < this and score/upside ok
-      - min_upside_buy: float (e.g., 0.05)  -> BUY if not owned and upside >=
-      - min_score_buy: float (e.g., 60)     -> BUY if not owned and score >=
-      - avoid_if_no_data: bool (default True)
-    """
-    rules = rules or {}
-    out = screen_df.copy()
-
-    # Ensure columns exist
-    _ensure_col(out, "OwnedShares", 0.0)
-    _ensure_col(out, "Weight", 0.0)
-
-    # Optional columns from screener
-    _ensure_col(out, "Score", 0.0)
-    _ensure_col(out, "UpsidePct", 0.0)
-
-    # In case Score/UpsidePct came as scalar or object
-    out["OwnedShares"] = _safe_numeric(out["OwnedShares"], 0.0)
-    out["Weight"] = _safe_numeric(out["Weight"], 0.0)
-    out["Score"] = _safe_numeric(out["Score"], 0.0)
-    out["UpsidePct"] = _safe_numeric(out["UpsidePct"], 0.0)
-
-    # PayoutRatio is optional; make it safe (never scalar fillna)
-    if "PayoutRatio" in out.columns:
-        out["PayoutRatio"] = _safe_numeric(out["PayoutRatio"], 0.0)
     else:
-        out["PayoutRatio"] = 0.0
+        out["Weight"] = out["OwnedValue"] / total
 
-    # Defaults
-    max_position_weight = float(rules.get("max_position_weight", 0.10))  # hard cap
-    trim_weight = float(rules.get("trim_weight", 0.07))                  # TRIM threshold
-    add_weight = float(rules.get("add_weight", 0.02))                    # ADD threshold
-    min_upside_buy = float(rules.get("min_upside_buy", 0.05))
-    min_score_buy = float(rules.get("min_score_buy", 60))
-    avoid_if_no_data = bool(rules.get("avoid_if_no_data", True))
+    # numeric metrics (safe even if missing)
+    score = _safe_series_numeric(out, "Score")
+    upside = _safe_series_numeric(out, "Upside_Yield_%")
 
-    # If your screener doesn’t compute Score realistically yet, BUY can be upside-driven.
-    # We'll also avoid buying if both score and upside are missing/zero.
-    def pick_action(row) -> str:
-        owned = float(row.get("OwnedShares", 0.0)) > 0.0
-        w = float(row.get("Weight", 0.0))
-        score = float(row.get("Score", 0.0))
-        upside = float(row.get("UpsidePct", 0.0))
+    # rules
+    maxw = float(rules.get("max_position_weight", DEFAULT_RULES["max_position_weight"]))
+    minw = float(rules.get("min_position_weight", DEFAULT_RULES["min_position_weight"]))
+    trim_over = float(rules.get("trim_over", DEFAULT_RULES["trim_over"]))
+    add_under = float(rules.get("add_under", DEFAULT_RULES["add_under"]))
+    buy_score_min = float(rules.get("buy_score_min", DEFAULT_RULES["buy_score_min"]))
+    add_score_min = float(rules.get("add_score_min", DEFAULT_RULES["add_score_min"]))
+    avoid_score_max = float(rules.get("avoid_score_max", DEFAULT_RULES["avoid_score_max"]))
+    buy_upside_min = float(rules.get("buy_upside_min", DEFAULT_RULES["buy_upside_min"]))
+    add_upside_min = float(rules.get("add_upside_min", DEFAULT_RULES["add_upside_min"]))
+    always_hold = set([str(x).strip() for x in (rules.get("always_hold") or [])])
 
-        has_signal = (score != 0.0) or (upside != 0.0)
+    weight = out["Weight"].astype(float)
 
-        # Overweight -> TRIM
-        if owned and w >= trim_weight:
-            return "TRIM"
-        if owned and w >= max_position_weight:
-            return "TRIM"
+    def decide(row) -> str:
+        tk = str(row["Ticker"]).strip()
+        owned = float(row["OwnedShares"]) > 0
+        w = float(row["Weight"]) if total > 0 else 0.0
+        sc = float(row["Score"]) if not pd.isna(row["Score"]) else 0.0
+        up = float(row.get("Upside_Yield_%") or 0.0)
 
-        # Underweight -> ADD (if any signal)
-        if owned and w < add_weight and has_signal:
-            return "ADD"
-
-        # Not owned -> BUY if signal strong enough
-        if not owned:
-            if avoid_if_no_data and not has_signal:
-                return "AVOID"
-            if (score >= min_score_buy) or (upside >= min_upside_buy):
-                return "BUY"
+        # never force AVOID on these
+        if tk in always_hold:
+            if owned and w > maxw * trim_over:
+                return "TRIM"
             return "HOLD"
 
-        # Owned and not trim/add -> HOLD
+        if owned:
+            if w > maxw * trim_over:
+                return "TRIM"
+            # add if position is too small AND fundamentals are good
+            if w < minw * add_under and sc >= add_score_min and up >= add_upside_min:
+                return "ADD"
+            # avoid if very weak
+            if sc <= avoid_score_max and up <= 0:
+                return "TRIM"
+            return "HOLD"
+
+        # not owned:
+        if sc >= buy_score_min and up >= buy_upside_min:
+            return "BUY"
+        if sc >= add_score_min and up >= add_upside_min:
+            return "ADD"
+        if sc <= avoid_score_max:
+            return "AVOID"
         return "HOLD"
 
-    out["Action"] = out.apply(pick_action, axis=1)
+    out["PortfolioAction"] = out.apply(decide, axis=1)
     return out

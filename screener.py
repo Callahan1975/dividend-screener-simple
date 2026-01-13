@@ -34,11 +34,17 @@ MASTER_TICKERS_TXT = os.path.join("data", "tickers_master.txt")          # optio
 LIVE_TICKERS_URL_TXT = os.path.join("data", "tickers_live_url.txt")      # optional (1-line URL)
 ALIAS_CSV = os.path.join("data", "ticker_alias.csv")
 INDEX_MAP_CSV = "index_map.csv"  # optional
+
+# portfolio optional candidates (supports your data/portfolio/ layout too)
 PORTFOLIO_CSV_CANDIDATES = [
+    os.path.join("data", "portfolio", "Snowball.csv"),
+    os.path.join("data", "portfolio", "snowball.csv"),
+    os.path.join("data", "portfolio", "portfolio.csv"),
+    os.path.join("data", "portfolio", "portfolio_holdings.csv"),
     os.path.join("data", "portfolio.csv"),
     os.path.join("data", "portfolio_holdings.csv"),
     "portfolio.csv",
-]  # optional
+]
 
 OUT_CSV = os.path.join("data", "screener_results.csv")
 OUT_HTML = os.path.join("docs", "index.html")
@@ -108,7 +114,7 @@ def _infer_country_from_ticker(yahoo_ticker: str) -> str:
 
 
 # -----------------------------
-# Dividend yield normalization (FIX)
+# Dividend yield normalization (KEEP CORRECT SETTINGS)
 # -----------------------------
 def _normalize_dividend_yield(raw: Any) -> Optional[float]:
     """
@@ -117,10 +123,10 @@ def _normalize_dividend_yield(raw: Any) -> Optional[float]:
     Handles common Yahoo/yfinance scaling variants:
     - 0.031  -> 0.031 (already fraction)
     - 3.1    -> 0.031 (percent)
-    - 115    -> 1.15  (percent)   [later sanity check will typically null this]
+    - 115    -> 1.15  (percent)   [sanity check will typically null this]
     - 11500  -> 1.15  (percent*100)
 
-    Key fix vs previous: values like 1.15 are far more likely to be 1.15% than 115%.
+    Key fix: values like 1.15 are far more likely to be 1.15% than 115%.
     """
     v = _safe_float(raw)
     if v is None or v < 0:
@@ -141,14 +147,12 @@ def _normalize_dividend_yield(raw: Any) -> Optional[float]:
 
 def _sanity_div_yield(y: Optional[float]) -> Optional[float]:
     """
-    Final sanity gate. Anything above 30% yield is usually wrong for most equities.
-    We keep it, but you can choose to null it. Here we NULL above 40% to avoid noise.
+    Final sanity gate. Anything above 40% yield is usually junk for normal equities.
     """
     if y is None:
         return None
     if y < 0:
         return None
-    # allow up to 40% before we consider it garbage
     if y > 0.40:
         return None
     return y
@@ -276,10 +280,16 @@ def _read_all_tickers() -> List[str]:
 # Alias / index map / portfolio
 # -----------------------------
 def _load_alias_map(alias_csv: str) -> pd.DataFrame:
-    if not os.path.exists(alias_csv):
+    # allow fallback to data/portfolio/ticker_alias.csv if user has it there
+    candidates = [
+        alias_csv,
+        os.path.join("data", "portfolio", "ticker_alias.csv"),
+    ]
+    path = next((p for p in candidates if os.path.exists(p)), "")
+    if not path:
         return pd.DataFrame(columns=["input_ticker", "yahoo_ticker", "alias"])
 
-    df = pd.read_csv(alias_csv)
+    df = pd.read_csv(path)
     cols = {c.lower().strip(): c for c in df.columns}
 
     def pick(*names: str) -> Optional[str]:
@@ -307,12 +317,19 @@ def _load_alias_map(alias_csv: str) -> pd.DataFrame:
     out["yahoo_ticker"] = out["yahoo_ticker"].astype(str).str.strip()
     out["alias"] = out["alias"].astype(str).str.strip()
     out = out[out["yahoo_ticker"] != ""].drop_duplicates(subset=["yahoo_ticker"], keep="first")
+
+    print(f"[{_now_utc_str()}] Alias file used: {path} (rows={len(out)})")
     return out
 
 
 def _load_index_map(path: str) -> Dict[str, str]:
     if not os.path.exists(path):
-        return {}
+        # fallback if your repo has src/index_map.csv
+        alt = os.path.join("src", "index_map.csv")
+        if not os.path.exists(alt):
+            return {}
+        path = alt
+
     try:
         df = pd.read_csv(path)
     except Exception:
@@ -346,16 +363,31 @@ def _load_portfolio_holdings() -> set:
             try:
                 df = pd.read_csv(p)
                 cols = {c.lower().strip(): c for c in df.columns}
+
+                # try common column names
                 c_ticker = None
-                for k in ("yahoo_ticker", "ticker", "symbol"):
-                    if k in cols:
-                        c_ticker = cols[k]
+                for k in ("yahoo_ticker", "ticker", "symbol", "Security", "SecurityId", "ISIN"):
+                    if k.lower() in cols:
+                        c_ticker = cols[k.lower()]
                         break
+
                 if c_ticker is None:
+                    # Snowball exports often have "Ticker" or "Symbol"
+                    for k in ("ticker", "symbol"):
+                        if k in cols:
+                            c_ticker = cols[k]
+                            break
+
+                if c_ticker is None:
+                    print(f"[{_now_utc_str()}] Portfolio file found but no ticker column recognized: {p}")
                     return set()
+
                 s = set(df[c_ticker].astype(str).str.strip())
-                return {x for x in s if x}
-            except Exception:
+                s = {x for x in s if x and x.lower() != "nan"}
+                print(f"[{_now_utc_str()}] Portfolio file used: {p} (tickers={len(s)})")
+                return s
+            except Exception as e:
+                print(f"[{_now_utc_str()}] Portfolio load failed for {p}: {e}")
                 return set()
     return set()
 
@@ -419,7 +451,6 @@ def _fetch_one(ticker: str, pause_s: float = 0.0) -> Tuple[Optional[Dict[str, An
             "Sector": sector,
             "MarketCap": market_cap,
             "DividendYield": div_yield,  # fraction
-            "DividendYield_raw": raw_y,  # debug
             "DividendRate": div_rate,
             "PayoutRatio": payout_ratio,
             "PE": pe,
@@ -473,7 +504,7 @@ def _portfolio_action(is_in_portfolio: bool, action: str) -> str:
 
 
 # -----------------------------
-# HTML Generation (STATIC TABLE)
+# HTML Generation (STATIC TABLE + Barometers)
 # -----------------------------
 def _fmt_num2(v: Any) -> str:
     x = _safe_float(v)
@@ -547,7 +578,6 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
         """.strip() for c in filter_cols]
     )
 
-    # NOTE: COLS must be a JS array of strings
     cols_js = "[" + ",".join([f'"{c}"' for c in columns]) + "]"
     filters_js = "[" + ",".join([f'"{c}"' for c in filter_cols]) + "]"
 
@@ -586,11 +616,32 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     table.dataTable {{ width:100% !important; color:var(--text); background:transparent; }}
     table.dataTable thead th {{ color:var(--muted); border-bottom:1px solid var(--border) !important; }}
     table.dataTable tbody td {{ border-top:1px solid rgba(255,255,255,0.06) !important; }}
+
     .dataTables_wrapper .dataTables_filter input,
     .dataTables_wrapper .dataTables_length select {{
       background:rgba(255,255,255,0.04) !important; color:var(--text) !important; border:1px solid var(--border) !important;
       border-radius:10px !important; padding:6px 10px !important; outline:none;
     }}
+
+    /* --- Barometers / Heat --- */
+    .heat-strong {{ background: rgba(46, 204, 113, 0.22) !important; }}
+    .heat-buy    {{ background: rgba(46, 204, 113, 0.12) !important; }}
+    .heat-hold   {{ background: rgba(241, 196, 15, 0.12) !important; }}
+    .heat-watch  {{ background: rgba(231, 76, 60, 0.14) !important; }}
+
+    .cell-green  {{ background: rgba(46, 204, 113, 0.16) !important; }}
+    .cell-yellow {{ background: rgba(241, 196, 15, 0.14) !important; }}
+    .cell-red    {{ background: rgba(231, 76, 60, 0.16) !important; }}
+
+    .badge {{
+      display:inline-block; padding:2px 8px; border-radius:999px;
+      font-size:11px; line-height:16px; border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.06);
+      white-space:nowrap;
+    }}
+    .badge-green  {{ background: rgba(46,204,113,0.18); }}
+    .badge-yellow {{ background: rgba(241,196,15,0.18); }}
+    .badge-red    {{ background: rgba(231,76,60,0.18); }}
   </style>
 </head>
 
@@ -626,9 +677,92 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
         order: [[ COLS.indexOf("TotalReturnEst_%"), "desc" ]],
         fixedHeader: true,
         deferRender: true,
-        autoWidth: false
+        autoWidth: false,
+
+        createdRow: function(row, data, dataIndex) {{
+          function p(idx) {{
+            if (idx < 0) return null;
+            const t = (data[idx] ?? "").toString().replace('%','').replace(/,/g,'').trim();
+            const v = Number(t);
+            return isFinite(v) ? v : null;
+          }}
+          function s(idx) {{
+            if (idx < 0) return "";
+            return (data[idx] ?? "").toString().toLowerCase().trim();
+          }}
+          const col = (name) => COLS.indexOf(name);
+
+          const total = p(col("TotalReturnEst_%"));
+          const dy    = p(col("DividendYield_%"));
+          const payout= p(col("PayoutRatio_%"));
+          const up    = p(col("Upside_%"));
+          const reco  = s(col("Reco"));
+          const act   = s(col("Action"));
+
+          // Row heat based on TotalReturnEst_%
+          if (total !== null) {{
+            if (total >= 15) $(row).addClass("heat-strong");
+            else if (total >= 10) $(row).addClass("heat-buy");
+            else if (total >= 5)  $(row).addClass("heat-hold");
+            else                  $(row).addClass("heat-watch");
+          }}
+
+          const td = $('td', row);
+
+          // Dividend yield highlight
+          if (dy !== null) {{
+            const idx = col("DividendYield_%");
+            if (idx >= 0) {{
+              if (dy >= 4) $(td[idx]).addClass("cell-green");
+              else if (dy >= 2) $(td[idx]).addClass("cell-yellow");
+            }}
+          }}
+
+          // Payout ratio risk
+          if (payout !== null) {{
+            const idx = col("PayoutRatio_%");
+            if (idx >= 0) {{
+              if (payout > 90) $(td[idx]).addClass("cell-red");
+              else if (payout >= 60) $(td[idx]).addClass("cell-yellow");
+              else $(td[idx]).addClass("cell-green");
+            }}
+          }}
+
+          // Upside highlight
+          if (up !== null) {{
+            const idx = col("Upside_%");
+            if (idx >= 0) {{
+              if (up >= 20) $(td[idx]).addClass("cell-green");
+              else if (up >= 10) $(td[idx]).addClass("cell-yellow");
+              else if (up < 0) $(td[idx]).addClass("cell-red");
+            }}
+          }}
+
+          // Reco badge
+          const recoIdx = col("Reco");
+          if (recoIdx >= 0) {{
+            let cls = "badge";
+            if (reco.includes("strong") || reco === "buy") cls += " badge-green";
+            else if (reco.includes("hold")) cls += " badge-yellow";
+            else if (reco.includes("under") || reco.includes("sell")) cls += " badge-red";
+            const txt = (data[recoIdx] ?? "").toString().trim();
+            if (txt) td.eq(recoIdx).html(`<span class="${{cls}}">${{txt}}</span>`);
+          }}
+
+          // Action badge
+          const actIdx = col("Action");
+          if (actIdx >= 0) {{
+            let cls = "badge";
+            if (act.includes("strong_buy") || act === "buy") cls += " badge-green";
+            else if (act.includes("hold")) cls += " badge-yellow";
+            else if (act.includes("watch")) cls += " badge-red";
+            const txt = (data[actIdx] ?? "").toString().trim();
+            if (txt) td.eq(actIdx).html(`<span class="${{cls}}">${{txt}}</span>`);
+          }}
+        }}
       }});
 
+      // Dropdown filters
       FILTERS.forEach((name) => {{
         const idx = COLS.indexOf(name);
         const sel = document.getElementById("flt_" + name);
@@ -730,9 +864,11 @@ def main() -> int:
 
         div_yield_pct = (div_yield * 100.0) if div_yield is not None else None
         upside_pct = (upside * 100.0) if upside is not None else None
+
         upside_yield_pct = None
         if div_yield_pct is not None or upside_pct is not None:
             upside_yield_pct = (div_yield_pct or 0.0) + (upside_pct or 0.0)
+
         total_return_pct = (total_return_est * 100.0) if total_return_est is not None else None
 
         rows.append({

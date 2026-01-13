@@ -35,7 +35,6 @@ LIVE_TICKERS_URL_TXT = os.path.join("data", "tickers_live_url.txt")      # optio
 ALIAS_CSV = os.path.join("data", "ticker_alias.csv")
 INDEX_MAP_CSV = "index_map.csv"  # optional
 
-# portfolio optional candidates (supports your data/portfolio/ layout too)
 PORTFOLIO_CSV_CANDIDATES = [
     os.path.join("data", "portfolio", "Snowball.csv"),
     os.path.join("data", "portfolio", "snowball.csv"),
@@ -114,7 +113,7 @@ def _infer_country_from_ticker(yahoo_ticker: str) -> str:
 
 
 # -----------------------------
-# Dividend yield normalization (KEEP CORRECT SETTINGS)
+# Dividend yield normalization (KEEP CORRECT)
 # -----------------------------
 def _normalize_dividend_yield(raw: Any) -> Optional[float]:
     """
@@ -132,16 +131,10 @@ def _normalize_dividend_yield(raw: Any) -> Optional[float]:
     if v is None or v < 0:
         return None
 
-    # Typical real yields as fraction are < 0.30 (30%).
-    # If v is >0.30 it's almost always a percent value (or garbage).
     if v <= 0.30:
         return v
-
-    # If 0.30 < v <= 100 -> treat as percent
     if v <= 100:
         return v / 100.0
-
-    # If v > 100 -> treat as percent*100 (or very large percent)
     return v / 10000.0
 
 
@@ -149,9 +142,7 @@ def _sanity_div_yield(y: Optional[float]) -> Optional[float]:
     """
     Final sanity gate. Anything above 40% yield is usually junk for normal equities.
     """
-    if y is None:
-        return None
-    if y < 0:
+    if y is None or y < 0:
         return None
     if y > 0.40:
         return None
@@ -171,12 +162,6 @@ def _strip_inline_comment(s: str) -> str:
 
 
 def _clean_ticker_line(line: str) -> str:
-    """
-    For ticker files:
-    - remove inline comments after '#'
-    - take first token only
-    - ignore URLs (http/https) so they never become tickers
-    """
     s = _strip_inline_comment(line)
     if not s or s.startswith("#"):
         return ""
@@ -189,11 +174,6 @@ def _clean_ticker_line(line: str) -> str:
 
 
 def _clean_url_line(line: str) -> str:
-    """
-    For live-url file ONLY:
-    - remove inline comments after '#'
-    - allow http/https
-    """
     s = _strip_inline_comment(line)
     if not s or s.startswith("#"):
         return ""
@@ -280,7 +260,6 @@ def _read_all_tickers() -> List[str]:
 # Alias / index map / portfolio
 # -----------------------------
 def _load_alias_map(alias_csv: str) -> pd.DataFrame:
-    # allow fallback to data/portfolio/ticker_alias.csv if user has it there
     candidates = [
         alias_csv,
         os.path.join("data", "portfolio", "ticker_alias.csv"),
@@ -324,7 +303,6 @@ def _load_alias_map(alias_csv: str) -> pd.DataFrame:
 
 def _load_index_map(path: str) -> Dict[str, str]:
     if not os.path.exists(path):
-        # fallback if your repo has src/index_map.csv
         alt = os.path.join("src", "index_map.csv")
         if not os.path.exists(alt):
             return {}
@@ -364,19 +342,14 @@ def _load_portfolio_holdings() -> set:
                 df = pd.read_csv(p)
                 cols = {c.lower().strip(): c for c in df.columns}
 
-                # try common column names
                 c_ticker = None
-                for k in ("yahoo_ticker", "ticker", "symbol", "Security", "SecurityId", "ISIN"):
+                for k in ("yahoo_ticker", "ticker", "symbol", "Ticker", "Symbol"):
                     if k.lower() in cols:
                         c_ticker = cols[k.lower()]
                         break
-
-                if c_ticker is None:
-                    # Snowball exports often have "Ticker" or "Symbol"
-                    for k in ("ticker", "symbol"):
-                        if k in cols:
-                            c_ticker = cols[k]
-                            break
+                    if k in df.columns:
+                        c_ticker = k
+                        break
 
                 if c_ticker is None:
                     print(f"[{_now_utc_str()}] Portfolio file found but no ticker column recognized: {p}")
@@ -436,7 +409,6 @@ def _fetch_one(ticker: str, pause_s: float = 0.0) -> Tuple[Optional[Dict[str, An
         div_rate = _safe_float(info.get("dividendRate"))
         payout_ratio = _safe_float(info.get("payoutRatio"))
         pe = _safe_float(_first_non_null(info.get("trailingPE"), info.get("forwardPE")))
-
         target_mean = _safe_float(_first_non_null(info.get("targetMeanPrice"), info.get("targetMedianPrice")))
         reco = _safe_str(_first_non_null(info.get("recommendationKey"), info.get("recommendationMean")))
 
@@ -503,8 +475,40 @@ def _portfolio_action(is_in_portfolio: bool, action: str) -> str:
     return "NEW_CANDIDATE" if action in ("BUY", "STRONG_BUY") else ""
 
 
+def _make_signal(total_return_pct: Optional[float], upside_pct: Optional[float], payout_ratio_pct: Optional[float]) -> str:
+    """
+    Minimal "Signal" (single visual indicator):
+    - GOLD: TotalReturnEst >= 15% AND Upside >= 10%
+    - BUY : TotalReturnEst >= 10%
+    - HOLD: TotalReturnEst 5-10%
+    - WATCH: <5% OR Upside < 0
+    Add ⚠️ if payout ratio > 90%
+    """
+    warn = (payout_ratio_pct is not None and payout_ratio_pct > 90)
+
+    # handle missing gracefully
+    tr = total_return_pct
+    up = upside_pct
+
+    label = "WATCH"
+    if up is not None and up < 0:
+        label = "WATCH"
+    elif tr is None:
+        label = "WATCH"
+    elif tr >= 15 and (up is not None and up >= 10):
+        label = "GOLD"
+    elif tr >= 10:
+        label = "BUY"
+    elif tr >= 5:
+        label = "HOLD"
+    else:
+        label = "WATCH"
+
+    return f"{label}{' ⚠' if warn else ''}"
+
+
 # -----------------------------
-# HTML Generation (STATIC TABLE + Barometers)
+# HTML Generation (STATIC TABLE + Minimal Signal)
 # -----------------------------
 def _fmt_num2(v: Any) -> str:
     x = _safe_float(v)
@@ -537,9 +541,10 @@ def _html_escape(s: Any) -> str:
 
 
 def _html_page(df: pd.DataFrame, generated_at: str) -> str:
+    # Insert Signal near Reco/Action
     columns = [
         "Ticker","Alias","Name","Country","Currency","Exchange","Sector",
-        "InIndex","Indexes","Portfolio","PortfolioAction","Reco","Action",
+        "InIndex","Indexes","Portfolio","PortfolioAction","Signal","Reco","Action",
         "Price","DividendYield_%","DividendRate","PayoutRatio_%","PE","TargetMeanPrice",
         "Upside_%","Upside_Yield_%","TotalReturnEst_%","MarketCap","52W_Low","52W_High",
         "Status","Error",
@@ -568,7 +573,7 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
             tds.append(f"<td>{_html_escape(cell)}</td>")
         body_rows.append("<tr>" + "".join(tds) + "</tr>")
 
-    filter_cols = ["Country","Currency","Sector","Exchange","InIndex","Reco","Action","PortfolioAction"]
+    filter_cols = ["Country","Currency","Sector","Exchange","InIndex","Signal","Reco","Action","PortfolioAction"]
     filter_html = "\n".join(
         [f"""
         <div class="filter">
@@ -604,7 +609,7 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     header .meta {{ margin-top:6px; font-size:12px; color:var(--muted); }}
     .wrap {{ padding:14px 14px 28px; }}
     .filters {{
-      display:grid; grid-template-columns:repeat(8, minmax(120px,1fr)); gap:10px; padding:12px;
+      display:grid; grid-template-columns:repeat(9, minmax(120px,1fr)); gap:10px; padding:12px;
       background:var(--panel); border:1px solid var(--border); border-radius:14px; margin-bottom:12px;
     }}
     .filter label {{ display:block; font-size:11px; color:var(--muted); margin-bottom:6px; }}
@@ -623,25 +628,23 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
       border-radius:10px !important; padding:6px 10px !important; outline:none;
     }}
 
-    /* --- Barometers / Heat --- */
-    .heat-strong {{ background: rgba(46, 204, 113, 0.22) !important; }}
-    .heat-buy    {{ background: rgba(46, 204, 113, 0.12) !important; }}
-    .heat-hold   {{ background: rgba(241, 196, 15, 0.12) !important; }}
-    .heat-watch  {{ background: rgba(231, 76, 60, 0.14) !important; }}
-
-    .cell-green  {{ background: rgba(46, 204, 113, 0.16) !important; }}
-    .cell-yellow {{ background: rgba(241, 196, 15, 0.14) !important; }}
-    .cell-red    {{ background: rgba(231, 76, 60, 0.16) !important; }}
-
+    /* Minimal badges (ONLY Signal/Reco/Action) */
     .badge {{
-      display:inline-block; padding:2px 8px; border-radius:999px;
-      font-size:11px; line-height:16px; border:1px solid rgba(255,255,255,0.16);
+      display:inline-flex; align-items:center; gap:6px;
+      padding:2px 10px; border-radius:999px;
+      font-size:11px; line-height:16px;
+      border:1px solid rgba(255,255,255,0.16);
       background: rgba(255,255,255,0.06);
       white-space:nowrap;
     }}
-    .badge-green  {{ background: rgba(46,204,113,0.18); }}
-    .badge-yellow {{ background: rgba(241,196,15,0.18); }}
-    .badge-red    {{ background: rgba(231,76,60,0.18); }}
+    .dot {{ width:8px; height:8px; border-radius:999px; display:inline-block; }}
+    .dot-gold {{ background: rgba(241,196,15,0.95); }}
+    .dot-buy  {{ background: rgba(46,204,113,0.95); }}
+    .dot-hold {{ background: rgba(200,200,200,0.9); }}
+    .dot-watch{{ background: rgba(231,76,60,0.95); }}
+
+    /* Only one extra "risk" highlight: payout > 90% */
+    .payout-bad {{ background: rgba(231,76,60,0.16) !important; }}
   </style>
 </head>
 
@@ -671,6 +674,10 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     const COLS = {cols_js};
     const FILTERS = {filters_js};
 
+    function escRegex(s) {{
+      return s.replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&');
+    }}
+
     $(document).ready(function() {{
       const dt = $('#screener').DataTable({{
         pageLength: 50,
@@ -680,84 +687,45 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
         autoWidth: false,
 
         createdRow: function(row, data, dataIndex) {{
-          function p(idx) {{
-            if (idx < 0) return null;
-            const t = (data[idx] ?? "").toString().replace('%','').replace(/,/g,'').trim();
-            const v = Number(t);
-            return isFinite(v) ? v : null;
-          }}
-          function s(idx) {{
-            if (idx < 0) return "";
-            return (data[idx] ?? "").toString().toLowerCase().trim();
-          }}
           const col = (name) => COLS.indexOf(name);
-
-          const total = p(col("TotalReturnEst_%"));
-          const dy    = p(col("DividendYield_%"));
-          const payout= p(col("PayoutRatio_%"));
-          const up    = p(col("Upside_%"));
-          const reco  = s(col("Reco"));
-          const act   = s(col("Action"));
-
-          // Row heat based on TotalReturnEst_%
-          if (total !== null) {{
-            if (total >= 15) $(row).addClass("heat-strong");
-            else if (total >= 10) $(row).addClass("heat-buy");
-            else if (total >= 5)  $(row).addClass("heat-hold");
-            else                  $(row).addClass("heat-watch");
-          }}
-
           const td = $('td', row);
 
-          // Dividend yield highlight
-          if (dy !== null) {{
-            const idx = col("DividendYield_%");
-            if (idx >= 0) {{
-              if (dy >= 4) $(td[idx]).addClass("cell-green");
-              else if (dy >= 2) $(td[idx]).addClass("cell-yellow");
+          // Payout highlight ONLY if > 90%
+          const payoutIdx = col("PayoutRatio_%");
+          if (payoutIdx >= 0) {{
+            const t = (data[payoutIdx] ?? "").toString().replace('%','').replace(/,/g,'').trim();
+            const v = Number(t);
+            if (isFinite(v) && v > 90) td.eq(payoutIdx).addClass("payout-bad");
+          }}
+
+          // Signal badge
+          const sigIdx = col("Signal");
+          if (sigIdx >= 0) {{
+            const raw = (data[sigIdx] ?? "").toString().trim();
+            const lower = raw.toLowerCase();
+            let dotClass = "dot-hold";
+            if (lower.startsWith("gold")) dotClass = "dot-gold";
+            else if (lower.startsWith("buy")) dotClass = "dot-buy";
+            else if (lower.startsWith("watch")) dotClass = "dot-watch";
+            else if (lower.startsWith("hold")) dotClass = "dot-hold";
+
+            if (raw) {{
+              td.eq(sigIdx).html(`<span class="badge"><span class="dot ${dotClass}"></span><span>${raw}</span></span>`);
             }}
           }}
 
-          // Payout ratio risk
-          if (payout !== null) {{
-            const idx = col("PayoutRatio_%");
-            if (idx >= 0) {{
-              if (payout > 90) $(td[idx]).addClass("cell-red");
-              else if (payout >= 60) $(td[idx]).addClass("cell-yellow");
-              else $(td[idx]).addClass("cell-green");
-            }}
-          }}
-
-          // Upside highlight
-          if (up !== null) {{
-            const idx = col("Upside_%");
-            if (idx >= 0) {{
-              if (up >= 20) $(td[idx]).addClass("cell-green");
-              else if (up >= 10) $(td[idx]).addClass("cell-yellow");
-              else if (up < 0) $(td[idx]).addClass("cell-red");
-            }}
-          }}
-
-          // Reco badge
+          // Reco badge (neutral styling)
           const recoIdx = col("Reco");
           if (recoIdx >= 0) {{
-            let cls = "badge";
-            if (reco.includes("strong") || reco === "buy") cls += " badge-green";
-            else if (reco.includes("hold")) cls += " badge-yellow";
-            else if (reco.includes("under") || reco.includes("sell")) cls += " badge-red";
             const txt = (data[recoIdx] ?? "").toString().trim();
-            if (txt) td.eq(recoIdx).html(`<span class="${{cls}}">${{txt}}</span>`);
+            if (txt) td.eq(recoIdx).html(`<span class="badge"><span>${txt}</span></span>`);
           }}
 
-          // Action badge
+          // Action badge (neutral styling)
           const actIdx = col("Action");
           if (actIdx >= 0) {{
-            let cls = "badge";
-            if (act.includes("strong_buy") || act === "buy") cls += " badge-green";
-            else if (act.includes("hold")) cls += " badge-yellow";
-            else if (act.includes("watch")) cls += " badge-red";
             const txt = (data[actIdx] ?? "").toString().trim();
-            if (txt) td.eq(actIdx).html(`<span class="${{cls}}">${{txt}}</span>`);
+            if (txt) td.eq(actIdx).html(`<span class="badge"><span>${txt}</span></span>`);
           }}
         }}
       }});
@@ -782,7 +750,7 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
         sel.addEventListener("change", () => {{
           const val = sel.value;
           if (!val) dt.column(idx).search("").draw();
-          else dt.column(idx).search("^" + val.replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&') + "$", true, false).draw();
+          else dt.column(idx).search("^" + escRegex(val) + "$", true, false).draw();
         }});
       }});
     }});
@@ -838,6 +806,7 @@ def main() -> int:
                 "InIndex": "", "Indexes": "",
                 "Portfolio": "Yes" if yahoo_ticker in portfolio_set else "No",
                 "PortfolioAction": "",
+                "Signal": "",
                 "Reco": "", "Action": "",
                 "Price": None, "DividendYield_%": None, "DividendRate": None, "PayoutRatio_%": None,
                 "PE": None, "TargetMeanPrice": None,
@@ -870,6 +839,13 @@ def main() -> int:
             upside_yield_pct = (div_yield_pct or 0.0) + (upside_pct or 0.0)
 
         total_return_pct = (total_return_est * 100.0) if total_return_est is not None else None
+        payout_pct = (payout * 100.0) if payout is not None else None
+
+        signal = _make_signal(
+            total_return_pct=total_return_pct,
+            upside_pct=upside_pct,
+            payout_ratio_pct=payout_pct,
+        )
 
         rows.append({
             "Ticker": yahoo_ticker,
@@ -883,12 +859,13 @@ def main() -> int:
             "Indexes": indexes,
             "Portfolio": "Yes" if in_portfolio else "No",
             "PortfolioAction": p_action,
+            "Signal": signal,
             "Reco": _safe_str(data.get("Reco")),
             "Action": action,
             "Price": _round2(price),
             "DividendYield_%": _round2(div_yield_pct),
             "DividendRate": _round2(_safe_float(data.get("DividendRate"))),
-            "PayoutRatio_%": _round2((payout * 100.0) if payout is not None else None),
+            "PayoutRatio_%": _round2(payout_pct),
             "PE": _round2(_safe_float(data.get("PE"))),
             "TargetMeanPrice": _round2(target),
             "Upside_%": _round2(upside_pct),
@@ -903,6 +880,7 @@ def main() -> int:
 
     df = pd.DataFrame(rows)
 
+    # Sort best first
     df["TotalReturnEst_%_sort"] = pd.to_numeric(df.get("TotalReturnEst_%"), errors="coerce")
     df["DividendYield_%_sort"] = pd.to_numeric(df.get("DividendYield_%"), errors="coerce")
     df = df.sort_values(

@@ -103,22 +103,55 @@ def _round2(x: Optional[float]) -> Optional[float]:
         return None
 
 
+def _infer_country_from_ticker(yahoo_ticker: str) -> str:
+    return "DK" if yahoo_ticker.upper().endswith(".CO") else "US"
+
+
+# -----------------------------
+# Dividend yield normalization (FIX)
+# -----------------------------
 def _normalize_dividend_yield(raw: Any) -> Optional[float]:
+    """
+    Return dividend yield as FRACTION (e.g. 0.031 = 3.1%).
+
+    Handles common Yahoo/yfinance scaling variants:
+    - 0.031  -> 0.031 (already fraction)
+    - 3.1    -> 0.031 (percent)
+    - 115    -> 1.15  (percent)   [later sanity check will typically null this]
+    - 11500  -> 1.15  (percent*100)
+
+    Key fix vs previous: values like 1.15 are far more likely to be 1.15% than 115%.
+    """
     v = _safe_float(raw)
     if v is None or v < 0:
         return None
-    # fraction already
-    if v <= 1.5:
+
+    # Typical real yields as fraction are < 0.30 (30%).
+    # If v is >0.30 it's almost always a percent value (or garbage).
+    if v <= 0.30:
         return v
-    # percent
+
+    # If 0.30 < v <= 100 -> treat as percent
     if v <= 100:
         return v / 100.0
-    # percent*100
+
+    # If v > 100 -> treat as percent*100 (or very large percent)
     return v / 10000.0
 
 
-def _infer_country_from_ticker(yahoo_ticker: str) -> str:
-    return "DK" if yahoo_ticker.upper().endswith(".CO") else "US"
+def _sanity_div_yield(y: Optional[float]) -> Optional[float]:
+    """
+    Final sanity gate. Anything above 30% yield is usually wrong for most equities.
+    We keep it, but you can choose to null it. Here we NULL above 40% to avoid noise.
+    """
+    if y is None:
+        return None
+    if y < 0:
+        return None
+    # allow up to 40% before we consider it garbage
+    if y > 0.40:
+        return None
+    return y
 
 
 # -----------------------------
@@ -147,7 +180,7 @@ def _clean_ticker_line(line: str) -> str:
     if not s:
         return ""
     if s.lower().startswith("http://") or s.lower().startswith("https://"):
-        return ""  # IMPORTANT: never treat URLs as tickers
+        return ""
     return s
 
 
@@ -200,7 +233,7 @@ def _fetch_tickers_from_url(url: str) -> List[str]:
         r.raise_for_status()
         out: List[str] = []
         for ln in r.text.splitlines():
-            t = _clean_ticker_line(ln)  # remote treated as ticker file (URLs ignored)
+            t = _clean_ticker_line(ln)
             if t:
                 out.append(t)
         return out
@@ -365,7 +398,9 @@ def _fetch_one(ticker: str, pause_s: float = 0.0) -> Tuple[Optional[Dict[str, An
         name = _safe_str(_first_non_null(info.get("shortName"), info.get("longName"), info.get("displayName")))
         market_cap = _safe_float(info.get("marketCap"))
 
-        div_yield = _normalize_dividend_yield(_first_non_null(info.get("dividendYield"), info.get("yield")))
+        raw_y = _first_non_null(info.get("dividendYield"), info.get("yield"))
+        div_yield = _sanity_div_yield(_normalize_dividend_yield(raw_y))
+
         div_rate = _safe_float(info.get("dividendRate"))
         payout_ratio = _safe_float(info.get("payoutRatio"))
         pe = _safe_float(_first_non_null(info.get("trailingPE"), info.get("forwardPE")))
@@ -384,6 +419,7 @@ def _fetch_one(ticker: str, pause_s: float = 0.0) -> Tuple[Optional[Dict[str, An
             "Sector": sector,
             "MarketCap": market_cap,
             "DividendYield": div_yield,  # fraction
+            "DividendYield_raw": raw_y,  # debug
             "DividendRate": div_rate,
             "PayoutRatio": payout_ratio,
             "PE": pe,
@@ -437,7 +473,7 @@ def _portfolio_action(is_in_portfolio: bool, action: str) -> str:
 
 
 # -----------------------------
-# HTML Generation (STATIC TABLE = DataTables can’t break)
+# HTML Generation (STATIC TABLE)
 # -----------------------------
 def _fmt_num2(v: Any) -> str:
     x = _safe_float(v)
@@ -482,7 +518,6 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
         if c not in df.columns:
             df[c] = ""
 
-    # Build static tbody rows with safe formatting
     pct_cols = {"DividendYield_%","PayoutRatio_%","Upside_%","Upside_Yield_%","TotalReturnEst_%"}
     num2_cols = {"Price","DividendRate","PE","TargetMeanPrice","52W_Low","52W_High"}
 
@@ -511,6 +546,10 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
         </div>
         """.strip() for c in filter_cols]
     )
+
+    # NOTE: COLS must be a JS array of strings
+    cols_js = "[" + ",".join([f'"{c}"' for c in columns]) + "]"
+    filters_js = "[" + ",".join([f'"{c}"' for c in filter_cols]) + "]"
 
     return f"""<!doctype html>
 <html lang="en">
@@ -578,8 +617,8 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
   <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
 
   <script>
-    const COLS = {columns};
-    const FILTERS = {filter_cols};
+    const COLS = {cols_js};
+    const FILTERS = {filters_js};
 
     $(document).ready(function() {{
       const dt = $('#screener').DataTable({{
@@ -590,7 +629,6 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
         autoWidth: false
       }});
 
-      // Dropdown filters
       FILTERS.forEach((name) => {{
         const idx = COLS.indexOf(name);
         const sel = document.getElementById("flt_" + name);
@@ -676,7 +714,7 @@ def main() -> int:
             continue
 
         price = _safe_float(data.get("Price"))
-        div_yield = _safe_float(data.get("DividendYield"))  # fraction
+        div_yield = _safe_float(data.get("DividendYield"))  # fraction (sanity-filtered)
         payout = _safe_float(data.get("PayoutRatio"))
         target = _safe_float(data.get("TargetMeanPrice"))
 

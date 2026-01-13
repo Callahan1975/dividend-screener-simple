@@ -431,7 +431,7 @@ def _fetch_one(ticker: str, pause_s: float = 0.0) -> Tuple[Optional[Dict[str, An
 # -----------------------------
 def _should_flag_payout(sector: str, payout_ratio_pct: Optional[float]) -> bool:
     """
-    Only show ⚠️ / red highlight for payout > 90% in sectors where EPS-based payout is a meaningful risk signal.
+    Only flag payout > 90% in sectors where EPS-based payout is a meaningful risk signal.
 
     We do NOT flag by default for:
       - Real Estate (REITs)
@@ -445,7 +445,6 @@ def _should_flag_payout(sector: str, payout_ratio_pct: Optional[float]) -> bool:
 
     s = (sector or "").strip().lower()
 
-    # exceptions
     if "real estate" in s:
         return False
     if "energy" in s:
@@ -457,7 +456,7 @@ def _should_flag_payout(sector: str, payout_ratio_pct: Optional[float]) -> bool:
 
 
 # -----------------------------
-# Scoring / actions
+# Scoring / actions / confidence
 # -----------------------------
 def _calc_upside(price: Optional[float], target: Optional[float]) -> Optional[float]:
     if price is None or target is None or price <= 0:
@@ -497,11 +496,7 @@ def _portfolio_action(is_in_portfolio: bool, action: str) -> str:
 
 def _make_signal(total_return_pct: Optional[float], upside_pct: Optional[float], sector: str, payout_ratio_pct: Optional[float]) -> str:
     """
-    Minimal "Signal" (single visual indicator):
-    - GOLD: TotalReturnEst >= 15% AND Upside >= 10%
-    - BUY : TotalReturnEst >= 10%
-    - HOLD: TotalReturnEst 5-10%
-    - WATCH: <5% OR Upside < 0
+    Minimal "Signal" (single visual indicator).
     Add ⚠️ only when payout warning rule triggers.
     """
     tr = total_return_pct
@@ -525,8 +520,81 @@ def _make_signal(total_return_pct: Optional[float], upside_pct: Optional[float],
     return f"{label}{' ⚠' if warn else ''}"
 
 
+def _normalize_reco(reco: str) -> str:
+    r = (reco or "").strip().lower()
+    # yfinance sometimes returns numeric; keep as-is if not a known string
+    return r
+
+
+def _make_confidence(
+    signal: str,
+    model_action: str,
+    upside_pct: Optional[float],
+    sector: str,
+    payout_ratio_pct: Optional[float],
+    reco: str,
+) -> str:
+    """
+    Confidence = one clear decision anchor (HIGH / MEDIUM / LOW)
+    Uses only already available signals (no extra data sources).
+
+    Rules (simple & predictable):
+      - If Upside < 0 => LOW
+      - Start with base from Signal:
+          GOLD => HIGH
+          BUY  => MEDIUM
+          HOLD => MEDIUM
+          WATCH=> LOW
+      - Upgrade/downgrade based on ModelAction:
+          STRONG_BUY upgrades one step (max HIGH)
+          WATCH downgrades to LOW
+      - If payout warning triggers (sector-aware) => downgrade one step
+      - If analyst reco is clearly negative (sell/underperform) => downgrade one step
+    """
+    s = (signal or "").strip().upper()
+    a = (model_action or "").strip().upper()
+    r = _normalize_reco(reco)
+
+    # Hard guard
+    if upside_pct is not None and upside_pct < 0:
+        return "LOW"
+
+    # Base
+    if s.startswith("GOLD"):
+        level = 3
+    elif s.startswith("BUY"):
+        level = 2
+    elif s.startswith("HOLD"):
+        level = 2
+    else:
+        level = 1
+
+    # Model action influence
+    if a == "STRONG_BUY":
+        level = min(3, level + 1)
+    elif a == "BUY":
+        level = max(level, 2)
+    elif a == "WATCH":
+        level = 1
+
+    # Payout warning influence (sector-aware)
+    if _should_flag_payout(sector, payout_ratio_pct):
+        level = max(1, level - 1)
+
+    # Analyst negative influence
+    if any(k in r for k in ["sell", "underperform", "underweight"]):
+        level = max(1, level - 1)
+
+    # Map back
+    if level >= 3:
+        return "HIGH"
+    if level == 2:
+        return "MEDIUM"
+    return "LOW"
+
+
 # -----------------------------
-# HTML Generation (STATIC TABLE + Minimal Signal)
+# HTML Generation
 # -----------------------------
 def _fmt_num2(v: Any) -> str:
     x = _safe_float(v)
@@ -561,7 +629,8 @@ def _html_escape(s: Any) -> str:
 def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     columns = [
         "Ticker","Alias","Name","Country","Currency","Exchange","Sector",
-        "InIndex","Indexes","Portfolio","PortfolioAction","Signal","Reco","Action",
+        "InIndex","Indexes","Portfolio","PortfolioAction",
+        "Signal","Confidence","Reco","Action",
         "Price","DividendYield_%","DividendRate","PayoutRatio_%","PE","TargetMeanPrice",
         "Upside_%","Upside_Yield_%","TotalReturnEst_%","MarketCap","52W_Low","52W_High",
         "Status","Error",
@@ -590,7 +659,8 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
             tds.append(f"<td>{_html_escape(cell)}</td>")
         body_rows.append("<tr>" + "".join(tds) + "</tr>")
 
-    filter_cols = ["Country","Currency","Sector","Exchange","InIndex","Signal","Reco","Action","PortfolioAction"]
+    # Add Confidence as filter
+    filter_cols = ["Country","Currency","Sector","Exchange","InIndex","Signal","Confidence","Reco","Action","PortfolioAction"]
     filter_html = "\n".join(
         [f"""
         <div class="filter">
@@ -625,8 +695,11 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     header h1 {{ margin:0; font-size:18px; }}
     header .meta {{ margin-top:6px; font-size:12px; color:var(--muted); }}
     .wrap {{ padding:14px 14px 28px; }}
+
     .filters {{
-      display:grid; grid-template-columns:repeat(9, minmax(120px,1fr)); gap:10px; padding:12px;
+      display:grid;
+      grid-template-columns:repeat(10, minmax(120px,1fr));
+      gap:10px; padding:12px;
       background:var(--panel); border:1px solid var(--border); border-radius:14px; margin-bottom:12px;
     }}
     .filter label {{ display:block; font-size:11px; color:var(--muted); margin-bottom:6px; }}
@@ -634,6 +707,7 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
       width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--border);
       background:rgba(255,255,255,0.04); color:var(--text); outline:none;
     }}
+
     .tableWrap {{ padding:12px; background:var(--panel); border:1px solid var(--border); border-radius:14px; }}
     table.dataTable {{ width:100% !important; color:var(--text); background:transparent; }}
     table.dataTable thead th {{ color:var(--muted); border-bottom:1px solid var(--border) !important; }}
@@ -654,10 +728,17 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
       white-space:nowrap;
     }}
     .dot {{ width:8px; height:8px; border-radius:999px; display:inline-block; }}
+
+    /* Signal dots */
     .dot-gold {{ background: rgba(241,196,15,0.95); }}
     .dot-buy  {{ background: rgba(46,204,113,0.95); }}
     .dot-hold {{ background: rgba(200,200,200,0.9); }}
     .dot-watch{{ background: rgba(231,76,60,0.95); }}
+
+    /* Confidence dots (only this + Signal are colored) */
+    .dot-high {{ background: rgba(46,204,113,0.95); }}
+    .dot-medium {{ background: rgba(241,196,15,0.95); }}
+    .dot-low {{ background: rgba(231,76,60,0.95); }}
 
     /* Only one extra "risk" highlight: payout warn (sector-aware) */
     .payout-bad {{ background: rgba(231,76,60,0.16) !important; }}
@@ -739,6 +820,21 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
 
             if (raw) {{
               td.eq(sigIdx).html(`<span class="badge"><span class="dot ${{dotClass}}"></span><span>${{raw}}</span></span>`);
+            }}
+          }}
+
+          // Confidence badge
+          const confIdx = col("Confidence");
+          if (confIdx >= 0) {{
+            const raw = (data[confIdx] ?? "").toString().trim();
+            const lower = raw.toLowerCase();
+            let dotClass = "dot-medium";
+            if (lower.startsWith("high")) dotClass = "dot-high";
+            else if (lower.startsWith("low")) dotClass = "dot-low";
+            else if (lower.startsWith("med")) dotClass = "dot-medium";
+
+            if (raw) {{
+              td.eq(confIdx).html(`<span class="badge"><span class="dot ${{dotClass}}"></span><span>${{raw}}</span></span>`);
             }}
           }}
 
@@ -835,6 +931,7 @@ def main() -> int:
                 "Portfolio": "Yes" if yahoo_ticker in portfolio_set else "No",
                 "PortfolioAction": "",
                 "Signal": "",
+                "Confidence": "",
                 "Reco": "", "Action": "",
                 "Price": None, "DividendYield_%": None, "DividendRate": None, "PayoutRatio_%": None,
                 "PE": None, "TargetMeanPrice": None,
@@ -878,6 +975,16 @@ def main() -> int:
             payout_ratio_pct=payout_pct,
         )
 
+        reco = _safe_str(data.get("Reco"))
+        confidence = _make_confidence(
+            signal=signal,
+            model_action=action,
+            upside_pct=upside_pct,
+            sector=sector,
+            payout_ratio_pct=payout_pct,
+            reco=reco,
+        )
+
         rows.append({
             "Ticker": yahoo_ticker,
             "Alias": alias,
@@ -891,7 +998,8 @@ def main() -> int:
             "Portfolio": "Yes" if in_portfolio else "No",
             "PortfolioAction": p_action,
             "Signal": signal,
-            "Reco": _safe_str(data.get("Reco")),
+            "Confidence": confidence,
+            "Reco": reco,
             "Action": action,
             "Price": _round2(price),
             "DividendYield_%": _round2(div_yield_pct),

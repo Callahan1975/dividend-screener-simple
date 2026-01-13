@@ -3,7 +3,7 @@ name: Dividend Screener
 on:
   workflow_dispatch:
   schedule:
-  - cron: "0 */4 * * *"
+    - cron: "0 */4 * * *"  # every 4 hours (UTC)
 
 permissions:
   contents: read
@@ -12,11 +12,12 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,6 +26,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -34,6 +36,16 @@ jobs:
       - name: Run screener
         run: python screener.py
 
+      - name: Debug docs output
+        run: |
+          echo "Repo root:"
+          ls -la
+          echo ""
+          echo "Docs folder:"
+          ls -la docs || true
+          echo ""
+          test -f docs/index.html && echo "OK: docs/index.html exists" || (echo "ERROR: Missing docs/index.html" && exit 1)
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -41,6 +53,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: build
     environment:
       name: github-pages

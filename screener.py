@@ -118,14 +118,6 @@ def _infer_country_from_ticker(yahoo_ticker: str) -> str:
 def _normalize_dividend_yield(raw: Any) -> Optional[float]:
     """
     Return dividend yield as FRACTION (e.g. 0.031 = 3.1%).
-
-    Handles common Yahoo/yfinance scaling variants:
-    - 0.031  -> 0.031 (already fraction)
-    - 3.1    -> 0.031 (percent)
-    - 115    -> 1.15  (percent)   [sanity check will typically null this]
-    - 11500  -> 1.15  (percent*100)
-
-    Key fix: values like 1.15 are far more likely to be 1.15% than 115%.
     """
     v = _safe_float(raw)
     if v is None or v < 0:
@@ -342,23 +334,22 @@ def _load_portfolio_holdings() -> set:
                 df = pd.read_csv(p)
                 cols = {c.lower().strip(): c for c in df.columns}
 
-                c_ticker = None
-                for k in ("yahoo_ticker", "ticker", "symbol", "Ticker", "Symbol"):
-                    if k.lower() in cols:
-                        c_ticker = cols[k.lower()]
-                        break
-                    if k in df.columns:
-                        c_ticker = k
-                        break
+                # common names
+                for key in ("yahoo_ticker", "ticker", "symbol", "Ticker", "Symbol"):
+                    if key.lower() in cols:
+                        c = cols[key.lower()]
+                        s = set(df[c].astype(str).str.strip())
+                        s = {x for x in s if x and x.lower() != "nan"}
+                        print(f"[{_now_utc_str()}] Portfolio file used: {p} (tickers={len(s)})")
+                        return s
+                    if key in df.columns:
+                        s = set(df[key].astype(str).str.strip())
+                        s = {x for x in s if x and x.lower() != "nan"}
+                        print(f"[{_now_utc_str()}] Portfolio file used: {p} (tickers={len(s)})")
+                        return s
 
-                if c_ticker is None:
-                    print(f"[{_now_utc_str()}] Portfolio file found but no ticker column recognized: {p}")
-                    return set()
-
-                s = set(df[c_ticker].astype(str).str.strip())
-                s = {x for x in s if x and x.lower() != "nan"}
-                print(f"[{_now_utc_str()}] Portfolio file used: {p} (tickers={len(s)})")
-                return s
+                print(f"[{_now_utc_str()}] Portfolio file found but no ticker column recognized: {p}")
+                return set()
             except Exception as e:
                 print(f"[{_now_utc_str()}] Portfolio load failed for {p}: {e}")
                 return set()
@@ -476,17 +467,8 @@ def _portfolio_action(is_in_portfolio: bool, action: str) -> str:
 
 
 def _make_signal(total_return_pct: Optional[float], upside_pct: Optional[float], payout_ratio_pct: Optional[float]) -> str:
-    """
-    Minimal "Signal" (single visual indicator):
-    - GOLD: TotalReturnEst >= 15% AND Upside >= 10%
-    - BUY : TotalReturnEst >= 10%
-    - HOLD: TotalReturnEst 5-10%
-    - WATCH: <5% OR Upside < 0
-    Add ⚠️ if payout ratio > 90%
-    """
     warn = (payout_ratio_pct is not None and payout_ratio_pct > 90)
 
-    # handle missing gracefully
     tr = total_return_pct
     up = upside_pct
 
@@ -541,7 +523,6 @@ def _html_escape(s: Any) -> str:
 
 
 def _html_page(df: pd.DataFrame, generated_at: str) -> str:
-    # Insert Signal near Reco/Action
     columns = [
         "Ticker","Alias","Name","Country","Currency","Exchange","Sector",
         "InIndex","Indexes","Portfolio","PortfolioAction","Signal","Reco","Action",
@@ -586,6 +567,7 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     cols_js = "[" + ",".join([f'"{c}"' for c in columns]) + "]"
     filters_js = "[" + ",".join([f'"{c}"' for c in filter_cols]) + "]"
 
+    # NOTE: critical fix here is using ${{dotClass}} (double braces) inside this Python f-string.
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -628,7 +610,6 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
       border-radius:10px !important; padding:6px 10px !important; outline:none;
     }}
 
-    /* Minimal badges (ONLY Signal/Reco/Action) */
     .badge {{
       display:inline-flex; align-items:center; gap:6px;
       padding:2px 10px; border-radius:999px;
@@ -643,7 +624,6 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     .dot-hold {{ background: rgba(200,200,200,0.9); }}
     .dot-watch{{ background: rgba(231,76,60,0.95); }}
 
-    /* Only one extra "risk" highlight: payout > 90% */
     .payout-bad {{ background: rgba(231,76,60,0.16) !important; }}
   </style>
 </head>
@@ -690,7 +670,7 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
           const col = (name) => COLS.indexOf(name);
           const td = $('td', row);
 
-          // Payout highlight ONLY if > 90%
+          // payout highlight ONLY if > 90%
           const payoutIdx = col("PayoutRatio_%");
           if (payoutIdx >= 0) {{
             const t = (data[payoutIdx] ?? "").toString().replace('%','').replace(/,/g,'').trim();
@@ -710,22 +690,22 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
             else if (lower.startsWith("hold")) dotClass = "dot-hold";
 
             if (raw) {{
-              td.eq(sigIdx).html(`<span class="badge"><span class="dot ${dotClass}"></span><span>${raw}</span></span>`);
+              td.eq(sigIdx).html(`<span class="badge"><span class="dot ${{dotClass}}"></span><span>${{raw}}</span></span>`);
             }}
           }}
 
-          // Reco badge (neutral styling)
+          // Reco badge
           const recoIdx = col("Reco");
           if (recoIdx >= 0) {{
             const txt = (data[recoIdx] ?? "").toString().trim();
-            if (txt) td.eq(recoIdx).html(`<span class="badge"><span>${txt}</span></span>`);
+            if (txt) td.eq(recoIdx).html(`<span class="badge"><span>${{txt}}</span></span>`);
           }}
 
-          // Action badge (neutral styling)
+          // Action badge
           const actIdx = col("Action");
           if (actIdx >= 0) {{
             const txt = (data[actIdx] ?? "").toString().trim();
-            if (txt) td.eq(actIdx).html(`<span class="badge"><span>${txt}</span></span>`);
+            if (txt) td.eq(actIdx).html(`<span class="badge"><span>${{txt}}</span></span>`);
           }}
         }}
       }});
@@ -880,7 +860,6 @@ def main() -> int:
 
     df = pd.DataFrame(rows)
 
-    # Sort best first
     df["TotalReturnEst_%_sort"] = pd.to_numeric(df.get("TotalReturnEst_%"), errors="coerce")
     df["DividendYield_%_sort"] = pd.to_numeric(df.get("DividendYield_%"), errors="coerce")
     df = df.sort_values(

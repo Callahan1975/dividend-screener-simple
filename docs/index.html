@@ -1,20 +1,19 @@
 <!doctype html>
-<html lang="en">
+<html lang="da">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Dividend Screener</title>
+  <title>Dividend Screener (DK + US)</title>
 
   <!-- DataTables -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
 
   <style>
-    :root { color-scheme: light; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #fff; }
-    header { padding: 14px 16px; border-bottom: 1px solid #eaeaea; position: sticky; top: 0; background: #fff; z-index: 10; }
-    h1 { margin: 0 0 10px 0; font-size: 18px; font-weight: 650; }
-    .sub { margin: 0; color: #666; font-size: 12px; }
+    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin: 0; background: #0b1220; color: #e7eefc; }
+    header { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,.08); position: sticky; top: 0; background: #0b1220; z-index: 10; }
+    h1 { margin: 0 0 6px 0; font-size: 18px; font-weight: 650; }
+    .sub { margin: 0; color: rgba(231,238,252,.7); font-size: 12px; }
 
     .filters {
       display: grid;
@@ -23,83 +22,65 @@
       align-items: end;
       margin-top: 10px;
     }
-    .fgrp label { display:block; font-size: 11px; color:#555; margin-bottom: 4px; }
+    .fgrp label { display:block; font-size: 11px; color: rgba(231,238,252,.7); margin-bottom: 4px; }
     .fgrp select, .fgrp input {
-      width:100%; padding: 8px 10px; border:1px solid #ddd; border-radius: 10px;
-      font-size: 13px; background:#fff;
+      width:100%; padding: 8px 10px; border:1px solid rgba(255,255,255,.12); border-radius: 10px;
+      font-size: 13px; background:#0f1a2e; color:#e7eefc;
     }
     .toggles { display:flex; gap: 10px; align-items:center; padding-top: 2px; }
     .btn {
-      cursor:pointer; padding: 8px 10px; border-radius: 10px; border:1px solid #ddd; background:#fff;
-      font-size: 13px;
+      cursor:pointer; padding: 8px 10px; border-radius: 10px; border:1px solid rgba(255,255,255,.12); background:#0f1a2e;
+      font-size: 13px; color:#e7eefc;
     }
-    .btn:hover { background:#f7f7f7; }
+    .btn:hover { background:#12213b; }
     .wrap { padding: 14px 16px; }
-    table.dataTable tbody td { vertical-align: middle; }
-    .badge {
-      display:inline-block; padding: 3px 8px; border-radius: 999px; border:1px solid #ddd;
-      font-size: 12px; line-height: 1.2; background:#fff;
-    }
-    .muted { color:#777; }
-    .right { text-align:right; }
-    .small { font-size: 12px; }
-    .pill {
-      display:inline-flex; align-items:center; gap:6px;
-      padding: 3px 8px; border-radius: 999px; border:1px solid #ddd; background:#fff; font-size: 12px;
-    }
-    .dot { width: 8px; height: 8px; border-radius: 999px; background: #bbb; display:inline-block; }
+
+    /* DataTables dark-ish */
+    table.dataTable { color: #e7eefc; }
+    table.dataTable thead th { border-bottom: 1px solid rgba(255,255,255,.12) !important; }
+    table.dataTable tbody td { border-top: 1px solid rgba(255,255,255,.06); vertical-align: middle; }
+    .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info { color: rgba(231,238,252,.7); }
+    .dataTables_wrapper .dataTables_paginate .paginate_button { color: rgba(231,238,252,.8) !important; }
+    div.dataTables_filter { display:none; } /* we use our own filters */
+
+    .badge { display:inline-block; padding: 3px 8px; border-radius: 999px; border:1px solid rgba(255,255,255,.15); font-size: 12px; background:#0f1a2e; }
+    .pill { display:inline-flex; align-items:center; gap:6px; padding: 3px 8px; border-radius: 999px; border:1px solid rgba(255,255,255,.15); background:#0f1a2e; font-size: 12px; }
+    .dot { width: 8px; height: 8px; border-radius: 999px; background: #8892a6; display:inline-block; }
     .dot.add { background:#2ecc71; }
     .dot.buy { background:#27ae60; }
     .dot.hold { background:#7f8c8d; }
     .dot.trim { background:#f39c12; }
     .dot.avoid { background:#e74c3c; }
 
-    /* make DataTables search smaller (we use our own filters) */
-    div.dataTables_filter { display:none; }
+    .right { text-align:right; }
+    .small { font-size: 12px; color: rgba(231,238,252,.75); }
   </style>
 </head>
 
 <body>
   <header>
-    <h1>Dividend Screener</h1>
-    <p class="sub" id="meta">Loading…</p>
+    <h1>Dividend Screener (DK + US)</h1>
+    <p class="sub" id="meta">Loader…</p>
 
     <div class="filters">
-      <div class="fgrp">
-        <label>Action (Portfolio)</label>
-        <select id="fltAction">
-          <option value="">All</option>
-        </select>
-      </div>
-
-      <div class="fgrp">
-        <label>Owned</label>
+      <div class="fgrp"><label>Country</label><select id="fltCountry"><option value="">All</option></select></div>
+      <div class="fgrp"><label>Currency</label><select id="fltCurrency"><option value="">All</option></select></div>
+      <div class="fgrp"><label>Sector</label><select id="fltSector"><option value="">All</option></select></div>
+      <div class="fgrp"><label>Exchange</label><select id="fltExchange"><option value="">All</option></select></div>
+      <div class="fgrp"><label>InIndex</label><select id="fltInIndex"><option value="">All</option></select></div>
+      <div class="fgrp"><label>Portfolio (Owned)</label>
         <select id="fltOwned">
           <option value="">All</option>
-          <option value="owned">Owned</option>
-          <option value="notowned">Not owned</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
         </select>
       </div>
 
-      <div class="fgrp">
-        <label>Country</label>
-        <select id="fltCountry">
-          <option value="">All</option>
-        </select>
-      </div>
-
-      <div class="fgrp">
-        <label>Sector</label>
-        <select id="fltSector">
-          <option value="">All</option>
-        </select>
-      </div>
-
-      <div class="fgrp">
-        <label>Min Score</label>
-        <input id="fltMinScore" type="number" step="0.1" placeholder="e.g. 1.5" />
-      </div>
-
+      <div class="fgrp"><label>Signal</label><select id="fltSignal"><option value="">All</option></select></div>
+      <div class="fgrp"><label>Confidence</label><select id="fltConfidence"><option value="">All</option></select></div>
+      <div class="fgrp"><label>Reco</label><select id="fltReco"><option value="">All</option></select></div>
+      <div class="fgrp"><label>Action</label><select id="fltAction"><option value="">All</option></select></div>
+      <div class="fgrp"><label>PortfolioAction</label><select id="fltPortfolioAction"><option value="">All</option></select></div>
       <div class="fgrp">
         <label>&nbsp;</label>
         <div class="toggles">
@@ -114,42 +95,29 @@
     <table id="tbl" class="display" style="width:100%"></table>
   </div>
 
-  <!-- jQuery + DataTables -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
 
   <script>
-    // Prefer a "simple" csv if present; fallback to full results.
-    const CSV_URLS = [
-      "../data/screener_results/simple_screener_results.csv",
-      "../data/screener_results/screener_results.csv"
+    // <-- Din CSV (justér hvis din sti er anderledes)
+    const CSV_URL = "../data/screener_results/screener_results.csv";
+
+    // Slim default kolonner (det vi viser som standard)
+    const DEFAULT_VISIBLE = [
+      "Ticker","Name","Country","Sector",
+      "Portfolio","PortfolioAction",
+      "Signal","Confidence","Reco","Action",
+      "Price","DividendYield_%","PayoutRatio_%","PE"
     ];
 
-    // Default (slim) columns shown if they exist:
-    const DEFAULT_COLS = [
-      "Ticker","Name","PortfolioAction","Action","Signal",
-      "Score","RecommendationScore",
-      "YieldPct","DividendYield","UpsidePct","Upside_Yield_%","Upside_DDM_%",
-      "Country","Sector","Industry",
-      "Weight","OwnedValue","OwnedShares"
-    ];
-
-    // Columns that are "advanced" (hidden until toggle), show if present:
-    const ADVANCED_HINTS = [
-      "Value","Quality","Momentum","Volatility","Risk","Stability","Profitability",
-      "Payout","PayoutRatio","PE","ForwardPE","ROE","ROA","Margin","Debt",
-      "Reco","ScreenerAction","SpecialDividend","DividendGrowth","DividendGrowth5Y"
-    ];
-
+    // Alt andet betragtes som "advanced" (skjult indtil toggle)
     function parseCSV(text) {
-      // simple CSV parser (handles quotes)
       const rows = [];
       let row = [], cell = "", inQuotes = false;
       for (let i=0; i<text.length; i++) {
-        const c = text[i];
-        const n = text[i+1];
-        if (c === '"' ) {
+        const c = text[i], n = text[i+1];
+        if (c === '"') {
           if (inQuotes && n === '"') { cell += '"'; i++; }
           else { inQuotes = !inQuotes; }
         } else if (c === ',' && !inQuotes) {
@@ -157,7 +125,6 @@
         } else if ((c === '\n' || c === '\r') && !inQuotes) {
           if (c === '\r' && n === '\n') i++;
           row.push(cell);
-          // ignore empty trailing row
           if (row.join("").trim().length) rows.push(row);
           row = []; cell = "";
         } else {
@@ -174,6 +141,13 @@
         .sort((a,b) => a.localeCompare(b));
     }
 
+    function setDropdown(sel, values) {
+      const el = document.getElementById(sel);
+      const current = el.value;
+      el.innerHTML = '<option value="">All</option>' + values.map(v => `<option value="${v}">${v}</option>`).join("");
+      if ([...el.options].some(o => o.value === current)) el.value = current;
+    }
+
     function fmtNum(x, digits=2) {
       const n = Number(x);
       if (!isFinite(n)) return "";
@@ -181,193 +155,110 @@
     }
 
     function actionDot(a) {
-      const v = String(a || "").toUpperCase();
-      if (v === "ADD") return '<span class="dot add"></span>';
-      if (v === "BUY") return '<span class="dot buy"></span>';
-      if (v === "HOLD") return '<span class="dot hold"></span>';
-      if (v === "TRIM") return '<span class="dot trim"></span>';
-      if (v === "AVOID") return '<span class="dot avoid"></span>';
-      return '<span class="dot"></span>';
-    }
-
-    async function fetchFirstOk(urls) {
-      for (const url of urls) {
-        try {
-          const r = await fetch(url, { cache: "no-store" });
-          if (r.ok) return { url, text: await r.text() };
-        } catch (e) {}
-      }
-      throw new Error("Could not load any CSV from: " + urls.join(", "));
-    }
-
-    function buildColumns(headers) {
-      // Build DataTables column defs with smart renderers for common fields.
-      const headerSet = new Set(headers);
-
-      // Decide which headers are default vs advanced vs hidden.
-      const defaultPresent = DEFAULT_COLS.filter(h => headerSet.has(h));
-      const advancedPresent = headers.filter(h =>
-        !defaultPresent.includes(h) &&
-        ADVANCED_HINTS.some(k => h.toLowerCase().includes(k.toLowerCase()))
-      );
-
-      // Hidden: everything else (still searchable in DataTables)
-      const hiddenPresent = headers.filter(h => !defaultPresent.includes(h) && !advancedPresent.includes(h));
-
-      // We will show default + (advanced if toggle), and keep others hidden always.
-      const columns = headers.map((h) => {
-        const isDefault = defaultPresent.includes(h);
-        const isAdvanced = advancedPresent.includes(h);
-        const visible = isDefault; // advanced toggled later
-
-        let render = null;
-
-        if (["YieldPct","DividendYield","UpsidePct","Upside_Yield_%","Upside_DDM_%","Weight"].includes(h)) {
-          render = (data) => {
-            const n = Number(data);
-            if (!isFinite(n)) return "";
-            // If ratio fields slipped in, show % nicely
-            if (h === "DividendYield" || h === "UpsidePct") return `<span class="right">${fmtNum(n*100,1)}%</span>`;
-            return `<span class="right">${fmtNum(n,1)}%</span>`;
-          };
-        }
-
-        if (["OwnedShares"].includes(h)) {
-          render = (data) => `<span class="right">${fmtNum(data,0)}</span>`;
-        }
-
-        if (["OwnedValue"].includes(h)) {
-          render = (data) => {
-            const n = Number(data);
-            if (!isFinite(n)) return "";
-            return `<span class="right">${fmtNum(n,0)}</span>`;
-          };
-        }
-
-        if (h === "Ticker") {
-          render = (data, type, row) => {
-            const t = String(data || "");
-            return `<span class="badge">${t}</span>`;
-          };
-        }
-
-        if (h === "PortfolioAction" || h === "Action") {
-          render = (data) => {
-            const a = String(data || "");
-            return `<span class="pill">${actionDot(a)}<span>${a}</span></span>`;
-          };
-        }
-
-        if (h === "Score" || h === "RecommendationScore") {
-          render = (data) => `<span class="right">${fmtNum(data,2)}</span>`;
-        }
-
-        return {
-          title: h,
-          data: h,
-          visible,
-          render
-        };
-      });
-
-      return { columns, defaultPresent, advancedPresent, hiddenPresent };
-    }
-
-    function addComputedOwned(rows) {
-      // Add "OwnedFlag" from Owned / OwnedShares if present, for filtering
-      return rows.map(r => {
-        const ownedCol = r["Owned"];
-        const shares = Number(r["OwnedShares"]);
-        const val = Number(r["OwnedValue"]);
-        let owned = false;
-        if (ownedCol !== undefined) {
-          const s = String(ownedCol).toLowerCase();
-          owned = (s === "true" || s === "1" || s === "yes" || s === "owned");
-        }
-        if (!owned && isFinite(shares) && shares > 0) owned = true;
-        if (!owned && isFinite(val) && val > 0) owned = true;
-        r["OwnedFlag"] = owned ? "owned" : "notowned";
-        return r;
-      });
-    }
-
-    function setDropdownOptions(sel, values) {
-      const el = document.getElementById(sel);
-      const current = el.value;
-      el.innerHTML = '<option value="">All</option>' + values.map(v => `<option value="${v}">${v}</option>`).join("");
-      if ([...el.options].some(o => o.value === current)) el.value = current;
+      const v = String(a||"").toUpperCase();
+      if (v.includes("ADD")) return 'add';
+      if (v.includes("BUY")) return 'buy';
+      if (v.includes("HOLD")) return 'hold';
+      if (v.includes("TRIM")) return 'trim';
+      if (v.includes("AVOID")) return 'avoid';
+      return '';
     }
 
     async function init() {
-      const { url, text } = await fetchFirstOk(CSV_URLS);
+      const r = await fetch(CSV_URL, { cache: "no-store" });
+      if (!r.ok) throw new Error("Kunne ikke loade CSV: " + CSV_URL);
+      const text = await r.text();
       const parsed = parseCSV(text);
 
       const headers = parsed[0].map(h => h.trim());
-      const dataRows = parsed.slice(1).map(row => {
+      const rows = parsed.slice(1).map(row => {
         const obj = {};
         headers.forEach((h, i) => obj[h] = (row[i] ?? "").trim());
         return obj;
       });
 
-      // meta
-      document.getElementById("meta").textContent =
-        `Source: ${url.replace("../","")} • Rows: ${dataRows.length}`;
+      document.getElementById("meta").textContent = `Rows: ${rows.length} • Source: ${CSV_URL.replace("../","")}`;
 
-      // add OwnedFlag helper
-      const rows = addComputedOwned(dataRows);
+      // Build columns
+      const columns = headers.map(h => {
+        const visible = DEFAULT_VISIBLE.includes(h);
 
-      // build columns
-      const { columns, advancedPresent } = buildColumns(headers);
+        let render = null;
 
-      // Build table
+        if (h === "Ticker") {
+          render = (data) => `<span class="badge">${String(data||"")}</span>`;
+        }
+
+        if (h === "PortfolioAction" || h === "Action") {
+          render = (data) => {
+            const a = String(data||"");
+            const cls = actionDot(a);
+            return `<span class="pill"><span class="dot ${cls}"></span><span>${a}</span></span>`;
+          };
+        }
+
+        if (["Price","PE","DividendRate"].includes(h)) {
+          render = (data) => `<span class="right">${fmtNum(data,2)}</span>`;
+        }
+
+        if (h === "DividendYield_%" || h === "PayoutRatio_%") {
+          render = (data) => `<span class="right">${fmtNum(data,2)}%</span>`;
+        }
+
+        return { title: h, data: h, visible, render };
+      });
+
       const table = $("#tbl").DataTable({
         data: rows,
         columns,
-        pageLength: 25,
+        pageLength: 50,
         order: [],
         fixedHeader: true
       });
 
-      // Populate dropdown filters from data (only if those columns exist)
-      const getColVals = (col) => headers.includes(col) ? uniqSorted(rows.map(r => r[col])) : [];
-      setDropdownOptions("fltAction", uniqSorted([
-        ...getColVals("PortfolioAction"),
-        ...getColVals("Action")
-      ]));
-      setDropdownOptions("fltCountry", getColVals("Country"));
-      setDropdownOptions("fltSector", getColVals("Sector"));
+      // Populate dropdowns if columns exist
+      const colVals = (col) => headers.includes(col) ? uniqSorted(rows.map(r => r[col])) : [];
+      setDropdown("fltCountry", colVals("Country"));
+      setDropdown("fltCurrency", colVals("Currency"));
+      setDropdown("fltSector", colVals("Sector"));
+      setDropdown("fltExchange", colVals("Exchange"));
+      setDropdown("fltInIndex", colVals("InIndex"));
+      setDropdown("fltSignal", colVals("Signal"));
+      setDropdown("fltConfidence", colVals("Confidence"));
+      setDropdown("fltReco", colVals("Reco"));
+      setDropdown("fltAction", colVals("Action"));
+      setDropdown("fltPortfolioAction", colVals("PortfolioAction"));
 
       function applyFilters() {
-        const action = document.getElementById("fltAction").value;
-        const owned = document.getElementById("fltOwned").value;
-        const country = document.getElementById("fltCountry").value;
-        const sector = document.getElementById("fltSector").value;
-        const minScore = document.getElementById("fltMinScore").value;
+        const f = {
+          Country: document.getElementById("fltCountry").value,
+          Currency: document.getElementById("fltCurrency").value,
+          Sector: document.getElementById("fltSector").value,
+          Exchange: document.getElementById("fltExchange").value,
+          InIndex: document.getElementById("fltInIndex").value,
+          Signal: document.getElementById("fltSignal").value,
+          Confidence: document.getElementById("fltConfidence").value,
+          Reco: document.getElementById("fltReco").value,
+          Action: document.getElementById("fltAction").value,
+          PortfolioAction: document.getElementById("fltPortfolioAction").value,
+          Owned: document.getElementById("fltOwned").value
+        };
 
-        // Clear global search
-        table.search("");
-
-        // Custom filter using DataTables ext search
+        // Clear any previous custom filters
         $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(fn => fn.__ours !== true);
 
         const fn = function(settings, data, dataIndex) {
           const row = table.row(dataIndex).data() || {};
 
-          const rowAction = (row["PortfolioAction"] || row["Action"] || "").toString();
-          const rowOwned = (row["OwnedFlag"] || "").toString();
-          const rowCountry = (row["Country"] || "").toString();
-          const rowSector = (row["Sector"] || "").toString();
+          for (const k of ["Country","Currency","Sector","Exchange","InIndex","Signal","Confidence","Reco","Action","PortfolioAction"]) {
+            if (f[k] && String(row[k] || "") !== f[k]) return false;
+          }
 
-          const scoreRaw = row["Score"] || row["RecommendationScore"] || "";
-          const score = Number(scoreRaw);
-
-          if (action && rowAction !== action) return false;
-          if (owned && rowOwned !== owned) return false;
-          if (country && rowCountry !== country) return false;
-          if (sector && rowSector !== sector) return false;
-
-          if (minScore !== "" && isFinite(Number(minScore))) {
-            if (!isFinite(score) || score < Number(minScore)) return false;
+          // Owned filter uses Portfolio column with Yes/No (as in your screenshot)
+          if (f.Owned) {
+            const p = String(row["Portfolio"] || "").toLowerCase();
+            if (f.Owned === "yes" && p !== "yes") return false;
+            if (f.Owned === "no" && p !== "no") return false;
           }
 
           return true;
@@ -378,28 +269,21 @@
         table.draw();
       }
 
-      // wire up filter events
-      ["fltAction","fltOwned","fltCountry","fltSector","fltMinScore"].forEach(id => {
-        document.getElementById(id).addEventListener("change", applyFilters);
-        document.getElementById(id).addEventListener("input", applyFilters);
-      });
+      ["fltCountry","fltCurrency","fltSector","fltExchange","fltInIndex","fltSignal","fltConfidence","fltReco","fltAction","fltPortfolioAction","fltOwned"]
+        .forEach(id => document.getElementById(id).addEventListener("change", applyFilters));
 
-      // reset button
       document.getElementById("btnReset").addEventListener("click", () => {
-        document.getElementById("fltAction").value = "";
-        document.getElementById("fltOwned").value = "";
-        document.getElementById("fltCountry").value = "";
-        document.getElementById("fltSector").value = "";
-        document.getElementById("fltMinScore").value = "";
+        ["fltCountry","fltCurrency","fltSector","fltExchange","fltInIndex","fltSignal","fltConfidence","fltReco","fltAction","fltPortfolioAction","fltOwned"]
+          .forEach(id => document.getElementById(id).value = "");
         applyFilters();
       });
 
-      // Advanced toggle -> show/hide advanced columns if present
+      // Advanced toggle: show/hide all non-default columns
       document.getElementById("tglAdvanced").addEventListener("change", (e) => {
         const on = e.target.checked;
-        columns.forEach((c, idx) => {
-          const isAdvanced = advancedPresent.includes(c.title);
-          if (isAdvanced) table.column(idx).visible(on, false);
+        headers.forEach((h, idx) => {
+          const shouldShow = DEFAULT_VISIBLE.includes(h) ? true : on;
+          table.column(idx).visible(shouldShow, false);
         });
         table.columns.adjust().draw(false);
       });

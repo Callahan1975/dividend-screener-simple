@@ -1,246 +1,415 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-  <meta http-equiv="Pragma" content="no-cache"/>
-  <meta http-equiv="Expires" content="0"/>
-  <title>Dividend Screener (DK + US)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dividend Screener</title>
 
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css"/>
-  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css"/>
+  <!-- DataTables -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
 
   <style>
-    :root {
-      --bg:#0b0f19; --panel:#121a2a; --text:#e8eefc; --muted:#a9b6d3; --border:rgba(255,255,255,0.12);
-    }
-    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); }
-    header { padding:20px 18px 12px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0)); }
-    header h1 { margin:0; font-size:18px; }
-    header .meta { margin-top:6px; font-size:12px; color:var(--muted); }
-    .wrap { padding:14px 14px 28px; }
+    :root { color-scheme: light; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #fff; }
+    header { padding: 14px 16px; border-bottom: 1px solid #eaeaea; position: sticky; top: 0; background: #fff; z-index: 10; }
+    h1 { margin: 0 0 10px 0; font-size: 18px; font-weight: 650; }
+    .sub { margin: 0; color: #666; font-size: 12px; }
 
     .filters {
-      display:grid;
-      grid-template-columns:repeat(10, minmax(120px,1fr));
-      gap:10px; padding:12px;
-      background:var(--panel); border:1px solid var(--border); border-radius:14px; margin-bottom:12px;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(140px, 1fr));
+      gap: 10px;
+      align-items: end;
+      margin-top: 10px;
     }
-    .filter label { display:block; font-size:11px; color:var(--muted); margin-bottom:6px; }
-    .filter select {
-      width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--border);
-      background:rgba(255,255,255,0.04); color:var(--text); outline:none;
+    .fgrp label { display:block; font-size: 11px; color:#555; margin-bottom: 4px; }
+    .fgrp select, .fgrp input {
+      width:100%; padding: 8px 10px; border:1px solid #ddd; border-radius: 10px;
+      font-size: 13px; background:#fff;
     }
-
-    .tableWrap { padding:12px; background:var(--panel); border:1px solid var(--border); border-radius:14px; }
-    table.dataTable { width:100% !important; color:var(--text); background:transparent; }
-    table.dataTable thead th { color:var(--muted); border-bottom:1px solid var(--border) !important; }
-    table.dataTable tbody td { border-top:1px solid rgba(255,255,255,0.06) !important; }
-
-    .dataTables_wrapper .dataTables_filter input,
-    .dataTables_wrapper .dataTables_length select {
-      background:rgba(255,255,255,0.04) !important; color:var(--text) !important; border:1px solid var(--border) !important;
-      border-radius:10px !important; padding:6px 10px !important; outline:none;
+    .toggles { display:flex; gap: 10px; align-items:center; padding-top: 2px; }
+    .btn {
+      cursor:pointer; padding: 8px 10px; border-radius: 10px; border:1px solid #ddd; background:#fff;
+      font-size: 13px;
     }
-
+    .btn:hover { background:#f7f7f7; }
+    .wrap { padding: 14px 16px; }
+    table.dataTable tbody td { vertical-align: middle; }
     .badge {
-      display:inline-flex; align-items:center; gap:6px;
-      padding:2px 10px; border-radius:999px;
-      font-size:11px; line-height:16px;
-      border:1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.06);
-      white-space:nowrap;
+      display:inline-block; padding: 3px 8px; border-radius: 999px; border:1px solid #ddd;
+      font-size: 12px; line-height: 1.2; background:#fff;
     }
-    .dot { width:8px; height:8px; border-radius:999px; display:inline-block; }
+    .muted { color:#777; }
+    .right { text-align:right; }
+    .small { font-size: 12px; }
+    .pill {
+      display:inline-flex; align-items:center; gap:6px;
+      padding: 3px 8px; border-radius: 999px; border:1px solid #ddd; background:#fff; font-size: 12px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 999px; background: #bbb; display:inline-block; }
+    .dot.add { background:#2ecc71; }
+    .dot.buy { background:#27ae60; }
+    .dot.hold { background:#7f8c8d; }
+    .dot.trim { background:#f39c12; }
+    .dot.avoid { background:#e74c3c; }
 
-    /* Signal dots */
-    .dot-gold { background: rgba(241,196,15,0.95); }
-    .dot-buy  { background: rgba(46,204,113,0.95); }
-    .dot-hold { background: rgba(200,200,200,0.9); }
-    .dot-watch{ background: rgba(231,76,60,0.95); }
-
-    /* Confidence dots (only this + Signal are colored) */
-    .dot-high { background: rgba(46,204,113,0.95); }
-    .dot-medium { background: rgba(241,196,15,0.95); }
-    .dot-low { background: rgba(231,76,60,0.95); }
-
-    /* Only one extra "risk" highlight: payout warn (sector-aware) */
-    .payout-bad { background: rgba(231,76,60,0.16) !important; }
+    /* make DataTables search smaller (we use our own filters) */
+    div.dataTables_filter { display:none; }
   </style>
 </head>
 
 <body>
   <header>
-    <h1>Dividend Screener (DK + US)</h1>
-    <div class="meta">Generated: 2026-01-13 18:34:39 UTC · Rows: 198</div>
+    <h1>Dividend Screener</h1>
+    <p class="sub" id="meta">Loading…</p>
+
+    <div class="filters">
+      <div class="fgrp">
+        <label>Action (Portfolio)</label>
+        <select id="fltAction">
+          <option value="">All</option>
+        </select>
+      </div>
+
+      <div class="fgrp">
+        <label>Owned</label>
+        <select id="fltOwned">
+          <option value="">All</option>
+          <option value="owned">Owned</option>
+          <option value="notowned">Not owned</option>
+        </select>
+      </div>
+
+      <div class="fgrp">
+        <label>Country</label>
+        <select id="fltCountry">
+          <option value="">All</option>
+        </select>
+      </div>
+
+      <div class="fgrp">
+        <label>Sector</label>
+        <select id="fltSector">
+          <option value="">All</option>
+        </select>
+      </div>
+
+      <div class="fgrp">
+        <label>Min Score</label>
+        <input id="fltMinScore" type="number" step="0.1" placeholder="e.g. 1.5" />
+      </div>
+
+      <div class="fgrp">
+        <label>&nbsp;</label>
+        <div class="toggles">
+          <button class="btn" id="btnReset">Reset</button>
+          <label class="small"><input type="checkbox" id="tglAdvanced"> Show advanced</label>
+        </div>
+      </div>
+    </div>
   </header>
 
   <div class="wrap">
-    <div class="filters"><div class="filter">
-          <label for="flt_Country">Country</label>
-          <select id="flt_Country"><option value="">All</option></select>
-        </div>
-<div class="filter">
-          <label for="flt_Currency">Currency</label>
-          <select id="flt_Currency"><option value="">All</option></select>
-        </div>
-<div class="filter">
-          <label for="flt_Sector">Sector</label>
-          <select id="flt_Sector"><option value="">All</option></select>
-        </div>
-<div class="filter">
-          <label for="flt_Exchange">Exchange</label>
-          <select id="flt_Exchange"><option value="">All</option></select>
-        </div>
-<div class="filter">
-          <label for="flt_InIndex">InIndex</label>
-          <select id="flt_InIndex"><option value="">All</option></select>
-        </div>
-<div class="filter">
-          <label for="flt_Signal">Signal</label>
-          <select id="flt_Signal"><option value="">All</option></select>
-        </div>
-<div class="filter">
-          <label for="flt_Confidence">Confidence</label>
-          <select id="flt_Confidence"><option value="">All</option></select>
-        </div>
-<div class="filter">
-          <label for="flt_Reco">Reco</label>
-          <select id="flt_Reco"><option value="">All</option></select>
-        </div>
-<div class="filter">
-          <label for="flt_Action">Action</label>
-          <select id="flt_Action"><option value="">All</option></select>
-        </div>
-<div class="filter">
-          <label for="flt_PortfolioAction">PortfolioAction</label>
-          <select id="flt_PortfolioAction"><option value="">All</option></select>
-        </div></div>
-    <div class="tableWrap">
-      <table id="screener" class="display" style="width:100%">
-        <thead><tr><th>Ticker</th><th>Alias</th><th>Name</th><th>Country</th><th>Currency</th><th>Exchange</th><th>Sector</th><th>InIndex</th><th>Indexes</th><th>Portfolio</th><th>PortfolioAction</th><th>Signal</th><th>Confidence</th><th>Reco</th><th>Action</th><th>Price</th><th>DividendYield_%</th><th>DividendRate</th><th>PayoutRatio_%</th><th>PE</th><th>TargetMeanPrice</th><th>Upside_%</th><th>Upside_Yield_%</th><th>TotalReturnEst_%</th><th>MarketCap</th><th>52W_Low</th><th>52W_High</th><th>Status</th><th>Error</th></tr></thead>
-        <tbody>
-          <tr><td>AVGO</td><td></td><td></td><td>US</td><td></td><td></td><td></td><td></td><td></td><td>No</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>ERROR</td><td>&#x27;Response&#x27; object is not subscriptable</td></tr><tr><td>GEN.CO</td><td></td><td></td><td>DK</td><td></td><td></td><td></td><td></td><td></td><td>No</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>ERROR</td><td>&#x27;currency&#x27;</td></tr><tr><td>SIM.CO</td><td></td><td></td><td>DK</td><td></td><td></td><td></td><td></td><td></td><td>No</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>ERROR</td><td>&#x27;currency&#x27;</td></tr><tr><td>LUN.CO</td><td></td><td></td><td>DK</td><td></td><td></td><td></td><td></td><td></td><td>No</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>ERROR</td><td>&#x27;currency&#x27;</td></tr><tr><td>SPNO.CO</td><td></td><td></td><td>DK</td><td></td><td></td><td></td><td></td><td></td><td>No</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>ERROR</td><td>&#x27;currency&#x27;</td></tr><tr><td>TOP.CO</td><td></td><td></td><td>DK</td><td></td><td></td><td></td><td></td><td></td><td>No</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>ERROR</td><td>&#x27;currency&#x27;</td></tr><tr><td>JUTL.CO</td><td></td><td></td><td>DK</td><td></td><td></td><td></td><td></td><td></td><td>No</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>ERROR</td><td>&#x27;currency&#x27;</td></tr><tr><td>RTR.CO</td><td></td><td></td><td>DK</td><td></td><td></td><td></td><td></td><td></td><td>No</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>ERROR</td><td>&#x27;currency&#x27;</td></tr><tr><td>SAS-DKK.CO</td><td></td><td></td><td>DK</td><td></td><td></td><td></td><td></td><td></td><td>No</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>ERROR</td><td>&#x27;currency&#x27;</td></tr><tr><td>ALKA-B.CO</td><td></td><td></td><td>DK</td><td></td><td></td><td></td><td></td><td></td><td>No</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>ERROR</td><td>&#x27;currency&#x27;</td></tr><tr><td>FAGR.ST</td><td></td><td></td><td>US</td><td></td><td></td><td></td><td></td><td></td><td>No</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>ERROR</td><td>&#x27;currency&#x27;</td></tr><tr><td>PNDORA.CO</td><td></td><td>Pandora A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Consumer Cyclical</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>572.00</td><td>3.50%</td><td>20.00</td><td>30.12%</td><td>8.61</td><td>848.62</td><td>48.36%</td><td>51.86%</td><td>51.86%</td><td>42.68B</td><td>566.40</td><td>1,415.00</td><td>OK</td><td></td></tr><tr><td>ORCL</td><td></td><td>Oracle Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Technology</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>201.60</td><td>0.98%</td><td>2.00</td><td>35.71%</td><td>37.89</td><td>291.61</td><td>44.65%</td><td>45.63%</td><td>45.63%</td><td>579.22B</td><td>118.86</td><td>345.72</td><td>OK</td><td></td></tr><tr><td>TMUS</td><td></td><td>T-Mobile US, Inc.</td><td>US</td><td>USD</td><td>NMS</td><td>Communication Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>190.33</td><td>2.07%</td><td>4.08</td><td>33.91%</td><td>18.32</td><td>270.62</td><td>42.18%</td><td>44.25%</td><td>44.25%</td><td>214.20B</td><td>189.95</td><td>276.49</td><td>OK</td><td></td></tr><tr><td>TMO</td><td></td><td>Thermo Fisher Scientific Inc</td><td>US</td><td>USD</td><td>NYQ</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>598.42</td><td>28.00%</td><td>1.72</td><td>9.71%</td><td>34.61</td><td>651.52</td><td>8.87%</td><td>36.87%</td><td>36.87%</td><td>224.83B</td><td>385.46</td><td>628.08</td><td>OK</td><td></td></tr><tr><td>CCI</td><td></td><td>Crown Castle Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>84.96</td><td>5.00%</td><td>4.25</td><td>221.99%</td><td>24.91</td><td>111.11</td><td>30.78%</td><td>35.78%</td><td>35.78%</td><td>37.00B</td><td>83.21</td><td>115.76</td><td>OK</td><td></td></tr><tr><td>KMB</td><td></td><td>Kimberly-Clark Corporation</td><td>US</td><td>USD</td><td>NMS</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>hold</td><td>STRONG_BUY</td><td>98.17</td><td>5.13%</td><td>5.04</td><td>84.60%</td><td>16.61</td><td>126.60</td><td>28.96%</td><td>34.09%</td><td>34.09%</td><td>32.58B</td><td>96.26</td><td>150.45</td><td>OK</td><td></td></tr><tr><td>INVH</td><td></td><td>Invitation Homes Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>26.30</td><td>4.50%</td><td>1.20</td><td>122.11%</td><td>27.69</td><td>34.07</td><td>29.51%</td><td>34.01%</td><td>34.01%</td><td>16.13B</td><td>25.29</td><td>35.80</td><td>OK</td><td></td></tr><tr><td>MSFT</td><td></td><td>Microsoft Corporation</td><td>US</td><td>USD</td><td>NMS</td><td>Technology</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>strong_buy</td><td>STRONG_BUY</td><td>468.84</td><td>0.76%</td><td>3.64</td><td>23.61%</td><td>33.30</td><td>622.04</td><td>32.68%</td><td>33.44%</td><td>33.44%</td><td>3.48T</td><td>344.79</td><td>555.45</td><td>OK</td><td></td></tr><tr><td>AMT</td><td></td><td>American Tower Corporation (REI</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>171.25</td><td>3.96%</td><td>6.80</td><td>107.18%</td><td>27.27</td><td>220.40</td><td>28.70%</td><td>32.66%</td><td>32.66%</td><td>80.19B</td><td>166.88</td><td>234.33</td><td>OK</td><td></td></tr><tr><td>T</td><td></td><td>AT&amp;T Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Communication Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>23.30</td><td>4.68%</td><td>1.11</td><td>36.16%</td><td>7.59</td><td>29.63</td><td>27.16%</td><td>31.84%</td><td>31.84%</td><td>166.64B</td><td>21.38</td><td>29.79</td><td>OK</td><td></td></tr><tr><td>SINCH.ST</td><td></td><td>Sinch AB</td><td>US</td><td>SEK</td><td>STO</td><td>Communication Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>hold</td><td>STRONG_BUY</td><td>28.28</td><td></td><td></td><td>0.00%</td><td>37.71</td><td>36.64</td><td>29.57%</td><td>29.57%</td><td>29.57%</td><td>22.69B</td><td>15.70</td><td>36.99</td><td>OK</td><td></td></tr><tr><td>VZ</td><td></td><td>Verizon Communications Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Communication Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>39.05</td><td>6.93%</td><td>2.76</td><td>58.05%</td><td>8.33</td><td>47.60</td><td>21.88%</td><td>28.81%</td><td>28.81%</td><td>164.65B</td><td>10.60</td><td>47.36</td><td>OK</td><td></td></tr><tr><td>KDP</td><td></td><td>Keurig Dr Pepper Inc.</td><td>US</td><td>USD</td><td>NMS</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>27.70</td><td>3.32%</td><td>0.92</td><td>79.31%</td><td>23.88</td><td>34.43</td><td>24.27%</td><td>27.59%</td><td>27.59%</td><td>37.64B</td><td>25.03</td><td>36.12</td><td>OK</td><td></td></tr><tr><td>PGR</td><td></td><td>Progressive Corporation (The)</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>hold</td><td>STRONG_BUY</td><td>208.75</td><td>6.42%</td><td>13.90</td><td>26.89%</td><td>11.45</td><td>251.63</td><td>20.54%</td><td>26.96%</td><td>26.96%</td><td>122.37B</td><td>199.90</td><td>292.99</td><td>OK</td><td></td></tr><tr><td>ENB</td><td></td><td>Enbridge Inc</td><td>US</td><td>USD</td><td>NYQ</td><td>Energy</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>46.03</td><td>6.04%</td><td>2.77</td><td>146.76%</td><td>25.16</td><td>55.57</td><td>20.71%</td><td>26.75%</td><td>26.75%</td><td>100.49B</td><td>39.73</td><td>50.54</td><td>OK</td><td></td></tr><tr><td>AMBU-B.CO</td><td></td><td>Ambu A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>91.00</td><td>0.46%</td><td>0.41</td><td>16.67%</td><td>39.91</td><td>114.79</td><td>26.14%</td><td>26.60%</td><td>26.60%</td><td>24.22B</td><td>80.10</td><td>143.90</td><td>OK</td><td></td></tr><tr><td>DLR</td><td></td><td>Digital Realty Trust, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>159.02</td><td>3.09%</td><td>4.88</td><td>126.42%</td><td>41.09</td><td>195.43</td><td>22.90%</td><td>25.99%</td><td>25.99%</td><td>55.61B</td><td>129.95</td><td>187.74</td><td>OK</td><td></td></tr><tr><td>OKE</td><td></td><td>ONEOK, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Energy</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>73.94</td><td>5.68%</td><td>4.12</td><td>75.00%</td><td>13.59</td><td>88.63</td><td>19.87%</td><td>25.55%</td><td>25.55%</td><td>46.56B</td><td>64.02</td><td>111.02</td><td>OK</td><td></td></tr><tr><td>GIS</td><td></td><td>General Mills, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>hold</td><td>STRONG_BUY</td><td>44.01</td><td>5.61%</td><td>2.44</td><td>52.04%</td><td>9.46</td><td>52.42</td><td>19.13%</td><td>24.74%</td><td>24.74%</td><td>23.48B</td><td>42.79</td><td>67.35</td><td>OK</td><td></td></tr><tr><td>OBDC</td><td></td><td>Blue Owl Capital Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>none</td><td>STRONG_BUY</td><td>12.53</td><td>8.93%</td><td>1.13</td><td>114.18%</td><td>8.88</td><td>14.50</td><td>15.77%</td><td>24.70%</td><td>24.70%</td><td>6.40B</td><td>11.64</td><td>15.73</td><td>OK</td><td></td></tr><tr><td>KINV-B.ST</td><td></td><td>Kinnevik AB ser. B</td><td>US</td><td>SEK</td><td>STO</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>none</td><td>STRONG_BUY</td><td>81.48</td><td></td><td></td><td>0.00%</td><td>181.07</td><td>101.33</td><td>24.37%</td><td>24.37%</td><td>24.37%</td><td>23.05B</td><td>61.56</td><td>94.14</td><td>OK</td><td></td></tr><tr><td>EQIX</td><td></td><td>Equinix, Inc.</td><td>US</td><td>USD</td><td>NMS</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>794.36</td><td>2.39%</td><td>18.76</td><td>168.47%</td><td>72.88</td><td>958.19</td><td>20.62%</td><td>23.01%</td><td>23.01%</td><td>78.00B</td><td>701.41</td><td>953.41</td><td>OK</td><td></td></tr><tr><td>MA</td><td></td><td>Mastercard Incorporated</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>545.78</td><td>0.61%</td><td>3.48</td><td>18.80%</td><td>34.92</td><td>665.67</td><td>21.97%</td><td>22.58%</td><td>22.58%</td><td>493.39B</td><td>465.59</td><td>601.77</td><td>OK</td><td></td></tr><tr><td>BXP</td><td></td><td>BXP, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>66.48</td><td>4.18%</td><td>2.80</td><td>19,600.00%</td><td>32.48</td><td>78.70</td><td>18.38%</td><td>22.56%</td><td>22.56%</td><td>11.76B</td><td>54.22</td><td>79.33</td><td>OK</td><td></td></tr><tr><td>COLO-B.CO</td><td></td><td>Coloplast B A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD ⚠</td><td>MEDIUM</td><td>buy</td><td>STRONG_BUY</td><td>576.40</td><td>4.01%</td><td>23.00</td><td>136.39%</td><td>35.76</td><td>683.22</td><td>18.53%</td><td>22.54%</td><td>22.54%</td><td>129.90B</td><td>535.00</td><td>850.60</td><td>OK</td><td></td></tr><tr><td>BLK</td><td></td><td>BlackRock, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>1,083.27</td><td>1.91%</td><td>20.84</td><td>53.36%</td><td>27.85</td><td>1,306.67</td><td>20.62%</td><td>22.53%</td><td>22.53%</td><td>168.07B</td><td>773.74</td><td>1,219.94</td><td>OK</td><td></td></tr><tr><td>ROCK-B.CO</td><td></td><td>Rockwool A/S ser. B</td><td>DK</td><td>DKK</td><td>CPH</td><td>Industrials</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>205.00</td><td>2.84%</td><td>6.30</td><td>35.63%</td><td>11.58</td><td>245.25</td><td>19.63%</td><td>22.47%</td><td>22.47%</td><td>42.44B</td><td>196.70</td><td>328.60</td><td>OK</td><td></td></tr><tr><td>HTGC</td><td></td><td>Hercules Capital, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>18.61</td><td>10.07%</td><td>1.88</td><td>108.62%</td><td>10.70</td><td>20.92</td><td>12.36%</td><td>22.43%</td><td>22.43%</td><td>3.38B</td><td>15.65</td><td>22.04</td><td>OK</td><td></td></tr><tr><td>EQR</td><td></td><td>Equity Residential</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>59.87</td><td>4.60%</td><td>2.77</td><td>90.63%</td><td>19.69</td><td>70.38</td><td>17.55%</td><td>22.15%</td><td>22.15%</td><td>23.56B</td><td>58.38</td><td>75.86</td><td>OK</td><td></td></tr><tr><td>CARL-B.CO</td><td></td><td>Carlsberg B A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>836.80</td><td>3.22%</td><td>27.00</td><td>53.57%</td><td>16.60</td><td>994.86</td><td>18.89%</td><td>22.11%</td><td>22.11%</td><td>111.80B</td><td>679.00</td><td>958.80</td><td>OK</td><td></td></tr><tr><td>NIBE-B.ST</td><td></td><td>NIBE Industrier AB ser. B</td><td>US</td><td>SEK</td><td>STO</td><td>Industrials</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>none</td><td>STRONG_BUY</td><td>36.87</td><td>0.81%</td><td>0.30</td><td>21.13%</td><td>25.96</td><td>44.63</td><td>21.05%</td><td>21.86%</td><td>21.86%</td><td>74.33B</td><td>30.05</td><td>51.38</td><td>OK</td><td></td></tr><tr><td>SYK</td><td></td><td>Stryker Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>353.60</td><td>0.97%</td><td>3.52</td><td>44.15%</td><td>46.40</td><td>427.39</td><td>20.87%</td><td>21.84%</td><td>21.84%</td><td>135.23B</td><td>329.16</td><td>406.19</td><td>OK</td><td></td></tr><tr><td>CAG</td><td></td><td>ConAgra Brands, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>hold</td><td>STRONG_BUY</td><td>16.68</td><td>8.39%</td><td>1.40</td><td>79.10%</td><td>9.21</td><td>18.87</td><td>13.13%</td><td>21.52%</td><td>21.52%</td><td>7.98B</td><td>15.96</td><td>28.52</td><td>OK</td><td></td></tr><tr><td>ETN</td><td></td><td>Eaton Corporation, PLC</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>331.85</td><td>1.26%</td><td>4.16</td><td>40.64%</td><td>33.19</td><td>397.79</td><td>19.87%</td><td>21.13%</td><td>21.13%</td><td>129.19B</td><td>231.85</td><td>399.56</td><td>OK</td><td></td></tr><tr><td>V</td><td></td><td>Visa Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>strong_buy</td><td>STRONG_BUY</td><td>331.33</td><td>0.78%</td><td>2.68</td><td>23.14%</td><td>32.52</td><td>398.77</td><td>20.35%</td><td>21.13%</td><td>21.13%</td><td>639.43B</td><td>299.00</td><td>375.51</td><td>OK</td><td></td></tr><tr><td>PFE</td><td></td><td>Pfizer, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD ⚠</td><td>MEDIUM</td><td>buy</td><td>STRONG_BUY</td><td>25.07</td><td>6.81%</td><td>1.72</td><td>99.42%</td><td>14.58</td><td>28.66</td><td>14.31%</td><td>21.12%</td><td>21.12%</td><td>142.54B</td><td>20.92</td><td>27.69</td><td>OK</td><td></td></tr><tr><td>MET</td><td></td><td>MetLife, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>77.81</td><td>2.90%</td><td>2.27</td><td>41.90%</td><td>14.65</td><td>91.73</td><td>17.89%</td><td>20.79%</td><td>20.79%</td><td>51.75B</td><td>65.21</td><td>88.09</td><td>OK</td><td></td></tr><tr><td>EVO.ST</td><td></td><td>Evolution AB</td><td>US</td><td>SEK</td><td>STO</td><td>Consumer Cyclical</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>hold</td><td>STRONG_BUY</td><td>611.40</td><td>4.92%</td><td>30.50</td><td>50.72%</td><td>10.33</td><td>706.05</td><td>15.48%</td><td>20.40%</td><td>20.40%</td><td>121.89B</td><td>603.80</td><td>891.60</td><td>OK</td><td></td></tr><tr><td>DUK</td><td></td><td>Duke Energy Corporation (Holdin</td><td>US</td><td>USD</td><td>NYQ</td><td>Utilities</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>116.88</td><td>3.65%</td><td>4.26</td><td>66.14%</td><td>18.41</td><td>136.35</td><td>16.67%</td><td>20.32%</td><td>20.32%</td><td>90.89B</td><td>105.61</td><td>130.03</td><td>OK</td><td></td></tr><tr><td>ABT</td><td></td><td>Abbott Laboratories</td><td>US</td><td>USD</td><td>NYQ</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>122.48</td><td>2.02%</td><td>2.52</td><td>29.15%</td><td>15.39</td><td>144.75</td><td>18.18%</td><td>20.20%</td><td>20.20%</td><td>213.17B</td><td>110.86</td><td>141.23</td><td>OK</td><td></td></tr><tr><td>DIS</td><td></td><td>Walt Disney Company (The)</td><td>US</td><td>USD</td><td>NYQ</td><td>Communication Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>112.01</td><td>1.33%</td><td>1.50</td><td>14.60%</td><td>16.35</td><td>132.64</td><td>18.42%</td><td>19.75%</td><td>19.75%</td><td>201.39B</td><td>80.10</td><td>124.69</td><td>OK</td><td></td></tr><tr><td>ARCC</td><td></td><td>Ares Capital Corporation</td><td>US</td><td>USD</td><td>NMS</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>20.57</td><td>9.36%</td><td>1.92</td><td>96.48%</td><td>10.33</td><td>22.64</td><td>10.10%</td><td>19.46%</td><td>19.46%</td><td>14.74B</td><td>18.26</td><td>23.84</td><td>OK</td><td></td></tr><tr><td>COP</td><td></td><td>ConocoPhillips</td><td>US</td><td>USD</td><td>NYQ</td><td>Energy</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>97.23</td><td>3.52%</td><td>3.36</td><td>44.07%</td><td>13.73</td><td>112.26</td><td>15.46%</td><td>18.98%</td><td>18.98%</td><td>121.44B</td><td>79.88</td><td>106.20</td><td>OK</td><td></td></tr><tr><td>NKE</td><td></td><td>Nike, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Cyclical</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD ⚠</td><td>MEDIUM</td><td>buy</td><td>STRONG_BUY</td><td>66.26</td><td>2.50%</td><td>1.64</td><td>94.15%</td><td>38.75</td><td>77.00</td><td>16.21%</td><td>18.71%</td><td>18.71%</td><td>98.09B</td><td>52.28</td><td>82.44</td><td>OK</td><td></td></tr><tr><td>PG</td><td></td><td>Procter &amp; Gamble Company (The)</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>143.63</td><td>2.95%</td><td>4.23</td><td>60.24%</td><td>21.00</td><td>166.18</td><td>15.70%</td><td>18.65%</td><td>18.65%</td><td>336.16B</td><td>137.62</td><td>179.99</td><td>OK</td><td></td></tr><tr><td>KMI</td><td></td><td>Kinder Morgan, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Energy</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>27.24</td><td>4.35%</td><td>1.17</td><td>95.08%</td><td>22.33</td><td>31.10</td><td>14.17%</td><td>18.52%</td><td>18.52%</td><td>60.60B</td><td>23.94</td><td>31.48</td><td>OK</td><td></td></tr><tr><td>AVB</td><td></td><td>AvalonBay Communities, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>177.63</td><td>3.92%</td><td>7.00</td><td>84.76%</td><td>21.64</td><td>203.45</td><td>14.53%</td><td>18.45%</td><td>18.45%</td><td>25.29B</td><td>166.73</td><td>230.21</td><td>OK</td><td></td></tr><tr><td>WEC</td><td></td><td>WEC Energy Group, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Utilities</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>105.49</td><td>3.63%</td><td>3.81</td><td>66.52%</td><td>19.98</td><td>121.09</td><td>14.79%</td><td>18.42%</td><td>18.42%</td><td>34.32B</td><td>93.68</td><td>118.19</td><td>OK</td><td></td></tr><tr><td>MDT</td><td></td><td>Medtronic plc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>96.12</td><td>2.93%</td><td>2.84</td><td>76.42%</td><td>26.05</td><td>110.87</td><td>15.35%</td><td>18.28%</td><td>18.28%</td><td>123.29B</td><td>79.55</td><td>106.33</td><td>OK</td><td></td></tr><tr><td>EXC</td><td></td><td>Exelon Corporation</td><td>US</td><td>USD</td><td>NMS</td><td>Utilities</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>43.13</td><td>3.73%</td><td>1.60</td><td>56.63%</td><td>15.46</td><td>49.35</td><td>14.42%</td><td>18.15%</td><td>18.15%</td><td>43.57B</td><td>37.32</td><td>48.51</td><td>OK</td><td></td></tr><tr><td>RSG</td><td></td><td>Republic Services, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>209.86</td><td>1.19%</td><td>2.50</td><td>35.14%</td><td>31.18</td><td>245.46</td><td>16.96%</td><td>18.15%</td><td>18.15%</td><td>65.52B</td><td>201.42</td><td>258.75</td><td>OK</td><td></td></tr><tr><td>SYY</td><td></td><td>Sysco Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>75.49</td><td>2.91%</td><td>2.16</td><td>56.30%</td><td>20.24</td><td>86.94</td><td>15.17%</td><td>18.08%</td><td>18.08%</td><td>36.15B</td><td>67.12</td><td>83.47</td><td>OK</td><td></td></tr><tr><td>INDT.ST</td><td></td><td>Indutrade AB</td><td>US</td><td>SEK</td><td>STO</td><td>Industrials</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>232.00</td><td>1.28%</td><td>3.00</td><td>40.98%</td><td>31.65</td><td>270.83</td><td>16.74%</td><td>18.02%</td><td>18.02%</td><td>84.52B</td><td>212.00</td><td>332.60</td><td>OK</td><td></td></tr><tr><td>BKNG</td><td></td><td>Booking Holdings Inc. Common St</td><td>US</td><td>USD</td><td>NMS</td><td>Consumer Cyclical</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>5,316.41</td><td>0.71%</td><td>38.40</td><td>24.44%</td><td>34.60</td><td>6,226.70</td><td>17.12%</td><td>17.83%</td><td>17.83%</td><td>172.30B</td><td>4,096.23</td><td>5,839.41</td><td>OK</td><td></td></tr><tr><td>QCOM</td><td></td><td>QUALCOMM Incorporated</td><td>US</td><td>USD</td><td>NMS</td><td>Technology</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>166.34</td><td>2.10%</td><td>3.56</td><td>69.46%</td><td>33.20</td><td>192.40</td><td>15.67%</td><td>17.77%</td><td>17.77%</td><td>179.48B</td><td>120.80</td><td>205.95</td><td>OK</td><td></td></tr><tr><td>PSA</td><td></td><td>Public Storage</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>276.77</td><td>4.30%</td><td>12.00</td><td>124.61%</td><td>28.74</td><td>313.95</td><td>13.43%</td><td>17.73%</td><td>17.73%</td><td>48.56B</td><td>256.54</td><td>322.49</td><td>OK</td><td></td></tr><tr><td>ESS</td><td></td><td>Essex Property Trust, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>hold</td><td>STRONG_BUY</td><td>249.92</td><td>4.11%</td><td>10.28</td><td>77.26%</td><td>19.01</td><td>283.19</td><td>13.31%</td><td>17.42%</td><td>17.42%</td><td>17.26B</td><td>243.25</td><td>316.29</td><td>OK</td><td></td></tr><tr><td>SYDB.CO</td><td></td><td>Sydbank A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>557.00</td><td>4.83%</td><td>26.88</td><td>60.95%</td><td>12.63</td><td>627.00</td><td>12.57%</td><td>17.40%</td><td>17.40%</td><td>27.31B</td><td>321.00</td><td>589.50</td><td>OK</td><td></td></tr><tr><td>WMB</td><td></td><td>Williams Companies, Inc. (The)</td><td>US</td><td>USD</td><td>NYQ</td><td>Energy</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>60.02</td><td>3.36%</td><td>2.00</td><td>102.33%</td><td>31.10</td><td>68.27</td><td>13.76%</td><td>17.12%</td><td>17.12%</td><td>73.29B</td><td>51.58</td><td>65.55</td><td>OK</td><td></td></tr><tr><td>UNP</td><td></td><td>Union Pacific Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>228.68</td><td>2.41%</td><td>5.52</td><td>45.84%</td><td>19.43</td><td>261.80</td><td>14.48%</td><td>16.89%</td><td>16.89%</td><td>135.64B</td><td>204.66</td><td>256.84</td><td>OK</td><td></td></tr><tr><td>SCHW</td><td></td><td>Charles Schwab Corporation (The</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>100.78</td><td>1.06%</td><td>1.08</td><td>24.82%</td><td>23.60</td><td>116.63</td><td>15.73%</td><td>16.79%</td><td>16.79%</td><td>182.93B</td><td>65.88</td><td>104.76</td><td>OK</td><td></td></tr><tr><td>USB</td><td></td><td>U.S. Bancorp</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>54.03</td><td>3.75%</td><td>2.04</td><td>46.22%</td><td>12.36</td><td>61.07</td><td>13.03%</td><td>16.78%</td><td>16.78%</td><td>84.08B</td><td>35.18</td><td>56.20</td><td>OK</td><td></td></tr><tr><td>WM</td><td></td><td>Waste Management, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>216.00</td><td>1.51%</td><td>3.30</td><td>50.79%</td><td>33.96</td><td>248.56</td><td>15.07%</td><td>16.58%</td><td>16.58%</td><td>87.02B</td><td>194.11</td><td>242.58</td><td>OK</td><td></td></tr><tr><td>ALL</td><td></td><td>Allstate Corporation (The)</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>205.91</td><td>1.92%</td><td>4.00</td><td>12.71%</td><td>6.68</td><td>236.05</td><td>14.64%</td><td>16.56%</td><td>16.56%</td><td>54.26B</td><td>176.00</td><td>215.89</td><td>OK</td><td></td></tr><tr><td>ICE</td><td></td><td>Intercontinental Exchange Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>164.46</td><td>1.15%</td><td>1.92</td><td>34.43%</td><td>29.96</td><td>189.57</td><td>15.27%</td><td>16.42%</td><td>16.42%</td><td>94.14B</td><td>143.17</td><td>189.35</td><td>OK</td><td></td></tr><tr><td>CSCO</td><td></td><td>Cisco Systems, Inc.</td><td>US</td><td>USD</td><td>NMS</td><td>Technology</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>none</td><td>STRONG_BUY</td><td>74.84</td><td>2.22%</td><td>1.64</td><td>62.93%</td><td>28.90</td><td>85.43</td><td>14.15%</td><td>16.37%</td><td>16.37%</td><td>295.72B</td><td>52.11</td><td>80.82</td><td>OK</td><td></td></tr><tr><td>LIFCO-B.ST</td><td></td><td>Lifco AB ser.B</td><td>US</td><td>SEK</td><td>STO</td><td>Industrials</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>330.80</td><td>0.70%</td><td>2.40</td><td>30.61%</td><td>42.14</td><td>382.40</td><td>15.60%</td><td>16.30%</td><td>16.30%</td><td>150.25B</td><td>310.00</td><td>409.40</td><td>OK</td><td></td></tr><tr><td>BAC</td><td></td><td>Bank of America Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>54.67</td><td>2.03%</td><td>1.12</td><td>28.96%</td><td>14.94</td><td>62.10</td><td>13.60%</td><td>15.63%</td><td>15.63%</td><td>413.31B</td><td>33.07</td><td>57.55</td><td>OK</td><td></td></tr><tr><td>KO</td><td></td><td>Coca-Cola Company (The)</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>70.65</td><td>2.89%</td><td>2.04</td><td>66.72%</td><td>23.39</td><td>79.59</td><td>12.66%</td><td>15.55%</td><td>15.55%</td><td>304.05B</td><td>61.30</td><td>74.38</td><td>OK</td><td></td></tr><tr><td>ELUX-B.ST</td><td></td><td>Electrolux, AB ser. B</td><td>US</td><td>SEK</td><td>STO</td><td>Consumer Cyclical</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>GOLD</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>64.94</td><td></td><td></td><td>0.00%</td><td>31.52</td><td>74.88</td><td>15.30%</td><td>15.30%</td><td>15.30%</td><td>17.65B</td><td>50.34</td><td>111.55</td><td>OK</td><td></td></tr><tr><td>ARE</td><td></td><td>Alexandria Real Estate Equities</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>HIGH</td><td>buy</td><td>STRONG_BUY</td><td>54.34</td><td>8.61%</td><td>4.68</td><td>689.47%</td><td>-679.28</td><td>57.92</td><td>6.59%</td><td>15.20%</td><td>15.20%</td><td>9.39B</td><td>44.10</td><td>105.14</td><td>OK</td><td></td></tr><tr><td>KRC</td><td></td><td>Kilroy Realty Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>HIGH</td><td>hold</td><td>STRONG_BUY</td><td>38.74</td><td>5.56%</td><td>2.16</td><td>79.70%</td><td>14.30</td><td>42.47</td><td>9.61%</td><td>15.17%</td><td>15.17%</td><td>4.63B</td><td>27.07</td><td>45.03</td><td>OK</td><td></td></tr><tr><td>C</td><td></td><td>Citigroup, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>116.55</td><td>2.04%</td><td>2.40</td><td>32.02%</td><td>16.37</td><td>131.64</td><td>12.94%</td><td>14.98%</td><td>14.98%</td><td>214.56B</td><td>55.51</td><td>124.17</td><td>OK</td><td></td></tr><tr><td>OXY</td><td></td><td>Occidental Petroleum Corporatio</td><td>US</td><td>USD</td><td>NYQ</td><td>Energy</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>hold</td><td>BUY</td><td>43.97</td><td>2.25%</td><td>0.96</td><td>69.12%</td><td>32.33</td><td>49.54</td><td>12.68%</td><td>14.93%</td><td>14.93%</td><td>43.31B</td><td>34.78</td><td>52.84</td><td>OK</td><td></td></tr><tr><td>ABBV</td><td></td><td>AbbVie Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY ⚠</td><td>LOW</td><td>buy</td><td>BUY</td><td>218.91</td><td>3.14%</td><td>6.92</td><td>490.15%</td><td>165.84</td><td>244.59</td><td>11.73%</td><td>14.87%</td><td>14.87%</td><td>386.90B</td><td>164.39</td><td>244.81</td><td>OK</td><td></td></tr><tr><td>ADP</td><td></td><td>Automatic Data Processing, Inc.</td><td>US</td><td>USD</td><td>NMS</td><td>Technology</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>hold</td><td>BUY</td><td>258.02</td><td>2.59%</td><td>6.80</td><td>60.81%</td><td>25.50</td><td>289.54</td><td>12.22%</td><td>14.81%</td><td>14.81%</td><td>104.52B</td><td>247.18</td><td>329.93</td><td>OK</td><td></td></tr><tr><td>SPGI</td><td></td><td>S&amp;P Global Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>strong_buy</td><td>BUY</td><td>538.77</td><td>0.71%</td><td>3.84</td><td>27.56%</td><td>39.10</td><td>614.50</td><td>14.06%</td><td>14.77%</td><td>14.77%</td><td>164.49B</td><td>427.14</td><td>579.05</td><td>OK</td><td></td></tr><tr><td>MSCI</td><td></td><td>MSCI Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>580.22</td><td>1.23%</td><td>7.20</td><td>44.39%</td><td>36.77</td><td>658.07</td><td>13.42%</td><td>14.65%</td><td>14.65%</td><td>44.89B</td><td>486.74</td><td>634.99</td><td>OK</td><td></td></tr><tr><td>SO</td><td></td><td>Southern Company (The)</td><td>US</td><td>USD</td><td>NYQ</td><td>Utilities</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>hold</td><td>BUY</td><td>87.00</td><td>3.41%</td><td>2.96</td><td>72.64%</td><td>21.64</td><td>96.72</td><td>11.17%</td><td>14.58%</td><td>14.58%</td><td>95.80B</td><td>81.41</td><td>100.84</td><td>OK</td><td></td></tr><tr><td>VTR</td><td></td><td>Ventas, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>76.48</td><td>2.54%</td><td>1.92</td><td>356.60%</td><td>144.30</td><td>85.65</td><td>11.99%</td><td>14.53%</td><td>14.53%</td><td>35.93B</td><td>57.70</td><td>81.89</td><td>OK</td><td></td></tr><tr><td>NEE</td><td></td><td>NextEra Energy, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Utilities</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>81.30</td><td>2.79%</td><td>2.27</td><td>70.30%</td><td>25.81</td><td>90.83</td><td>11.72%</td><td>14.51%</td><td>14.51%</td><td>169.32B</td><td>61.72</td><td>87.53</td><td>OK</td><td></td></tr><tr><td>SRE</td><td></td><td>DBA Sempra</td><td>US</td><td>USD</td><td>NYQ</td><td>Utilities</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>89.80</td><td>2.90%</td><td>2.58</td><td>78.62%</td><td>27.63</td><td>100.07</td><td>11.43%</td><td>14.33%</td><td>14.33%</td><td>58.61B</td><td>61.90</td><td>95.72</td><td>OK</td><td></td></tr><tr><td>TRYG.CO</td><td></td><td>Tryg A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>159.30</td><td>5.12%</td><td>8.20</td><td>100.46%</td><td>20.01</td><td>173.90</td><td>9.17%</td><td>14.29%</td><td>14.29%</td><td>96.07B</td><td>141.50</td><td>173.90</td><td>OK</td><td></td></tr><tr><td>TFC</td><td></td><td>Truist Financial Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>50.05</td><td>4.15%</td><td>2.08</td><td>55.76%</td><td>13.42</td><td>55.10</td><td>10.10%</td><td>14.25%</td><td>14.25%</td><td>64.54B</td><td>33.56</td><td>51.52</td><td>OK</td><td></td></tr><tr><td>DEMANT.CO</td><td></td><td>Demant A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>233.00</td><td></td><td></td><td>0.00%</td><td>18.67</td><td>265.76</td><td>14.06%</td><td>14.06%</td><td>14.06%</td><td>49.63B</td><td>202.40</td><td>294.20</td><td>OK</td><td></td></tr><tr><td>CSX</td><td></td><td>CSX Corporation</td><td>US</td><td>USD</td><td>NMS</td><td>Industrials</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>35.47</td><td>1.48%</td><td>0.52</td><td>33.12%</td><td>23.03</td><td>39.83</td><td>12.30%</td><td>13.78%</td><td>13.78%</td><td>66.13B</td><td>26.22</td><td>37.54</td><td>OK</td><td></td></tr><tr><td>HON</td><td></td><td>Honeywell International Inc.</td><td>US</td><td>USD</td><td>NMS</td><td>Industrials</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>210.27</td><td>2.20%</td><td>4.58</td><td>47.68%</td><td>22.20</td><td>234.58</td><td>11.56%</td><td>13.76%</td><td>13.76%</td><td>141.69B</td><td>169.05</td><td>227.82</td><td>OK</td><td></td></tr><tr><td>DHR</td><td></td><td>Danaher Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>strong_buy</td><td>BUY</td><td>230.96</td><td>0.54%</td><td>1.28</td><td>25.31%</td><td>47.62</td><td>261.05</td><td>13.03%</td><td>13.57%</td><td>13.57%</td><td>165.38B</td><td>171.00</td><td>258.23</td><td>OK</td><td></td></tr><tr><td>AEP</td><td></td><td>American Electric Power Company</td><td>US</td><td>USD</td><td>NMS</td><td>Utilities</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>116.53</td><td>3.26%</td><td>3.80</td><td>54.47%</td><td>17.06</td><td>128.47</td><td>10.25%</td><td>13.51%</td><td>13.51%</td><td>62.37B</td><td>93.43</td><td>124.80</td><td>OK</td><td></td></tr><tr><td>PM</td><td></td><td>Philip Morris International Inc</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>166.45</td><td>3.56%</td><td>5.88</td><td>78.76%</td><td>23.78</td><td>182.88</td><td>9.87%</td><td>13.43%</td><td>13.43%</td><td>259.10B</td><td>117.18</td><td>186.69</td><td>OK</td><td></td></tr><tr><td>PEP</td><td></td><td>Pepsico, Inc.</td><td>US</td><td>USD</td><td>NMS</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY ⚠</td><td>LOW</td><td>hold</td><td>BUY</td><td>142.54</td><td>4.03%</td><td>5.69</td><td>105.61%</td><td>27.10</td><td>155.91</td><td>9.38%</td><td>13.41%</td><td>13.41%</td><td>195.15B</td><td>127.60</td><td>160.15</td><td>OK</td><td></td></tr><tr><td>PNC</td><td></td><td>PNC Financial Services Group, I</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>214.47</td><td>3.15%</td><td>6.80</td><td>41.99%</td><td>13.85</td><td>236.12</td><td>10.09%</td><td>13.24%</td><td>13.24%</td><td>84.27B</td><td>145.12</td><td>220.54</td><td>OK</td><td></td></tr><tr><td>WELL</td><td></td><td>Welltower Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>187.38</td><td>1.59%</td><td>2.96</td><td>189.66%</td><td>128.34</td><td>208.70</td><td>11.38%</td><td>12.97%</td><td>12.97%</td><td>128.60B</td><td>125.70</td><td>209.05</td><td>OK</td><td></td></tr><tr><td>D</td><td></td><td>Dominion Energy, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Utilities</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>hold</td><td>BUY</td><td>59.03</td><td>4.57%</td><td>2.67</td><td>87.25%</td><td>19.29</td><td>63.81</td><td>8.10%</td><td>12.67%</td><td>12.67%</td><td>50.41B</td><td>48.07</td><td>62.87</td><td>OK</td><td></td></tr><tr><td>O</td><td></td><td>Realty Income Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>hold</td><td>BUY</td><td>59.22</td><td>5.47%</td><td>3.22</td><td>299.53%</td><td>55.34</td><td>63.35</td><td>6.97%</td><td>12.44%</td><td>12.44%</td><td>54.47B</td><td>50.71</td><td>61.09</td><td>OK</td><td></td></tr><tr><td>MO</td><td></td><td>Altria Group, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>59.85</td><td>7.24%</td><td>4.24</td><td>78.63%</td><td>11.42</td><td>62.58</td><td>4.56%</td><td>11.80%</td><td>11.80%</td><td>100.55B</td><td>50.08</td><td>68.60</td><td>OK</td><td></td></tr><tr><td>MCD</td><td></td><td>McDonald&#x27;s Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Cyclical</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>306.25</td><td>2.43%</td><td>7.44</td><td>60.41%</td><td>26.13</td><td>332.87</td><td>8.69%</td><td>11.12%</td><td>11.12%</td><td>218.54B</td><td>276.53</td><td>326.32</td><td>OK</td><td></td></tr><tr><td>SKF-B.ST</td><td></td><td>SKF, AB ser. B</td><td>US</td><td>SEK</td><td>STO</td><td>Industrials</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>247.60</td><td>3.12%</td><td>7.75</td><td>72.50%</td><td>23.14</td><td>267.12</td><td>7.88%</td><td>11.00%</td><td>11.00%</td><td>112.80B</td><td>157.70</td><td>259.70</td><td>OK</td><td></td></tr><tr><td>AAPL</td><td></td><td>Apple Inc.</td><td>US</td><td>USD</td><td>NMS</td><td>Technology</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>260.31</td><td>0.40%</td><td>1.04</td><td>13.67%</td><td>34.85</td><td>287.83</td><td>10.57%</td><td>10.97%</td><td>10.97%</td><td>3.85T</td><td>169.21</td><td>288.62</td><td>OK</td><td></td></tr><tr><td>BTI</td><td></td><td>British American Tobacco  Indus</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY ⚠</td><td>LOW</td><td>buy</td><td>BUY</td><td>56.59</td><td>5.63%</td><td>3.14</td><td>168.95%</td><td>30.26</td><td>59.50</td><td>5.13%</td><td>10.76%</td><td>10.76%</td><td>122.90B</td><td>35.19</td><td>59.29</td><td>OK</td><td></td></tr><tr><td>JPM</td><td></td><td>JP Morgan Chase &amp; Co.</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td>NEW_CANDIDATE</td><td>BUY</td><td>MEDIUM</td><td>buy</td><td>BUY</td><td>312.25</td><td>1.85%</td><td>6.00</td><td>27.49%</td><td>15.47</td><td>338.78</td><td>8.50%</td><td>10.35%</td><td>10.35%</td><td>858.62B</td><td>202.16</td><td>337.25</td><td>OK</td><td></td></tr><tr><td>COST</td><td></td><td>Costco Wholesale Corporation</td><td>US</td><td>USD</td><td>NMS</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>941.51</td><td>0.55%</td><td>5.20</td><td>27.10%</td><td>50.43</td><td>1,030.19</td><td>9.42%</td><td>9.97%</td><td>9.97%</td><td>417.99B</td><td>844.06</td><td>1,078.23</td><td>OK</td><td></td></tr><tr><td>TRV</td><td></td><td>The Travelers Companies, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>hold</td><td>HOLD</td><td>275.62</td><td>1.57%</td><td>4.40</td><td>16.92%</td><td>10.85</td><td>298.55</td><td>8.32%</td><td>9.89%</td><td>9.89%</td><td>62.05B</td><td>230.43</td><td>296.85</td><td>OK</td><td></td></tr><tr><td>SPG</td><td></td><td>Simon Property Group, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>184.85</td><td>4.76%</td><td>8.80</td><td>123.00%</td><td>26.87</td><td>194.25</td><td>5.09%</td><td>9.85%</td><td>9.85%</td><td>69.73B</td><td>136.34</td><td>190.14</td><td>OK</td><td></td></tr><tr><td>ESSITY-B.ST</td><td></td><td>Essity AB ser. B</td><td>US</td><td>SEK</td><td>STO</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>265.50</td><td>3.14%</td><td>8.25</td><td>46.32%</td><td>14.91</td><td>283.00</td><td>6.59%</td><td>9.73%</td><td>9.73%</td><td>181.34B</td><td>236.10</td><td>312.40</td><td>OK</td><td></td></tr><tr><td>NSC</td><td></td><td>Norfolk Southern Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>hold</td><td>HOLD</td><td>288.02</td><td>1.87%</td><td>5.40</td><td>41.19%</td><td>21.97</td><td>310.63</td><td>7.85%</td><td>9.72%</td><td>9.72%</td><td>64.63B</td><td>201.63</td><td>302.24</td><td>OK</td><td></td></tr><tr><td>MAIN</td><td></td><td>Main Street Capital Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>hold</td><td>HOLD</td><td>60.85</td><td>7.12%</td><td>4.32</td><td>69.70%</td><td>10.07</td><td>62.14</td><td>2.12%</td><td>9.24%</td><td>9.24%</td><td>5.45B</td><td>47.00</td><td>67.77</td><td>OK</td><td></td></tr><tr><td>CL</td><td></td><td>Colgate-Palmolive Company</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>82.45</td><td>2.54%</td><td>2.08</td><td>57.14%</td><td>23.10</td><td>87.95</td><td>6.67%</td><td>9.21%</td><td>9.21%</td><td>66.64B</td><td>74.55</td><td>100.18</td><td>OK</td><td></td></tr><tr><td>ISRG</td><td></td><td>Intuitive Surgical, Inc.</td><td>US</td><td>USD</td><td>NMS</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>557.25</td><td></td><td></td><td>0.00%</td><td>73.71</td><td>608.26</td><td>9.15%</td><td>9.15%</td><td>9.15%</td><td>199.76B</td><td>425.00</td><td>616.00</td><td>OK</td><td></td></tr><tr><td>WFC</td><td></td><td>Wells Fargo &amp; Company</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>94.05</td><td>1.90%</td><td>1.80</td><td>27.18%</td><td>15.49</td><td>100.68</td><td>7.06%</td><td>8.96%</td><td>8.96%</td><td>301.27B</td><td>58.42</td><td>97.76</td><td>OK</td><td></td></tr><tr><td>HEXA-B.ST</td><td></td><td>Hexagon AB ser. B</td><td>US</td><td>SEK</td><td>STO</td><td>Technology</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>hold</td><td>HOLD</td><td>109.70</td><td>1.38%</td><td>1.52</td><td>56.22%</td><td>41.09</td><td>117.60</td><td>7.20%</td><td>8.58%</td><td>8.58%</td><td>294.48B</td><td>82.80</td><td>130.55</td><td>OK</td><td></td></tr><tr><td>NOC</td><td></td><td>Northrop Grumman Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>625.33</td><td>1.47%</td><td>9.24</td><td>31.47%</td><td>22.53</td><td>669.58</td><td>7.08%</td><td>8.55%</td><td>8.55%</td><td>89.54B</td><td>426.24</td><td>640.90</td><td>OK</td><td></td></tr><tr><td>MRK</td><td></td><td>Merck &amp; Company, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>108.02</td><td>3.11%</td><td>3.40</td><td>42.86%</td><td>14.29</td><td>113.33</td><td>4.92%</td><td>8.03%</td><td>8.03%</td><td>269.80B</td><td>73.31</td><td>112.90</td><td>OK</td><td></td></tr><tr><td>DE</td><td></td><td>Deere &amp; Company</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>495.06</td><td>1.32%</td><td>6.48</td><td>35.03%</td><td>26.76</td><td>528.26</td><td>6.71%</td><td>8.03%</td><td>8.03%</td><td>133.89B</td><td>404.42</td><td>533.78</td><td>OK</td><td></td></tr><tr><td>CVX</td><td></td><td>Chevron Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Energy</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>165.59</td><td>4.21%</td><td>6.84</td><td>95.08%</td><td>23.29</td><td>171.78</td><td>3.74%</td><td>7.95%</td><td>7.95%</td><td>333.63B</td><td>132.04</td><td>168.96</td><td>OK</td><td></td></tr><tr><td>SBUX</td><td></td><td>Starbucks Corporation</td><td>US</td><td>USD</td><td>NMS</td><td>Consumer Cyclical</td><td>No</td><td></td><td>No</td><td></td><td>HOLD ⚠</td><td>LOW</td><td>buy</td><td>HOLD</td><td>90.08</td><td>2.76%</td><td>2.48</td><td>149.69%</td><td>55.26</td><td>94.71</td><td>5.14%</td><td>7.90%</td><td>7.90%</td><td>102.43B</td><td>75.50</td><td>117.46</td><td>OK</td><td></td></tr><tr><td>GD</td><td></td><td>General Dynamics Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>362.40</td><td>1.66%</td><td>6.00</td><td>38.37%</td><td>23.52</td><td>384.91</td><td>6.21%</td><td>7.87%</td><td>7.87%</td><td>97.89B</td><td>239.20</td><td>367.66</td><td>OK</td><td></td></tr><tr><td>ED</td><td></td><td>Consolidated Edison, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Utilities</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>hold</td><td>HOLD</td><td>99.41</td><td>3.44%</td><td>3.40</td><td>59.09%</td><td>17.38</td><td>103.59</td><td>4.21%</td><td>7.65%</td><td>7.65%</td><td>35.88B</td><td>88.26</td><td>114.87</td><td>OK</td><td></td></tr><tr><td>GE</td><td></td><td>GE Aerospace</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>326.71</td><td>0.44%</td><td>1.44</td><td>18.18%</td><td>43.62</td><td>349.88</td><td>7.09%</td><td>7.53%</td><td>7.53%</td><td>346.46B</td><td>159.36</td><td>332.79</td><td>OK</td><td></td></tr><tr><td>FAST</td><td></td><td>Fastenal Company</td><td>US</td><td>USD</td><td>NMS</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>hold</td><td>HOLD</td><td>41.79</td><td>2.11%</td><td>0.88</td><td>79.81%</td><td>39.42</td><td>44.00</td><td>5.29%</td><td>7.40%</td><td>7.40%</td><td>47.98B</td><td>35.30</td><td>50.63</td><td>OK</td><td></td></tr><tr><td>ACN</td><td></td><td>Accenture plc</td><td>US</td><td>USD</td><td>NYQ</td><td>Technology</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>275.81</td><td>2.32%</td><td>6.52</td><td>50.17%</td><td>22.78</td><td>289.67</td><td>5.02%</td><td>7.34%</td><td>7.34%</td><td>171.04B</td><td>229.40</td><td>398.35</td><td>OK</td><td></td></tr><tr><td>SLB</td><td></td><td>SLB Limited</td><td>US</td><td>USD</td><td>NYQ</td><td>Energy</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>strong_buy</td><td>HOLD</td><td>45.85</td><td>2.52%</td><td>1.14</td><td>43.97%</td><td>17.84</td><td>48.05</td><td>4.81%</td><td>7.33%</td><td>7.33%</td><td>68.50B</td><td>31.11</td><td>46.38</td><td>OK</td><td></td></tr><tr><td>PLD</td><td></td><td>Prologis, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>129.11</td><td>3.13%</td><td>4.04</td><td>115.99%</td><td>37.42</td><td>134.45</td><td>4.14%</td><td>7.27%</td><td>7.27%</td><td>119.93B</td><td>85.35</td><td>131.70</td><td>OK</td><td></td></tr><tr><td>CAST.ST</td><td></td><td>Castellum AB</td><td>US</td><td>SEK</td><td>STO</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>hold</td><td>HOLD</td><td>109.75</td><td>2.28%</td><td>2.48</td><td>30.15%</td><td>17.79</td><td>115.10</td><td>4.87%</td><td>7.15%</td><td>7.15%</td><td>54.01B</td><td>95.90</td><td>127.60</td><td>OK</td><td></td></tr><tr><td>XOM</td><td></td><td>Exxon Mobil Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Energy</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>126.64</td><td>3.32%</td><td>4.12</td><td>57.56%</td><td>18.41</td><td>131.46</td><td>3.80%</td><td>7.12%</td><td>7.12%</td><td>539.90B</td><td>97.80</td><td>126.99</td><td>OK</td><td></td></tr><tr><td>EMR</td><td></td><td>Emerson Electric Company</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>145.90</td><td>1.53%</td><td>2.22</td><td>52.36%</td><td>36.20</td><td>153.85</td><td>5.45%</td><td>6.98%</td><td>6.98%</td><td>82.04B</td><td>90.06</td><td>150.27</td><td>OK</td><td></td></tr><tr><td>DSV.CO</td><td></td><td>DSV A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>strong_buy</td><td>HOLD</td><td>1,727.00</td><td>0.42%</td><td>7.00</td><td>17.50%</td><td>43.25</td><td>1,836.37</td><td>6.33%</td><td>6.75%</td><td>6.75%</td><td>407.77B</td><td>1,053.50</td><td>1,734.00</td><td>OK</td><td></td></tr><tr><td>PRU</td><td></td><td>Prudential Financial, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>hold</td><td>HOLD</td><td>117.24</td><td>4.59%</td><td>5.40</td><td>73.29%</td><td>16.06</td><td>119.43</td><td>1.87%</td><td>6.46%</td><td>6.46%</td><td>41.26B</td><td>90.38</td><td>123.88</td><td>OK</td><td></td></tr><tr><td>HD</td><td></td><td>Home Depot, Inc. (The)</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Cyclical</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>377.68</td><td>2.45%</td><td>9.20</td><td>62.41%</td><td>25.76</td><td>392.39</td><td>3.90%</td><td>6.35%</td><td>6.35%</td><td>375.98B</td><td>326.31</td><td>426.75</td><td>OK</td><td></td></tr><tr><td>CB</td><td></td><td>Chubb Limited</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>302.15</td><td>1.27%</td><td>3.88</td><td>15.71%</td><td>12.63</td><td>317.17</td><td>4.97%</td><td>6.24%</td><td>6.24%</td><td>120.46B</td><td>260.97</td><td>316.94</td><td>OK</td><td></td></tr><tr><td>TELIA.ST</td><td></td><td>Telia Company AB</td><td>US</td><td>SEK</td><td>STO</td><td>Communication Services</td><td>No</td><td></td><td>No</td><td></td><td>HOLD ⚠</td><td>LOW</td><td>hold</td><td>HOLD</td><td>38.49</td><td>5.09%</td><td>2.00</td><td>145.99%</td><td>28.09</td><td>38.91</td><td>1.10%</td><td>6.19%</td><td>6.19%</td><td>151.35B</td><td>30.06</td><td>39.97</td><td>OK</td><td></td></tr><tr><td>BMY</td><td></td><td>Bristol-Myers Squibb Company</td><td>US</td><td>USD</td><td>NYQ</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>hold</td><td>HOLD</td><td>55.90</td><td>4.52%</td><td>2.52</td><td>83.50%</td><td>18.82</td><td>56.83</td><td>1.66%</td><td>6.18%</td><td>6.18%</td><td>113.80B</td><td>42.52</td><td>63.33</td><td>OK</td><td></td></tr><tr><td>BDX</td><td></td><td>Becton, Dickinson and Company</td><td>US</td><td>USD</td><td>NYQ</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>199.24</td><td>2.07%</td><td>4.20</td><td>71.48%</td><td>34.23</td><td>206.67</td><td>3.73%</td><td>5.80%</td><td>5.80%</td><td>56.87B</td><td>162.29</td><td>251.99</td><td>OK</td><td></td></tr><tr><td>ASSA-B.ST</td><td></td><td>ASSA ABLOY AB ser. B</td><td>US</td><td>SEK</td><td>STO</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>361.00</td><td>1.62%</td><td>5.90</td><td>42.74%</td><td>27.31</td><td>374.17</td><td>3.65%</td><td>5.27%</td><td>5.27%</td><td>400.99B</td><td>252.50</td><td>367.00</td><td>OK</td><td></td></tr><tr><td>NOVO-B.CO</td><td></td><td>Novo Nordisk B A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td></td><td>HOLD</td><td>MEDIUM</td><td>buy</td><td>HOLD</td><td>383.30</td><td>3.07%</td><td>11.65</td><td>49.94%</td><td>16.44</td><td>391.04</td><td>2.02%</td><td>5.09%</td><td>5.09%</td><td>1.70T</td><td>266.90</td><td>675.20</td><td>OK</td><td></td></tr><tr><td>MMM</td><td></td><td>3M Company</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>169.21</td><td>1.74%</td><td>2.92</td><td>46.09%</td><td>27.03</td><td>174.62</td><td>3.20%</td><td>4.94%</td><td>4.94%</td><td>90.13B</td><td>121.98</td><td>174.69</td><td>OK</td><td></td></tr><tr><td>ERIC-B.ST</td><td></td><td>Ericsson, Telefonab. L M ser. B</td><td>US</td><td>SEK</td><td>STO</td><td>Technology</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>hold</td><td>WATCH</td><td>87.00</td><td>3.28%</td><td>2.84</td><td>38.62%</td><td>11.79</td><td>88.33</td><td>1.53%</td><td>4.81%</td><td>4.81%</td><td>290.00B</td><td>65.94</td><td>98.56</td><td>OK</td><td></td></tr><tr><td>UPS</td><td></td><td>United Parcel Service, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH ⚠</td><td>LOW</td><td>buy</td><td>WATCH</td><td>107.04</td><td>6.07%</td><td>6.56</td><td>101.24%</td><td>16.54</td><td>105.39</td><td>-1.54%</td><td>4.53%</td><td>4.53%</td><td>90.81B</td><td>82.00</td><td>136.99</td><td>OK</td><td></td></tr><tr><td>AFL</td><td></td><td>AFLAC Incorporated</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>hold</td><td>WATCH</td><td>108.45</td><td>2.24%</td><td>2.44</td><td>29.43%</td><td>14.25</td><td>110.85</td><td>2.20%</td><td>4.44%</td><td>4.44%</td><td>58.01B</td><td>96.95</td><td>115.84</td><td>OK</td><td></td></tr><tr><td>PEAB-B.ST</td><td></td><td>Peab AB ser. B</td><td>US</td><td>SEK</td><td>STO</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>none</td><td>WATCH</td><td>89.05</td><td>3.07%</td><td>2.75</td><td>26.13%</td><td>15.51</td><td>90.00</td><td>1.07%</td><td>4.14%</td><td>4.14%</td><td>25.60B</td><td>64.95</td><td>90.20</td><td>OK</td><td></td></tr><tr><td>ITW</td><td></td><td>Illinois Tool Works Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>hold</td><td>WATCH</td><td>255.85</td><td>2.53%</td><td>6.44</td><td>59.26%</td><td>24.82</td><td>259.97</td><td>1.61%</td><td>4.14%</td><td>4.14%</td><td>74.58B</td><td>214.66</td><td>278.13</td><td>OK</td><td></td></tr><tr><td>LLY</td><td></td><td>Eli Lilly and Company</td><td>US</td><td>USD</td><td>NYQ</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>1,081.40</td><td>0.58%</td><td>6.23</td><td>28.42%</td><td>52.93</td><td>1,116.33</td><td>3.23%</td><td>3.81%</td><td>3.81%</td><td>969.43B</td><td>623.78</td><td>1,133.95</td><td>OK</td><td></td></tr><tr><td>GWW</td><td></td><td>W.W. Grainger, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>hold</td><td>WATCH</td><td>1,033.18</td><td>0.88%</td><td>9.04</td><td>24.16%</td><td>28.92</td><td>1,060.80</td><td>2.67%</td><td>3.55%</td><td>3.55%</td><td>49.42B</td><td>893.99</td><td>1,139.15</td><td>OK</td><td></td></tr><tr><td>ORSTED.CO</td><td></td><td>ORSTED A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Utilities</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>hold</td><td>WATCH</td><td>134.60</td><td></td><td></td><td>0.00%</td><td>17.69</td><td>139.17</td><td>3.39%</td><td>3.39%</td><td>3.39%</td><td>177.81B</td><td>102.82</td><td>334.40</td><td>OK</td><td></td></tr><tr><td>AZN.ST</td><td></td><td>AstraZeneca PLC</td><td>US</td><td>SEK</td><td>STO</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>none</td><td>WATCH</td><td>1,723.00</td><td>1.82%</td><td>31.69</td><td>52.05%</td><td>31.06</td><td>1,748.92</td><td>1.50%</td><td>3.32%</td><td>3.32%</td><td>2.67T</td><td>1,226.00</td><td>1,786.50</td><td>OK</td><td></td></tr><tr><td>MS</td><td></td><td>Morgan Stanley</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>183.22</td><td>2.14%</td><td>4.00</td><td>38.72%</td><td>18.77</td><td>185.33</td><td>1.15%</td><td>3.29%</td><td>3.29%</td><td>292.48B</td><td>94.33</td><td>188.82</td><td>OK</td><td></td></tr><tr><td>TXN</td><td></td><td>Texas Instruments Incorporated</td><td>US</td><td>USD</td><td>NMS</td><td>Technology</td><td>No</td><td></td><td>No</td><td></td><td>WATCH ⚠</td><td>LOW</td><td>hold</td><td>WATCH</td><td>188.58</td><td>3.00%</td><td>5.68</td><td>99.09%</td><td>34.41</td><td>189.10</td><td>0.28%</td><td>3.28%</td><td>3.28%</td><td>171.45B</td><td>139.95</td><td>221.69</td><td>OK</td><td></td></tr><tr><td>SSAB-A.ST</td><td></td><td>SSAB AB ser. A</td><td>US</td><td>SEK</td><td>STO</td><td>Basic Materials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>78.92</td><td>3.45%</td><td>2.60</td><td>52.31%</td><td>15.88</td><td>78.69</td><td>-0.29%</td><td>3.16%</td><td>3.16%</td><td>78.65B</td><td>43.28</td><td>78.92</td><td>OK</td><td></td></tr><tr><td>DANSKE.CO</td><td></td><td>Danske Bank A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>319.40</td><td>5.94%</td><td>18.70</td><td>34.25%</td><td>11.70</td><td>310.43</td><td>-2.81%</td><td>3.13%</td><td>3.13%</td><td>260.25B</td><td>177.00</td><td>324.90</td><td>OK</td><td></td></tr><tr><td>LOW</td><td></td><td>Lowe&#x27;s Companies, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Cyclical</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>272.87</td><td>1.77%</td><td>4.80</td><td>38.91%</td><td>22.59</td><td>276.53</td><td>1.34%</td><td>3.11%</td><td>3.11%</td><td>153.07B</td><td>206.39</td><td>274.98</td><td>OK</td><td></td></tr><tr><td>HSY</td><td></td><td>The Hershey Company</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>hold</td><td>WATCH</td><td>194.13</td><td>2.84%</td><td>5.48</td><td>81.91%</td><td>29.06</td><td>194.52</td><td>0.20%</td><td>3.04%</td><td>3.04%</td><td>39.37B</td><td>140.13</td><td>199.00</td><td>OK</td><td></td></tr><tr><td>RTX</td><td></td><td>RTX Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>195.47</td><td>1.40%</td><td>2.72</td><td>53.80%</td><td>40.14</td><td>198.35</td><td>1.47%</td><td>2.87%</td><td>2.87%</td><td>262.09B</td><td>112.27</td><td>197.55</td><td>OK</td><td></td></tr><tr><td>PH</td><td></td><td>Parker-Hannifin Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>937.66</td><td>0.78%</td><td>7.20</td><td>24.44%</td><td>33.43</td><td>956.47</td><td>2.01%</td><td>2.79%</td><td>2.79%</td><td>118.66B</td><td>488.45</td><td>939.50</td><td>OK</td><td></td></tr><tr><td>WMT</td><td></td><td>Walmart Inc.</td><td>US</td><td>USD</td><td>NMS</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>strong_buy</td><td>WATCH</td><td>120.12</td><td>0.80%</td><td>0.94</td><td>31.91%</td><td>42.15</td><td>122.49</td><td>1.97%</td><td>2.77%</td><td>2.77%</td><td>957.74B</td><td>79.81</td><td>120.25</td><td>OK</td><td></td></tr><tr><td>K</td><td></td><td>Kellanova</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>hold</td><td>WATCH</td><td>83.44</td><td>2.78%</td><td>2.32</td><td>62.57%</td><td>22.80</td><td>83.42</td><td>-0.03%</td><td>2.75%</td><td>2.75%</td><td>29.03B</td><td>76.48</td><td>83.65</td><td>OK</td><td></td></tr><tr><td>SPKSJF.CO</td><td></td><td>Sparekassen Sjælland-Fyn A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>none</td><td>WATCH</td><td>384.00</td><td>2.60%</td><td>10.00</td><td>29.07%</td><td>11.16</td><td></td><td></td><td>2.60%</td><td>2.60%</td><td>6.23B</td><td>241.00</td><td>395.00</td><td>OK</td><td></td></tr><tr><td>BA</td><td></td><td>Boeing Company (The)</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>245.87</td><td></td><td></td><td>0.00%</td><td>107.72</td><td>251.36</td><td>2.23%</td><td>2.23%</td><td>2.23%</td><td>192.53B</td><td>128.88</td><td>247.40</td><td>OK</td><td></td></tr><tr><td>NDA-SE.ST</td><td></td><td>Nordea Bank Abp</td><td>US</td><td>SEK</td><td>STO</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>177.10</td><td>5.81%</td><td>10.19</td><td>67.63%</td><td>11.88</td><td>170.34</td><td>-3.81%</td><td>2.00%</td><td>2.00%</td><td>605.49B</td><td>107.00</td><td>177.85</td><td>OK</td><td></td></tr><tr><td>SKA-B.ST</td><td></td><td>Skanska AB ser. B</td><td>US</td><td>SEK</td><td>STO</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>271.30</td><td>2.92%</td><td>8.00</td><td>53.62%</td><td>18.18</td><td>268.80</td><td>-0.92%</td><td>2.00%</td><td>2.00%</td><td>112.10B</td><td>182.65</td><td>274.60</td><td>OK</td><td></td></tr><tr><td>ATCO-B.ST</td><td></td><td>Atlas Copco AB ser. B</td><td>US</td><td>SEK</td><td>STO</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>none</td><td>WATCH</td><td>158.50</td><td>1.88%</td><td>3.00</td><td>51.24%</td><td>27.95</td><td></td><td></td><td>1.88%</td><td>1.88%</td><td>838.39B</td><td>115.75</td><td>174.75</td><td>OK</td><td></td></tr><tr><td>JNJ</td><td></td><td>Johnson &amp; Johnson</td><td>US</td><td>USD</td><td>NYQ</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>213.31</td><td>2.48%</td><td>5.20</td><td>49.08%</td><td>20.59</td><td>212.00</td><td>-0.61%</td><td>1.87%</td><td>1.87%</td><td>513.93B</td><td>141.50</td><td>215.19</td><td>OK</td><td></td></tr><tr><td>NKT.CO</td><td></td><td>NKT A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>789.00</td><td></td><td></td><td>0.00%</td><td>25.14</td><td>802.33</td><td>1.69%</td><td>1.69%</td><td>1.69%</td><td>42.17B</td><td>395.20</td><td>843.00</td><td>OK</td><td></td></tr><tr><td>ATCO-A.ST</td><td></td><td>Atlas Copco AB ser. A</td><td>US</td><td>SEK</td><td>STO</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>181.40</td><td>1.65%</td><td>3.00</td><td>51.24%</td><td>31.99</td><td>180.56</td><td>-0.47%</td><td>1.18%</td><td>1.18%</td><td>883.29B</td><td>130.00</td><td>195.60</td><td>OK</td><td></td></tr><tr><td>REAL</td><td></td><td>The RealReal, Inc.</td><td>US</td><td>USD</td><td>NMS</td><td>Consumer Cyclical</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>strong_buy</td><td>WATCH</td><td>16.92</td><td></td><td></td><td>0.00%</td><td>461.04</td><td>17.00</td><td>0.47%</td><td>0.47%</td><td>0.47%</td><td>1.97B</td><td>4.61</td><td>16.95</td><td>OK</td><td></td></tr><tr><td>FDX</td><td></td><td>FedEx Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>311.00</td><td>1.86%</td><td>5.80</td><td>31.32%</td><td>17.22</td><td>306.54</td><td>-1.44%</td><td>0.42%</td><td>0.42%</td><td>73.38B</td><td>194.30</td><td>318.83</td><td>OK</td><td></td></tr><tr><td>GMAB.CO</td><td></td><td>Genmab A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Healthcare</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>2,146.00</td><td></td><td></td><td>0.00%</td><td>14.62</td><td>2,154.69</td><td>0.40%</td><td>0.40%</td><td>0.40%</td><td>132.19B</td><td>1,157.00</td><td>2,220.00</td><td>OK</td><td></td></tr><tr><td>IBM</td><td></td><td>International Business Machines</td><td>US</td><td>USD</td><td>NYQ</td><td>Technology</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>307.46</td><td>2.15%</td><td>6.72</td><td>79.86%</td><td>36.60</td><td>302.05</td><td>-1.76%</td><td>0.39%</td><td>0.39%</td><td>287.39B</td><td>214.50</td><td>324.90</td><td>OK</td><td></td></tr><tr><td>VOLV-B.ST</td><td></td><td>Volvo, AB ser. B</td><td>US</td><td>SEK</td><td>STO</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>307.40</td><td>2.58%</td><td>8.00</td><td>45.71%</td><td>17.57</td><td>300.62</td><td>-2.20%</td><td>0.38%</td><td>0.38%</td><td>625.37B</td><td>220.80</td><td>344.40</td><td>OK</td><td></td></tr><tr><td>ISS.CO</td><td></td><td>ISS A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>232.80</td><td>1.35%</td><td>3.10</td><td>20.26%</td><td>15.23</td><td>230.50</td><td>-0.99%</td><td>0.36%</td><td>0.36%</td><td>37.57B</td><td>124.10</td><td>237.00</td><td>OK</td><td></td></tr><tr><td>LMT</td><td></td><td>Lockheed Martin Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>hold</td><td>WATCH</td><td>557.31</td><td>2.50%</td><td>13.80</td><td>73.54%</td><td>31.01</td><td>540.68</td><td>-2.98%</td><td>-0.48%</td><td>-0.48%</td><td>130.11B</td><td>410.11</td><td>563.19</td><td>OK</td><td></td></tr><tr><td>ROK</td><td></td><td>Rockwell Automation, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>415.15</td><td>1.33%</td><td>5.52</td><td>68.32%</td><td>54.20</td><td>407.50</td><td>-1.84%</td><td>-0.51%</td><td>-0.51%</td><td>46.68B</td><td>215.00</td><td>420.19</td><td>OK</td><td></td></tr><tr><td>SSAB-B.ST</td><td></td><td>SSAB AB ser. B</td><td>US</td><td>SEK</td><td>STO</td><td>Basic Materials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>none</td><td>WATCH</td><td>78.40</td><td>3.48%</td><td>2.60</td><td>52.31%</td><td>15.77</td><td>75.00</td><td>-4.34%</td><td>-0.86%</td><td>-0.86%</td><td>78.84B</td><td>42.00</td><td>78.40</td><td>OK</td><td></td></tr><tr><td>INVE-B.ST</td><td></td><td>Investor AB ser. B</td><td>US</td><td>SEK</td><td>STO</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>none</td><td>WATCH</td><td>341.30</td><td>1.52%</td><td>5.20</td><td>21.55%</td><td>14.85</td><td>330.33</td><td>-3.21%</td><td>-1.69%</td><td>-1.69%</td><td>1.05T</td><td>247.00</td><td>343.20</td><td>OK</td><td></td></tr><tr><td>SHB-A.ST</td><td></td><td>Svenska Handelsbanken ser. A</td><td>US</td><td>SEK</td><td>STO</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>underperform</td><td>WATCH</td><td>138.45</td><td>5.54%</td><td>7.50</td><td>59.16%</td><td>10.92</td><td>128.43</td><td>-7.24%</td><td>-1.70%</td><td>-1.70%</td><td>277.63B</td><td>95.44</td><td>138.70</td><td>OK</td><td></td></tr><tr><td>SEB-A.ST</td><td></td><td>Skandinaviska Enskilda Banken s</td><td>US</td><td>SEK</td><td>STO</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>hold</td><td>WATCH</td><td>200.70</td><td>4.27%</td><td>8.50</td><td>55.16%</td><td>13.03</td><td>187.00</td><td>-6.83%</td><td>-2.56%</td><td>-2.56%</td><td>399.27B</td><td>123.85</td><td>201.60</td><td>OK</td><td></td></tr><tr><td>GS</td><td></td><td>Goldman Sachs Group, Inc. (The)</td><td>US</td><td>USD</td><td>NYQ</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>hold</td><td>WATCH</td><td>941.24</td><td>1.69%</td><td>16.00</td><td>26.41%</td><td>19.13</td><td>893.79</td><td>-5.04%</td><td>-3.35%</td><td>-3.35%</td><td>284.93B</td><td>439.38</td><td>961.69</td><td>OK</td><td></td></tr><tr><td>TGT</td><td></td><td>Target Corporation</td><td>US</td><td>USD</td><td>NYQ</td><td>Consumer Defensive</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>hold</td><td>WATCH</td><td>108.42</td><td>4.30%</td><td>4.56</td><td>54.55%</td><td>13.14</td><td>99.18</td><td>-8.52%</td><td>-4.22%</td><td>-4.22%</td><td>49.27B</td><td>83.44</td><td>145.08</td><td>OK</td><td></td></tr><tr><td>CAT</td><td></td><td>Caterpillar, Inc.</td><td>US</td><td>USD</td><td>NYQ</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>639.65</td><td>0.96%</td><td>6.04</td><td>29.48%</td><td>32.87</td><td>606.39</td><td>-5.20%</td><td>-4.24%</td><td>-4.24%</td><td>299.66B</td><td>267.30</td><td>644.59</td><td>OK</td><td></td></tr><tr><td>SWED-A.ST</td><td></td><td>Swedbank AB ser A</td><td>US</td><td>SEK</td><td>STO</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>hold</td><td>WATCH</td><td>331.40</td><td>6.63%</td><td>21.70</td><td>74.16%</td><td>11.33</td><td>294.00</td><td>-11.29%</td><td>-4.66%</td><td>-4.66%</td><td>372.57B</td><td>186.40</td><td>331.90</td><td>OK</td><td></td></tr><tr><td>JYSK.CO</td><td></td><td>Jyske Bank A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Financial Services</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>883.50</td><td>2.74%</td><td>24.00</td><td>29.24%</td><td>10.77</td><td>809.75</td><td>-8.35%</td><td>-5.61%</td><td>-5.61%</td><td>51.64B</td><td>450.00</td><td>892.00</td><td>OK</td><td></td></tr><tr><td>SAND.ST</td><td></td><td>Sandvik AB</td><td>US</td><td>SEK</td><td>STO</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>321.10</td><td>1.82%</td><td>5.75</td><td>48.81%</td><td>27.28</td><td>293.79</td><td>-8.51%</td><td>-6.69%</td><td>-6.69%</td><td>402.78B</td><td>168.10</td><td>322.70</td><td>OK</td><td></td></tr><tr><td>VWS.CO</td><td></td><td>Vestas Wind Systems A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>buy</td><td>WATCH</td><td>182.05</td><td>0.31%</td><td>0.55</td><td>7.92%</td><td>26.23</td><td>166.39</td><td>-8.60%</td><td>-8.29%</td><td>-8.29%</td><td>180.51B</td><td>81.14</td><td>188.80</td><td>OK</td><td></td></tr><tr><td>HM-B.ST</td><td></td><td>Hennes &amp; Mauritz AB, H &amp; M ser.</td><td>US</td><td>SEK</td><td>STO</td><td>Consumer Cyclical</td><td>No</td><td></td><td>No</td><td></td><td>WATCH ⚠</td><td>LOW</td><td>underperform</td><td>WATCH</td><td>181.10</td><td>3.79%</td><td>6.80</td><td>98.96%</td><td>26.95</td><td>157.58</td><td>-12.99%</td><td>-9.20%</td><td>-9.20%</td><td>289.74B</td><td>120.00</td><td>188.35</td><td>OK</td><td></td></tr><tr><td>BOL.ST</td><td></td><td>Boliden AB</td><td>US</td><td>SEK</td><td>STO</td><td>Basic Materials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>hold</td><td>WATCH</td><td>581.80</td><td></td><td></td><td>0.00%</td><td>20.08</td><td>487.73</td><td>-16.17%</td><td>-16.17%</td><td>-16.17%</td><td>165.28B</td><td>259.40</td><td>582.60</td><td>OK</td><td></td></tr><tr><td>MAERSK-B.CO</td><td></td><td>A.P. Møller - Mærsk B A/S</td><td>DK</td><td>DKK</td><td>CPH</td><td>Industrials</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>underperform</td><td>WATCH</td><td>15,725.00</td><td>6.89%</td><td>1,120.00</td><td>51.91%</td><td>7.82</td><td>11,946.08</td><td>-24.03%</td><td>-17.14%</td><td>-17.14%</td><td>230.33B</td><td>8,734.00</td><td>16,375.00</td><td>OK</td><td></td></tr><tr><td>INTC</td><td></td><td>Intel Corporation</td><td>US</td><td>USD</td><td>NMS</td><td>Technology</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>hold</td><td>WATCH</td><td>47.35</td><td></td><td></td><td>0.00%</td><td>789.25</td><td>39.03</td><td>-17.58%</td><td>-17.58%</td><td>-17.58%</td><td>225.88B</td><td>17.67</td><td>47.81</td><td>OK</td><td></td></tr><tr><td>SBB-B.ST</td><td></td><td>Samhällsbyggnadsbo. i Norden A</td><td>US</td><td>SEK</td><td>STO</td><td>Real Estate</td><td>No</td><td></td><td>No</td><td></td><td>WATCH</td><td>LOW</td><td>none</td><td>WATCH</td><td>5.04</td><td></td><td></td><td>0.00%</td><td>10.28</td><td>2.90</td><td>-42.44%</td><td>-42.44%</td><td>-42.44%</td><td>9.78B</td><td>3.00</td><td>6.52</td><td>OK</td><td></td></tr>
-        </tbody>
-      </table>
-    </div>
+    <table id="tbl" class="display" style="width:100%"></table>
   </div>
 
+  <!-- jQuery + DataTables -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
 
   <script>
-    const COLS = ["Ticker","Alias","Name","Country","Currency","Exchange","Sector","InIndex","Indexes","Portfolio","PortfolioAction","Signal","Confidence","Reco","Action","Price","DividendYield_%","DividendRate","PayoutRatio_%","PE","TargetMeanPrice","Upside_%","Upside_Yield_%","TotalReturnEst_%","MarketCap","52W_Low","52W_High","Status","Error"];
-    const FILTERS = ["Country","Currency","Sector","Exchange","InIndex","Signal","Confidence","Reco","Action","PortfolioAction"];
+    // Prefer a "simple" csv if present; fallback to full results.
+    const CSV_URLS = [
+      "../data/screener_results/simple_screener_results.csv",
+      "../data/screener_results/screener_results.csv"
+    ];
 
-    function escRegex(s) {
-      return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
+    // Default (slim) columns shown if they exist:
+    const DEFAULT_COLS = [
+      "Ticker","Name","PortfolioAction","Action","Signal",
+      "Score","RecommendationScore",
+      "YieldPct","DividendYield","UpsidePct","Upside_Yield_%","Upside_DDM_%",
+      "Country","Sector","Industry",
+      "Weight","OwnedValue","OwnedShares"
+    ];
 
-    function shouldFlagPayout(sector, payoutPct) {
-      if (!isFinite(payoutPct) || payoutPct <= 90) return false;
-      const s = (sector || "").toString().toLowerCase();
-      if (s.includes("real estate")) return false;
-      if (s.includes("energy")) return false;
-      if (s.includes("financial")) return false;
-      return true;
-    }
+    // Columns that are "advanced" (hidden until toggle), show if present:
+    const ADVANCED_HINTS = [
+      "Value","Quality","Momentum","Volatility","Risk","Stability","Profitability",
+      "Payout","PayoutRatio","PE","ForwardPE","ROE","ROA","Margin","Debt",
+      "Reco","ScreenerAction","SpecialDividend","DividendGrowth","DividendGrowth5Y"
+    ];
 
-    $(document).ready(function() {
-      const dt = $('#screener').DataTable({
-        pageLength: 50,
-        order: [[ COLS.indexOf("TotalReturnEst_%"), "desc" ]],
-        fixedHeader: true,
-        deferRender: true,
-        autoWidth: false,
-
-        createdRow: function(row, data, dataIndex) {
-          const col = (name) => COLS.indexOf(name);
-          const td = $('td', row);
-
-          const sectorIdx = col("Sector");
-          const payoutIdx = col("PayoutRatio_%");
-
-          // payout highlight ONLY if > 90% AND sector-rule says it's meaningful
-          if (payoutIdx >= 0) {
-            const sector = sectorIdx >= 0 ? (data[sectorIdx] ?? "") : "";
-            const t = (data[payoutIdx] ?? "").toString().replace('%','').replace(/,/g,'').trim();
-            const v = Number(t);
-            if (shouldFlagPayout(sector, v)) td.eq(payoutIdx).addClass("payout-bad");
-          }
-
-          // Signal badge
-          const sigIdx = col("Signal");
-          if (sigIdx >= 0) {
-            const raw = (data[sigIdx] ?? "").toString().trim();
-            const lower = raw.toLowerCase();
-            let dotClass = "dot-hold";
-            if (lower.startsWith("gold")) dotClass = "dot-gold";
-            else if (lower.startsWith("buy")) dotClass = "dot-buy";
-            else if (lower.startsWith("watch")) dotClass = "dot-watch";
-            else if (lower.startsWith("hold")) dotClass = "dot-hold";
-
-            if (raw) {
-              td.eq(sigIdx).html(`<span class="badge"><span class="dot ${dotClass}"></span><span>${raw}</span></span>`);
-            }
-          }
-
-          // Confidence badge
-          const confIdx = col("Confidence");
-          if (confIdx >= 0) {
-            const raw = (data[confIdx] ?? "").toString().trim();
-            const lower = raw.toLowerCase();
-            let dotClass = "dot-medium";
-            if (lower.startsWith("high")) dotClass = "dot-high";
-            else if (lower.startsWith("low")) dotClass = "dot-low";
-            else if (lower.startsWith("med")) dotClass = "dot-medium";
-
-            if (raw) {
-              td.eq(confIdx).html(`<span class="badge"><span class="dot ${dotClass}"></span><span>${raw}</span></span>`);
-            }
-          }
-
-          // Reco badge
-          const recoIdx = col("Reco");
-          if (recoIdx >= 0) {
-            const txt = (data[recoIdx] ?? "").toString().trim();
-            if (txt) td.eq(recoIdx).html(`<span class="badge"><span>${txt}</span></span>`);
-          }
-
-          // Action badge
-          const actIdx = col("Action");
-          if (actIdx >= 0) {
-            const txt = (data[actIdx] ?? "").toString().trim();
-            if (txt) td.eq(actIdx).html(`<span class="badge"><span>${txt}</span></span>`);
-          }
+    function parseCSV(text) {
+      // simple CSV parser (handles quotes)
+      const rows = [];
+      let row = [], cell = "", inQuotes = false;
+      for (let i=0; i<text.length; i++) {
+        const c = text[i];
+        const n = text[i+1];
+        if (c === '"' ) {
+          if (inQuotes && n === '"') { cell += '"'; i++; }
+          else { inQuotes = !inQuotes; }
+        } else if (c === ',' && !inQuotes) {
+          row.push(cell); cell = "";
+        } else if ((c === '\n' || c === '\r') && !inQuotes) {
+          if (c === '\r' && n === '\n') i++;
+          row.push(cell);
+          // ignore empty trailing row
+          if (row.join("").trim().length) rows.push(row);
+          row = []; cell = "";
+        } else {
+          cell += c;
         }
+      }
+      if (cell.length || row.length) { row.push(cell); rows.push(row); }
+      return rows;
+    }
+
+    function uniqSorted(arr) {
+      return [...new Set(arr.filter(v => v !== null && v !== undefined && String(v).trim() !== ""))]
+        .map(v => String(v))
+        .sort((a,b) => a.localeCompare(b));
+    }
+
+    function fmtNum(x, digits=2) {
+      const n = Number(x);
+      if (!isFinite(n)) return "";
+      return n.toFixed(digits);
+    }
+
+    function actionDot(a) {
+      const v = String(a || "").toUpperCase();
+      if (v === "ADD") return '<span class="dot add"></span>';
+      if (v === "BUY") return '<span class="dot buy"></span>';
+      if (v === "HOLD") return '<span class="dot hold"></span>';
+      if (v === "TRIM") return '<span class="dot trim"></span>';
+      if (v === "AVOID") return '<span class="dot avoid"></span>';
+      return '<span class="dot"></span>';
+    }
+
+    async function fetchFirstOk(urls) {
+      for (const url of urls) {
+        try {
+          const r = await fetch(url, { cache: "no-store" });
+          if (r.ok) return { url, text: await r.text() };
+        } catch (e) {}
+      }
+      throw new Error("Could not load any CSV from: " + urls.join(", "));
+    }
+
+    function buildColumns(headers) {
+      // Build DataTables column defs with smart renderers for common fields.
+      const headerSet = new Set(headers);
+
+      // Decide which headers are default vs advanced vs hidden.
+      const defaultPresent = DEFAULT_COLS.filter(h => headerSet.has(h));
+      const advancedPresent = headers.filter(h =>
+        !defaultPresent.includes(h) &&
+        ADVANCED_HINTS.some(k => h.toLowerCase().includes(k.toLowerCase()))
+      );
+
+      // Hidden: everything else (still searchable in DataTables)
+      const hiddenPresent = headers.filter(h => !defaultPresent.includes(h) && !advancedPresent.includes(h));
+
+      // We will show default + (advanced if toggle), and keep others hidden always.
+      const columns = headers.map((h) => {
+        const isDefault = defaultPresent.includes(h);
+        const isAdvanced = advancedPresent.includes(h);
+        const visible = isDefault; // advanced toggled later
+
+        let render = null;
+
+        if (["YieldPct","DividendYield","UpsidePct","Upside_Yield_%","Upside_DDM_%","Weight"].includes(h)) {
+          render = (data) => {
+            const n = Number(data);
+            if (!isFinite(n)) return "";
+            // If ratio fields slipped in, show % nicely
+            if (h === "DividendYield" || h === "UpsidePct") return `<span class="right">${fmtNum(n*100,1)}%</span>`;
+            return `<span class="right">${fmtNum(n,1)}%</span>`;
+          };
+        }
+
+        if (["OwnedShares"].includes(h)) {
+          render = (data) => `<span class="right">${fmtNum(data,0)}</span>`;
+        }
+
+        if (["OwnedValue"].includes(h)) {
+          render = (data) => {
+            const n = Number(data);
+            if (!isFinite(n)) return "";
+            return `<span class="right">${fmtNum(n,0)}</span>`;
+          };
+        }
+
+        if (h === "Ticker") {
+          render = (data, type, row) => {
+            const t = String(data || "");
+            return `<span class="badge">${t}</span>`;
+          };
+        }
+
+        if (h === "PortfolioAction" || h === "Action") {
+          render = (data) => {
+            const a = String(data || "");
+            return `<span class="pill">${actionDot(a)}<span>${a}</span></span>`;
+          };
+        }
+
+        if (h === "Score" || h === "RecommendationScore") {
+          render = (data) => `<span class="right">${fmtNum(data,2)}</span>`;
+        }
+
+        return {
+          title: h,
+          data: h,
+          visible,
+          render
+        };
       });
 
-      // Dropdown filters
-      FILTERS.forEach((name) => {
-        const idx = COLS.indexOf(name);
-        const sel = document.getElementById("flt_" + name);
-        if (!sel || idx < 0) return;
+      return { columns, defaultPresent, advancedPresent, hiddenPresent };
+    }
 
-        const values = new Set();
-        dt.column(idx).data().each(function(v) {
-          const s = (v ?? "").toString().trim();
-          if (s) values.add(s);
-        });
-        Array.from(values).sort((a,b)=>a.localeCompare(b)).forEach(v => {
-          const opt = document.createElement("option");
-          opt.value = v; opt.textContent = v;
-          sel.appendChild(opt);
-        });
-
-        sel.addEventListener("change", () => {
-          const val = sel.value;
-          if (!val) dt.column(idx).search("").draw();
-          else dt.column(idx).search("^" + escRegex(val) + "$", true, false).draw();
-        });
+    function addComputedOwned(rows) {
+      // Add "OwnedFlag" from Owned / OwnedShares if present, for filtering
+      return rows.map(r => {
+        const ownedCol = r["Owned"];
+        const shares = Number(r["OwnedShares"]);
+        const val = Number(r["OwnedValue"]);
+        let owned = false;
+        if (ownedCol !== undefined) {
+          const s = String(ownedCol).toLowerCase();
+          owned = (s === "true" || s === "1" || s === "yes" || s === "owned");
+        }
+        if (!owned && isFinite(shares) && shares > 0) owned = true;
+        if (!owned && isFinite(val) && val > 0) owned = true;
+        r["OwnedFlag"] = owned ? "owned" : "notowned";
+        return r;
       });
+    }
+
+    function setDropdownOptions(sel, values) {
+      const el = document.getElementById(sel);
+      const current = el.value;
+      el.innerHTML = '<option value="">All</option>' + values.map(v => `<option value="${v}">${v}</option>`).join("");
+      if ([...el.options].some(o => o.value === current)) el.value = current;
+    }
+
+    async function init() {
+      const { url, text } = await fetchFirstOk(CSV_URLS);
+      const parsed = parseCSV(text);
+
+      const headers = parsed[0].map(h => h.trim());
+      const dataRows = parsed.slice(1).map(row => {
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = (row[i] ?? "").trim());
+        return obj;
+      });
+
+      // meta
+      document.getElementById("meta").textContent =
+        `Source: ${url.replace("../","")} • Rows: ${dataRows.length}`;
+
+      // add OwnedFlag helper
+      const rows = addComputedOwned(dataRows);
+
+      // build columns
+      const { columns, advancedPresent } = buildColumns(headers);
+
+      // Build table
+      const table = $("#tbl").DataTable({
+        data: rows,
+        columns,
+        pageLength: 25,
+        order: [],
+        fixedHeader: true
+      });
+
+      // Populate dropdown filters from data (only if those columns exist)
+      const getColVals = (col) => headers.includes(col) ? uniqSorted(rows.map(r => r[col])) : [];
+      setDropdownOptions("fltAction", uniqSorted([
+        ...getColVals("PortfolioAction"),
+        ...getColVals("Action")
+      ]));
+      setDropdownOptions("fltCountry", getColVals("Country"));
+      setDropdownOptions("fltSector", getColVals("Sector"));
+
+      function applyFilters() {
+        const action = document.getElementById("fltAction").value;
+        const owned = document.getElementById("fltOwned").value;
+        const country = document.getElementById("fltCountry").value;
+        const sector = document.getElementById("fltSector").value;
+        const minScore = document.getElementById("fltMinScore").value;
+
+        // Clear global search
+        table.search("");
+
+        // Custom filter using DataTables ext search
+        $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(fn => fn.__ours !== true);
+
+        const fn = function(settings, data, dataIndex) {
+          const row = table.row(dataIndex).data() || {};
+
+          const rowAction = (row["PortfolioAction"] || row["Action"] || "").toString();
+          const rowOwned = (row["OwnedFlag"] || "").toString();
+          const rowCountry = (row["Country"] || "").toString();
+          const rowSector = (row["Sector"] || "").toString();
+
+          const scoreRaw = row["Score"] || row["RecommendationScore"] || "";
+          const score = Number(scoreRaw);
+
+          if (action && rowAction !== action) return false;
+          if (owned && rowOwned !== owned) return false;
+          if (country && rowCountry !== country) return false;
+          if (sector && rowSector !== sector) return false;
+
+          if (minScore !== "" && isFinite(Number(minScore))) {
+            if (!isFinite(score) || score < Number(minScore)) return false;
+          }
+
+          return true;
+        };
+        fn.__ours = true;
+        $.fn.dataTable.ext.search.push(fn);
+
+        table.draw();
+      }
+
+      // wire up filter events
+      ["fltAction","fltOwned","fltCountry","fltSector","fltMinScore"].forEach(id => {
+        document.getElementById(id).addEventListener("change", applyFilters);
+        document.getElementById(id).addEventListener("input", applyFilters);
+      });
+
+      // reset button
+      document.getElementById("btnReset").addEventListener("click", () => {
+        document.getElementById("fltAction").value = "";
+        document.getElementById("fltOwned").value = "";
+        document.getElementById("fltCountry").value = "";
+        document.getElementById("fltSector").value = "";
+        document.getElementById("fltMinScore").value = "";
+        applyFilters();
+      });
+
+      // Advanced toggle -> show/hide advanced columns if present
+      document.getElementById("tglAdvanced").addEventListener("change", (e) => {
+        const on = e.target.checked;
+        columns.forEach((c, idx) => {
+          const isAdvanced = advancedPresent.includes(c.title);
+          if (isAdvanced) table.column(idx).visible(on, false);
+        });
+        table.columns.adjust().draw(false);
+      });
+
+      applyFilters();
+    }
+
+    init().catch(err => {
+      document.getElementById("meta").textContent = "Error: " + err.message;
+      console.error(err);
     });
   </script>
 </body>

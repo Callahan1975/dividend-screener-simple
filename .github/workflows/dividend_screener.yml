@@ -3,7 +3,7 @@ name: Dividend Screener
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 6 * * *"   # daily 06:00 UTC (change if you want)
+  - cron: "0 */4 * * *"
 
 permissions:
   contents: read

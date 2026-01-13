@@ -334,7 +334,6 @@ def _load_portfolio_holdings() -> set:
                 df = pd.read_csv(p)
                 cols = {c.lower().strip(): c for c in df.columns}
 
-                # common names
                 for key in ("yahoo_ticker", "ticker", "symbol", "Ticker", "Symbol"):
                     if key.lower() in cols:
                         c = cols[key.lower()]
@@ -428,6 +427,36 @@ def _fetch_one(ticker: str, pause_s: float = 0.0) -> Tuple[Optional[Dict[str, An
 
 
 # -----------------------------
+# Payout warning rule (sector exceptions)
+# -----------------------------
+def _should_flag_payout(sector: str, payout_ratio_pct: Optional[float]) -> bool:
+    """
+    Only show ⚠️ / red highlight for payout > 90% in sectors where EPS-based payout is a meaningful risk signal.
+
+    We do NOT flag by default for:
+      - Real Estate (REITs)
+      - Energy (midstream/utilities-like accounting)
+      - Financial Services (often BDC/other)
+    """
+    if payout_ratio_pct is None:
+        return False
+    if payout_ratio_pct <= 90:
+        return False
+
+    s = (sector or "").strip().lower()
+
+    # exceptions
+    if "real estate" in s:
+        return False
+    if "energy" in s:
+        return False
+    if "financial" in s:
+        return False
+
+    return True
+
+
+# -----------------------------
 # Scoring / actions
 # -----------------------------
 def _calc_upside(price: Optional[float], target: Optional[float]) -> Optional[float]:
@@ -466,9 +495,15 @@ def _portfolio_action(is_in_portfolio: bool, action: str) -> str:
     return "NEW_CANDIDATE" if action in ("BUY", "STRONG_BUY") else ""
 
 
-def _make_signal(total_return_pct: Optional[float], upside_pct: Optional[float], payout_ratio_pct: Optional[float]) -> str:
-    warn = (payout_ratio_pct is not None and payout_ratio_pct > 90)
-
+def _make_signal(total_return_pct: Optional[float], upside_pct: Optional[float], sector: str, payout_ratio_pct: Optional[float]) -> str:
+    """
+    Minimal "Signal" (single visual indicator):
+    - GOLD: TotalReturnEst >= 15% AND Upside >= 10%
+    - BUY : TotalReturnEst >= 10%
+    - HOLD: TotalReturnEst 5-10%
+    - WATCH: <5% OR Upside < 0
+    Add ⚠️ only when payout warning rule triggers.
+    """
     tr = total_return_pct
     up = upside_pct
 
@@ -486,6 +521,7 @@ def _make_signal(total_return_pct: Optional[float], upside_pct: Optional[float],
     else:
         label = "WATCH"
 
+    warn = _should_flag_payout(sector, payout_ratio_pct)
     return f"{label}{' ⚠' if warn else ''}"
 
 
@@ -567,7 +603,6 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     cols_js = "[" + ",".join([f'"{c}"' for c in columns]) + "]"
     filters_js = "[" + ",".join([f'"{c}"' for c in filter_cols]) + "]"
 
-    # NOTE: critical fix here is using ${{dotClass}} (double braces) inside this Python f-string.
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -624,6 +659,7 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
     .dot-hold {{ background: rgba(200,200,200,0.9); }}
     .dot-watch{{ background: rgba(231,76,60,0.95); }}
 
+    /* Only one extra "risk" highlight: payout warn (sector-aware) */
     .payout-bad {{ background: rgba(231,76,60,0.16) !important; }}
   </style>
 </head>
@@ -658,6 +694,15 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
       return s.replace(/[.*+?^${{}}()|[\\]\\\\]/g, '\\\\$&');
     }}
 
+    function shouldFlagPayout(sector, payoutPct) {{
+      if (!isFinite(payoutPct) || payoutPct <= 90) return false;
+      const s = (sector || "").toString().toLowerCase();
+      if (s.includes("real estate")) return false;
+      if (s.includes("energy")) return false;
+      if (s.includes("financial")) return false;
+      return true;
+    }}
+
     $(document).ready(function() {{
       const dt = $('#screener').DataTable({{
         pageLength: 50,
@@ -670,12 +715,15 @@ def _html_page(df: pd.DataFrame, generated_at: str) -> str:
           const col = (name) => COLS.indexOf(name);
           const td = $('td', row);
 
-          // payout highlight ONLY if > 90%
+          const sectorIdx = col("Sector");
           const payoutIdx = col("PayoutRatio_%");
+
+          // payout highlight ONLY if > 90% AND sector-rule says it's meaningful
           if (payoutIdx >= 0) {{
+            const sector = sectorIdx >= 0 ? (data[sectorIdx] ?? "") : "";
             const t = (data[payoutIdx] ?? "").toString().replace('%','').replace(/,/g,'').trim();
             const v = Number(t);
-            if (isFinite(v) && v > 90) td.eq(payoutIdx).addClass("payout-bad");
+            if (shouldFlagPayout(sector, v)) td.eq(payoutIdx).addClass("payout-bad");
           }}
 
           // Signal badge
@@ -796,6 +844,8 @@ def main() -> int:
             })
             continue
 
+        sector = _safe_str(data.get("Sector"))
+
         price = _safe_float(data.get("Price"))
         div_yield = _safe_float(data.get("DividendYield"))  # fraction (sanity-filtered)
         payout = _safe_float(data.get("PayoutRatio"))
@@ -824,6 +874,7 @@ def main() -> int:
         signal = _make_signal(
             total_return_pct=total_return_pct,
             upside_pct=upside_pct,
+            sector=sector,
             payout_ratio_pct=payout_pct,
         )
 
@@ -834,7 +885,7 @@ def main() -> int:
             "Country": country,
             "Currency": _safe_str(data.get("Currency")),
             "Exchange": _safe_str(data.get("Exchange")),
-            "Sector": _safe_str(data.get("Sector")),
+            "Sector": sector,
             "InIndex": in_index,
             "Indexes": indexes,
             "Portfolio": "Yes" if in_portfolio else "No",

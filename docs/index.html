@@ -4,133 +4,145 @@
   <meta charset="UTF-8" />
   <title>Dividend Screener – Quick View</title>
 
-  <!-- DataTables CSS -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      margin: 20px;
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 20px; }
+    h1 { margin-bottom: 8px; }
+    p  { margin-top: 0; color: #444; }
+
+    table.dataTable thead th { white-space: nowrap; }
+
+    /* Minimal styling */
+    .signal-GOLD  { color: #b8860b; font-weight: 700; }
+    .signal-BUY   { color: #0b6efd; font-weight: 700; }
+    .signal-HOLD  { color: #555; }
+    .signal-WATCH { color: #999; }
+
+    .conf-High { color: #198754; font-weight: 700; }
+    .conf-Med  { color: #fd7e14; font-weight: 700; }
+    .conf-Low  { color: #dc3545; font-weight: 700; }
+
+    td.details-control {
+      cursor: pointer;
+      text-align: center;
+      user-select: none;
+      width: 30px;
     }
 
-    h1 {
-      margin-bottom: 10px;
+    .details-box {
+      padding: 10px 14px;
+      background: #fafafa;
+      border: 1px solid #eee;
+      border-radius: 10px;
+      margin: 6px 0;
     }
 
-    table.dataTable thead th {
-      white-space: nowrap;
+    .kv {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 6px 12px;
+      align-items: start;
+      font-size: 13px;
     }
+    .kv div.key { color: #666; }
+    .kv div.val { color: #111; overflow-wrap: anywhere; }
 
-    /* Signal badges */
-    .signal-GOLD   { color: #b8860b; font-weight: 700; }
-    .signal-BUY    { color: #0b6efd; font-weight: 700; }
-    .signal-HOLD   { color: #555; }
-    .signal-WATCH  { color: #999; }
-
-    /* Confidence */
-    .conf-High { color: #198754; font-weight: 600; }
-    .conf-Med  { color: #fd7e14; font-weight: 600; }
-    .conf-Low  { color: #dc3545; font-weight: 600; }
-
-    /* Compact table */
-    table.dataTable tbody td {
-      padding: 6px 8px;
-    }
+    table.dataTable tbody td { padding: 6px 8px; }
   </style>
 </head>
 
 <body>
+  <h1>Dividend Screener – Quick Decision View</h1>
+  <p>Quick columns shown. Click ▸ to see all other fields.</p>
 
-<h1>Dividend Screener – Quick Decision View</h1>
-<p>Sorted by <b>Signal → Score → Confidence</b></p>
+  <table id="screener" class="display compact" style="width:100%">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Ticker</th>
+        <th>Price</th>
+        <th>Yield</th>
+        <th>Upside</th>
+        <th>Score</th>
+        <th>Signal</th>
+        <th>Conf</th>
+        <th>Why</th>
+      </tr>
+    </thead>
+  </table>
 
-<table id="screener" class="display compact" style="width:100%">
-  <thead>
-    <tr>
-      <th>Ticker</th>
-      <th>Price</th>
-      <th>Yield</th>
-      <th>Upside</th>
-      <th>Score</th>
-      <th>Signal</th>
-      <th>Conf</th>
-      <th>Why</th>
-    </tr>
-  </thead>
-</table>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-<!-- jQuery + DataTables -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script>
+    const CSV_PATH = "../data/screener_results.csv";
 
-<!-- PapaParse for CSV -->
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    // Signal sort order: GOLD > BUY > HOLD > WATCH
+    const signalOrder = { "GOLD": 1, "BUY": 2, "HOLD": 3, "WATCH": 4 };
+    $.fn.dataTable.ext.type.order["signal-pre"] = function (d) {
+      return signalOrder[d] || 99;
+    };
 
-<script>
-const CSV_PATH = "../data/screener_results.csv";
+    function fmtNum(d, digits=2, suffix="") {
+      if (d == null || d === "" || Number.isNaN(d)) return "";
+      return Number(d).toFixed(digits) + suffix;
+    }
 
-/* ---------- Custom sort for Signal ---------- */
-const signalOrder = { "GOLD": 1, "BUY": 2, "HOLD": 3, "WATCH": 4 };
-$.fn.dataTable.ext.type.order["signal-pre"] = function (d) {
-  return signalOrder[d] || 99;
-};
+    // Build a nice key-value view for all non-quick columns
+    function formatDetails(rowData) {
+      const quick = new Set(["Ticker","Price","Yield_TTM_%","Upside_%","Score","Signal","Confidence","Why"]);
 
-/* ---------- Load CSV ---------- */
-Papa.parse(CSV_PATH, {
-  download: true,
-  header: true,
-  dynamicTyping: true,
-  complete: function (results) {
+      // Sort keys for stable output
+      const keys = Object.keys(rowData || {}).filter(k => !quick.has(k)).sort();
 
-    const rows = results.data.filter(r => r.Ticker); // safety
+      if (keys.length === 0) {
+        return `<div class="details-box"><em>No additional fields in CSV.</em></div>`;
+      }
 
-    $("#screener").DataTable({
-      data: rows,
+      const rows = keys.map(k => {
+        let v = rowData[k];
+        // Clean up common null-ish values
+        if (v == null) v = "";
+        return `<div class="key">${k}</div><div class="val">${String(v)}</div>`;
+      }).join("");
 
-      columns: [
-        { data: "Ticker" },
+      return `
+        <div class="details-box">
+          <div class="kv">${rows}</div>
+        </div>
+      `;
+    }
 
-        { data: "Price",
-          render: d => d == null || d === "" ? "" : d.toFixed(2)
-        },
+    Papa.parse(CSV_PATH, {
+      download: true,
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        const rows = (results.data || []).filter(r => r && r.Ticker);
 
-        { data: "Yield_TTM_%",
-          render: d => d == null || d === "" ? "" : d.toFixed(2) + "%"
-        },
-
-        { data: "Upside_%",
-          render: d => d == null || d === "" ? "" : d.toFixed(1) + "%"
-        },
-
-        { data: "Score",
-          render: d => d == null || d === "" ? "" : Math.round(d)
-        },
-
-        { data: "Signal",
-          type: "signal",
-          render: d => `<span class="signal-${d}">${d}</span>`
-        },
-
-        { data: "Confidence",
-          render: d => `<span class="conf-${d}">${d}</span>`
-        },
-
-        { data: "Why" }
-      ],
-
-      order: [
-        [5, "asc"],   // Signal
-        [4, "desc"],  // Score
-        [6, "asc"]    // Confidence
-      ],
-
-      pageLength: 50,
-      deferRender: true,
-      autoWidth: false
-    });
-  }
-});
-</script>
-
-</body>
-</html>
+        const table = $("#screener").DataTable({
+          data: rows,
+          columns: [
+            {
+              data: null,
+              className: "details-control",
+              orderable: false,
+              defaultContent: "▸"
+            },
+            { data: "Ticker" },
+            { data: "Price", render: d => fmtNum(d, 2, "") },
+            { data: "Yield_TTM_%", render: d => fmtNum(d, 2, "%") },
+            { data: "Upside_%", render: d => fmtNum(d, 1, "%") },
+            { data: "Score", render: d => (d == null || d === "" || Number.isNaN(d)) ? "" : Math.round(Number(d)) },
+            {
+              data: "Signal",
+              type: "signal",
+              render: d => d ? `<span class="signal-${d}">${d}</span>` : ""
+            },
+            {
+              data: "Confidence",
+              render: d => d ? `<span class="conf-${d}">${d}</span>` : ""
+            },

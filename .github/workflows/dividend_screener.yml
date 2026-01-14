@@ -3,7 +3,7 @@ name: Dividend Screener (DK + US)
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */4 * * *"
+    - cron: "0 */4 * * *"   # every 4 hours
 
 permissions:
   contents: write
@@ -15,6 +15,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -36,34 +37,29 @@ jobs:
         run: |
           python screener.py
 
-      - name: Copy results into docs for GitHub Pages
+      - name: Ensure docs output exists
         run: |
           mkdir -p docs/data/screener_results
-          cp -f data/screener_results/screener_results.csv docs/data/screener_results/screener_results.csv
-          if [ -f data/screener_results/errors.csv ]; then
-            cp -f data/screener_results/errors.csv docs/data/screener_results/errors.csv
-          fi
 
-      - name: Remove pycache/pyc to avoid dirty commits
+      - name: Copy CSV into docs for GitHub Pages
         run: |
-          rm -rf __pycache__ src/__pycache__ || true
-          find . -name "*.pyc" -delete || true
+          cp -f data/screener_results/screener_results.csv docs/data/screener_results/screener_results.csv
 
       - name: Commit & push if changed
         run: |
           set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # stage only the important folders/files
-          git add docs/ data/screener_results/ .gitignore requirements.txt screener.py tickers.txt || true
+          # Ignore any cached build trash
+          git status --porcelain
+          git add -A
 
-          # if nothing staged -> exit cleanly
+          # If nothing staged -> exit clean
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
           fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git commit -m "Auto update screener results"
           git push

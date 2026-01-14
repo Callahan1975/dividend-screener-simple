@@ -3,14 +3,20 @@ name: Dividend Screener (DK + US)
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */4 * * *"
+    - cron: "0 */4 * * *"   # every 4 hours (UTC)
 
 permissions:
   contents: write
 
+concurrency:
+  group: dividend-screener
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
 
     steps:
       - name: Checkout repo
@@ -31,17 +37,36 @@ jobs:
 
       - name: Run screener
         run: |
-          python screener.py
+          python -B screener.py
 
       - name: Copy results into docs for GitHub Pages
         run: |
           mkdir -p docs/data/screener_results
-          cp data/screener_results/screener_results.csv docs/data/screener_results/screener_results.csv
+          cp -f data/screener_results/screener_results.csv docs/data/screener_results/screener_results.csv
 
       - name: Commit updated results
         run: |
+          set -e
+
+          # show status (debug)
+          git status --porcelain
+
+          # If nothing changed, exit cleanly
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/data/screener_results/screener_results.csv
-          git commit -m "Auto update screener results" || echo "No changes to commit"
+
+          git add -A
+
+          # If staging is empty, exit
+          if git diff --cached --quiet; then
+            echo "No staged changes."
+            exit 0
+          fi
+
+          git commit -m "Auto update screener results"
           git push

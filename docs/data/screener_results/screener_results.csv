@@ -1,5 +1,108 @@
-Ticker,Name,Country,Sector,DividendYield_%,PayoutRatio,PE
-MSFT,Microsoft,US,Technology,0.76,0.23,33
-JNJ,Johnson & Johnson,US,Healthcare,2.9,0.49,20
-PG,Procter & Gamble,US,Consumer Defensive,2.5,0.6,21
-NOVO-B.CO,Novo Nordisk,DK,Healthcare,1.4,0.5,38
+GeneratedUTC,Ticker,Name,Country,Currency,Exchange,Sector,Industry,Price,DividendYield_%,PayoutRatio_%,PE
+2026-01-14 10:36:08 UTC,NOVO-B.CO,Novo Nordisk B A/S,Denmark,DKK,CPH,Healthcare,Drug Manufacturers - General,382.3,304.0,49.94,16.379604
+2026-01-14 10:36:08 UTC,DSV.CO,DSV A/S,Denmark,DKK,CPH,Industrials,Integrated Freight & Logistics,1730.0,41.0,17.5,43.174446
+2026-01-14 10:36:08 UTC,MAERSK-B.CO,A.P. Møller - Mærsk B A/S,Denmark,DKK,CPH,Industrials,Marine Shipping,15455.0,712.0,51.910000000000004,7.7084603
+2026-01-14 10:36:08 UTC,CARL-B.CO,Carlsberg B A/S,Denmark,DKK,CPH,Consumer Defensive,Beverages - Brewers,851.8,323.0,53.56999999999999,16.907503
+2026-01-14 10:36:08 UTC,PNDORA.CO,Pandora A/S,Denmark,DKK,CPH,Consumer Cyclical,Luxury Goods,560.2,350.0,30.12,8.435476
+2026-01-14 10:36:08 UTC,COLO-B.CO,Coloplast B A/S,Denmark,DKK,CPH,Healthcare,Medical Instruments & Supplies,575.0,399.0,136.39,35.625774
+2026-01-14 10:36:08 UTC,DANSKE.CO,Danske Bank A/S,Denmark,DKK,CPH,Financial Services,Banks - Regional,321.9,585.0,34.25,11.786891
+2026-01-14 10:36:08 UTC,SYDB.CO,Sydbank A/S,Denmark,DKK,CPH,Financial Services,Banks - Regional,557.0,4.8299997999999995,60.95,12.6275215
+2026-01-14 10:36:08 UTC,JYSK?,,,,,,,,,,
+2026-01-14 10:36:08 UTC,-,,,,,,,,,,
+2026-01-14 10:36:08 UTC,TRYG.CO,Tryg A/S,Denmark,DKK,CPH,Financial Services,Insurance - Diversified,158.4,515.0,100.46,19.874529
+2026-01-14 10:36:08 UTC,TOP.CO,,,,,,,,,,
+2026-01-14 10:36:08 UTC,TORM,"TOR Minerals International, Inc",United States,USD,PNK,Basic Materials,Specialty Chemicals,1.02,,0.0,
+2026-01-14 10:36:08 UTC,SPNO.CO,,,,,,,,,,
+2026-01-14 10:36:08 UTC,SPNO.CO),,,,,,,,,,
+2026-01-14 10:36:08 UTC,NDA-DK.CO,Nordea Bank Abp,Finland,DKK,CPH,Financial Services,Banks - Regional,123.9,566.0,67.63,11.924928
+2026-01-14 10:36:08 UTC,DK,"Delek US Holdings, Inc.",United States,USD,NYQ,Energy,Oil & Gas Refining & Marketing,29.6,345.0,308.32999,-44.901554
+2026-01-14 10:36:08 UTC,–,,,,,,,,,,
+2026-01-14 10:36:08 UTC,AFL,AFLAC Incorporated,United States,USD,NYQ,Financial Services,Insurance - Life,107.96,225.99999999999997,29.43,14.186596
+2026-01-14 10:36:08 UTC,AOS,A.O. Smith Corporation,United States,USD,NYQ,Industrials,Specialty Industrial Machinery,70.57,196.0,36.66,19.021563
+2026-01-14 10:36:08 UTC,APD,"Air Products and Chemicals, Inc",United States,USD,NYQ,Basic Materials,Specialty Chemicals,266.18,269.0,100.99000000000001,19.289663
+2026-01-14 10:36:08 UTC,ABT,Abbott Laboratories,United States,USD,NYQ,Healthcare,Medical Devices,124.3,202.99999999999997,29.15,15.615579
+2026-01-14 10:36:08 UTC,ADP,"Automatic Data Processing, Inc.",United States,USD,NMS,Technology,Software - Application,257.07,265.0,60.809999999999995,25.377098
+2026-01-14 10:36:08 UTC,AMCR,Amcor plc,Switzerland,USD,NYQ,Consumer Cyclical,Packaging & Containers,8.75,594.0,33.89,5.794702
+2026-01-14 10:36:08 UTC,AAPL,Apple Inc.,United States,USD,NMS,Technology,Consumer Electronics,261.05,40.0,13.669999999999998,34.946453
+2026-01-14 10:36:08 UTC,KO,Coca-Cola Company (The),United States,USD,NYQ,Consumer Defensive,Beverages - Non-Alcoholic,71.24,286.0,66.72,23.589403
+2026-01-14 10:36:08 UTC,PEP,"Pepsico, Inc.",United States,USD,NMS,Consumer Defensive,Beverages - Non-Alcoholic,143.48,397.0,105.61,27.225805
+2026-01-14 10:36:08 UTC,PG,Procter & Gamble Company (The),United States,USD,NYQ,Consumer Defensive,Household & Personal Products,144.24,293.0,60.24,21.056936
+2026-01-14 10:36:08 UTC,JNJ,Johnson & Johnson,United States,USD,NYQ,Healthcare,Drug Manufacturers - General,213.65,243.00000000000003,49.080002,20.662476
+2026-01-14 10:36:08 UTC,MSFT,Microsoft Corporation,United States,USD,NMS,Technology,Software - Infrastructure,470.67,77.0,23.61,33.452026
+2026-01-14 10:36:08 UTC,IBM,International Business Machines,United States,USD,NYQ,Technology,Information Technology Services,303.16,222.00000000000003,79.86,36.090477
+2026-01-14 10:36:08 UTC,MCD,McDonald's Corporation,United States,USD,NYQ,Consumer Cyclical,Restaurants,309.44,240.0,60.41,26.380222
+2026-01-14 10:36:08 UTC,HD,"Home Depot, Inc. (The)",United States,USD,NYQ,Consumer Cyclical,Home Improvement Retail,379.74,242.0,62.409997,25.903137
+2026-01-14 10:36:08 UTC,LOW,"Lowe's Companies, Inc.",United States,USD,NYQ,Consumer Cyclical,Home Improvement Retail,274.25,175.0,38.91,22.721624
+2026-01-14 10:36:08 UTC,NKE,"Nike, Inc.",United States,USD,NYQ,Consumer Cyclical,Footwear & Accessories,66.3,247.00000000000003,94.15,38.77193
+2026-01-14 10:36:08 UTC,WMT,Walmart Inc.,United States,USD,NMS,Consumer Defensive,Discount Stores,120.36,78.0,31.91,42.08392
+2026-01-14 10:36:08 UTC,COST,Costco Wholesale Corporation,United States,USD,NMS,Consumer Defensive,Discount Stores,941.93,55.00000000000001,27.1,50.50563
+2026-01-14 10:36:08 UTC,TGT,Target Corporation,United States,USD,NYQ,Consumer Defensive,Discount Stores,108.63,420.0,54.55,13.167273
+2026-01-14 10:36:08 UTC,CL,Colgate-Palmolive Company,United States,USD,NYQ,Consumer Defensive,Household & Personal Products,82.96,250.99999999999997,57.14,23.238096
+2026-01-14 10:36:08 UTC,KMB,Kimberly-Clark Corporation,United States,USD,NMS,Consumer Defensive,Household & Personal Products,98.73,509.99999999999994,84.599996,16.705585
+2026-01-14 10:36:08 UTC,MKC,"McCormick & Company, Incorporat",United States,USD,NYQ,Consumer Defensive,Packaged Foods,67.42,285.0,61.46,23.409721
+2026-01-14 10:36:08 UTC,SYY,Sysco Corporation,United States,USD,NYQ,Consumer Defensive,Food Distribution,76.06,284.0,56.29999599999999,20.39142
+2026-01-14 10:36:08 UTC,HRL,Hormel Foods Corporation,United States,USD,NYQ,Consumer Defensive,Packaged Foods,23.5,498.00000000000006,133.32999999999998,27.011494
+2026-01-14 10:36:08 UTC,K,Kellanova,United States,USD,NYQ,Consumer Defensive,Packaged Foods,83.44,2.78,62.57,22.797813
+2026-01-14 10:36:08 UTC,GIS,"General Mills, Inc.",United States,USD,NYQ,Consumer Defensive,Packaged Foods,44.27,551.0,52.04,9.52043
+2026-01-14 10:36:08 UTC,KDP,Keurig Dr Pepper Inc.,United States,USD,NMS,Consumer Defensive,Beverages - Non-Alcoholic,27.72,332.0,79.31,23.896551
+2026-01-14 10:36:08 UTC,MDLZ,"Mondelez International, Inc.",United States,USD,NMS,Consumer Defensive,Confectioners,55.94,358.0,71.54,20.95131
+2026-01-14 10:36:08 UTC,CSCO,"Cisco Systems, Inc.",United States,USD,NMS,Technology,Communication Equipment,75.47,217.0,62.93,29.138998
+2026-01-14 10:36:08 UTC,TXN,Texas Instruments Incorporated,United States,USD,NMS,Technology,Semiconductors,188.53,301.0,99.09,34.340622
+2026-01-14 10:36:08 UTC,AVGO,Broadcom Inc.,United States,USD,NMS,Technology,Semiconductors,354.61,73.0,49.480000000000004,74.03131
+2026-01-14 10:36:08 UTC,V,Visa Inc.,United States,USD,NYQ,Financial Services,Credit Services,327.88,82.0,23.14,32.1451
+2026-01-14 10:36:08 UTC,MA,Mastercard Incorporated,United States,USD,NYQ,Financial Services,Credit Services,544.99,64.0,18.8,34.845905
+2026-01-14 10:36:08 UTC,BLK,"BlackRock, Inc.",United States,USD,NYQ,Financial Services,Asset Management,1089.54,191.0,53.360003,28.00874
+2026-01-14 10:36:08 UTC,JPM,JP Morgan Chase & Co.,United States,USD,NYQ,Financial Services,Banks - Diversified,310.9,193.0,28.970000000000002,15.5294695
+2026-01-14 10:36:08 UTC,MS,Morgan Stanley,United States,USD,NYQ,Financial Services,Capital Markets,182.76,219.0,38.72,18.76386
+2026-01-14 10:36:08 UTC,GS,"Goldman Sachs Group, Inc. (The)",United States,USD,NYQ,Financial Services,Capital Markets,938.15,171.0,26.41,19.04873
+2026-01-14 10:36:08 UTC,BAC,Bank of America Corporation,United States,USD,NYQ,Financial Services,Banks - Diversified,54.54,204.99999999999997,28.959998,14.901639
+2026-01-14 10:36:08 UTC,SCHW,Charles Schwab Corporation (The,United States,USD,NYQ,Financial Services,Capital Markets,101.18,107.0,24.82,23.69555
+2026-01-14 10:36:08 UTC,USB,U.S. Bancorp,United States,USD,NYQ,Financial Services,Banks - Regional,54.05,377.0,46.220002,12.368422
+2026-01-14 10:36:08 UTC,TROW,"T. Rowe Price Group, Inc.",United States,USD,NMS,Financial Services,Asset Management,103.51,491.0,55.06999999999999,11.287895
+2026-01-14 10:36:08 UTC,CINF,Cincinnati Financial Corporatio,United States,USD,NMS,Financial Services,Insurance - Property & Casualty,161.01,216.0,25.45,11.979911
+2026-01-14 10:36:08 UTC,CB,Chubb Limited,Switzerland,USD,NYQ,Financial Services,Insurance - Property & Casualty,300.69,129.0,15.709999999999999,12.565399
+2026-01-14 10:36:08 UTC,TRV,"The Travelers Companies, Inc.",United States,USD,NYQ,Financial Services,Insurance - Property & Casualty,271.2,162.0,16.919999999999998,10.672964
+2026-01-14 10:36:08 UTC,AIG,"American International Group, I",United States,USD,NYQ,Financial Services,Insurance - Diversified,72.29,249.00000000000003,30.580000000000002,13.001799
+2026-01-14 10:36:08 UTC,O,Realty Income Corporation,United States,USD,NYQ,Real Estate,REIT - Retail,59.23,544.0,299.53,55.355137
+2026-01-14 10:36:08 UTC,WPC,W. P. Carey Inc. REIT,United States,USD,NYQ,Real Estate,REIT - Diversified,67.03,549.0,216.97000000000003,40.62424
+2026-01-14 10:36:08 UTC,NNN,"NNN REIT, Inc.",United States,USD,NYQ,Real Estate,REIT - Retail,41.62,577.0,112.5,20.009615
+2026-01-14 10:36:08 UTC,VICI,VICI Properties Inc.,United States,USD,NYQ,Real Estate,REIT - Diversified,27.81,635.0,66.440004,10.574143
+2026-01-14 10:36:08 UTC,NEE,"NextEra Energy, Inc.",United States,USD,NYQ,Utilities,Utilities - Regulated Electric,81.64,278.0,70.3,25.91746
+2026-01-14 10:36:08 UTC,DUK,Duke Energy Corporation (Holdin,United States,USD,NYQ,Utilities,Utilities - Regulated Electric,117.39,363.0,66.14,18.486614
+2026-01-14 10:36:08 UTC,SO,Southern Company (The),United States,USD,NYQ,Utilities,Utilities - Regulated Electric,87.55,338.0,72.64,21.778608
+2026-01-14 10:36:08 UTC,AEP,American Electric Power Company,United States,USD,NMS,Utilities,Utilities - Regulated Electric,116.62,326.0,54.47,17.07467
+2026-01-14 10:36:08 UTC,ED,"Consolidated Edison, Inc.",United States,USD,NYQ,Utilities,Utilities - Regulated Electric,100.21,339.0,59.089999999999996,17.519232
+2026-01-14 10:36:08 UTC,D,"Dominion Energy, Inc.",United States,USD,NYQ,Utilities,Utilities - Regulated Electric,59.02,451.99999999999994,87.25,19.287582
+2026-01-14 10:36:08 UTC,AWK,"American Water Works Company, I",United States,USD,NYQ,Utilities,Utilities - Regulated Water,131.26,252.0,55.979997000000004,23.109154
+2026-01-14 10:36:08 UTC,XOM,Exxon Mobil Corporation,United States,USD,NYQ,Energy,Oil & Gas Integrated,126.54,326.0,57.56,18.39244
+2026-01-14 10:36:08 UTC,CVX,Chevron Corporation,United States,USD,NYQ,Energy,Oil & Gas Integrated,163.87,417.0,95.08,23.04782
+2026-01-14 10:36:08 UTC,COP,ConocoPhillips,United States,USD,NYQ,Energy,Oil & Gas E&P,96.46,348.0,44.07,13.624293
+2026-01-14 10:36:08 UTC,EOG,"EOG Resources, Inc.",United States,USD,NYQ,Energy,Oil & Gas E&P,108.04,378.0,38.080000000000005,10.728898
+2026-01-14 10:36:08 UTC,PSX,Phillips 66,United States,USD,NYQ,Energy,Oil & Gas Refining & Marketing,137.7,349.0,126.67999999999999,37.216213
+2026-01-14 10:36:08 UTC,MPC,Marathon Petroleum Corporation,United States,USD,NYQ,Energy,Oil & Gas Refining & Marketing,175.85,227.0,38.72,18.687567
+2026-01-14 10:36:08 UTC,SLB,SLB Limited,United States,USD,NYQ,Energy,Oil & Gas Equipment & Services,45.9,248.0,43.97,17.859922
+2026-01-14 10:36:08 UTC,CAT,"Caterpillar, Inc.",United States,USD,NYQ,Industrials,Farm & Heavy Construction Machinery,636.53,95.0,29.479998000000002,32.67608
+2026-01-14 10:36:08 UTC,DE,Deere & Company,United States,USD,NYQ,Industrials,Farm & Heavy Construction Machinery,499.52,130.0,35.029998,27.030304
+2026-01-14 10:36:08 UTC,EMR,Emerson Electric Company,United States,USD,NYQ,Industrials,Specialty Industrial Machinery,146.35,152.0,52.35999999999999,36.405476
+2026-01-14 10:36:08 UTC,MMM,3M Company,United States,USD,NYQ,Industrials,Conglomerates,169.42,172.0,46.089999999999996,27.020733
+2026-01-14 10:36:08 UTC,ITW,Illinois Tool Works Inc.,United States,USD,NYQ,Industrials,Specialty Industrial Machinery,256.76,250.99999999999997,59.260000000000005,24.879847
+2026-01-14 10:36:08 UTC,ROK,"Rockwell Automation, Inc.",United States,USD,NYQ,Industrials,Specialty Industrial Machinery,416.88,132.0,68.32000000000001,54.35202
+2026-01-14 10:36:08 UTC,PH,Parker-Hannifin Corporation,United States,USD,NYQ,Industrials,Specialty Industrial Machinery,938.35,77.0,24.440001,33.44084
+2026-01-14 10:36:08 UTC,GPC,Genuine Parts Company,United States,USD,NYQ,Consumer Cyclical,Auto Parts,131.97,312.0,70.39999999999999,22.714287
+2026-01-14 10:36:08 UTC,NDSN,Nordson Corporation,United States,USD,NMS,Industrials,Specialty Industrial Machinery,264.8,124.0,37.13,31.152939
+2026-01-14 10:36:08 UTC,FAST,Fastenal Company,United States,USD,NMS,Industrials,Industrial Distribution,42.42,206.99999999999997,79.81,40.018867
+2026-01-14 10:36:08 UTC,WM,"Waste Management, Inc.",United States,USD,NYQ,Industrials,Waste Management,216.18,153.0,50.79,33.990562
+2026-01-14 10:36:08 UTC,ROP,"Roper Technologies, Inc.",United States,USD,NMS,Technology,Software - Application,426.36,85.0,22.209999,29.323246
+2026-01-14 10:36:08 UTC,PAYX,"Paychex, Inc.",United States,USD,NMS,Technology,Software - Application,109.66,394.0,95.48,24.809956
+2026-01-14 10:36:08 UTC,BDX,"Becton, Dickinson and Company",United States,USD,NYQ,Healthcare,Medical Instruments & Supplies,201.52,208.0,71.480006,34.62543
+2026-01-14 10:36:08 UTC,ABBV,AbbVie Inc.,United States,USD,NYQ,Healthcare,Drug Manufacturers - General,220.75,313.0,490.14996999999994,167.23485
+2026-01-14 10:36:08 UTC,MRK,"Merck & Company, Inc.",United States,USD,NYQ,Healthcare,Drug Manufacturers - General,108.26,314.0,42.86,14.3201065
+2026-01-14 10:36:08 UTC,PFE,"Pfizer, Inc.",United States,USD,NYQ,Healthcare,Drug Manufacturers - General,25.15,684.0,99.42,14.622092
+2026-01-14 10:36:08 UTC,AMGN,Amgen Inc.,United States,USD,NMS,Healthcare,Drug Manufacturers - General,324.3,298.0,72.62000400000001,25.061823
+2026-01-14 10:36:08 UTC,GILD,"Gilead Sciences, Inc.",United States,USD,NMS,Healthcare,Drug Manufacturers - General,121.76,260.0,48.610002,18.819166
+2026-01-14 10:36:08 UTC,MDT,Medtronic plc.,Ireland,USD,NYQ,Healthcare,Medical Devices,96.42,295.0,76.42,26.130081
+2026-01-14 10:36:08 UTC,SYK,Stryker Corporation,United States,USD,NYQ,Healthcare,Medical Devices,355.82,99.0,44.15,46.7569
+2026-01-14 10:36:08 UTC,TMO,Thermo Fisher Scientific Inc,United States,USD,NYQ,Healthcare,Diagnostics & Research,607.08,28.000000000000004,9.71,35.09133
+2026-01-14 10:36:08 UTC,UNH,UnitedHealth Group Incorporated,United States,USD,NYQ,Healthcare,Healthcare Plans,333.93,265.0,44.919997,17.392187
+2026-01-14 10:36:08 UTC,CI,The Cigna Group,United States,USD,NYQ,Healthcare,Healthcare Plans,271.81,222.00000000000003,26.25,12.032315
+2026-01-14 10:36:08 UTC,ELV,"Elevance Health, Inc.",United States,USD,NYQ,Healthcare,Healthcare Plans,370.68,185.0,27.55,15.105134

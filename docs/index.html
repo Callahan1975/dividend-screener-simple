@@ -19,6 +19,7 @@
     table.dataTable tbody td { background:#0b1220; color:#e6edf3; }
     .dt-container .dt-paging .dt-paging-button { color:#e6edf3 !important; }
     .muted { opacity:.75; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
   </style>
 </head>
 
@@ -41,41 +42,35 @@
     <select id="fSector"><option value="">All</option></select>
 
     <button id="reset" class="pill" style="cursor:pointer;">Reset</button>
+    <span class="pill muted">Tip: Cmd+Shift+R efter opdatering</span>
   </div>
 
   <table id="screener" class="display"></table>
 
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/datatables.net@2.1.8/js/dataTables.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
     const CSV_PATH = "data/screener_results/screener_results.csv";
 
-    function parseCSV(text) {
-      // simple CSV parser (works because our output has no quoted commas)
-      const lines = text.trim().split("\n");
-      const headers = lines.shift().split(",");
-      const data = lines.map(line => line.split(","));
-      return { headers, data };
-    }
-
     function uniqSorted(values) {
-      const s = new Set(values.filter(v => v && v.trim() !== ""));
-      return Array.from(s).sort((a,b) => a.localeCompare(b));
+      const s = new Set(values.filter(v => v !== null && v !== undefined && String(v).trim() !== ""));
+      return Array.from(s).sort((a,b) => String(a).localeCompare(String(b)));
     }
 
-    function fmtNum(x) {
+    function fmtNum(x, nd=2) {
       if (x === null || x === undefined || x === "") return "";
       const n = Number(x);
       if (!isFinite(n)) return "";
-      return n.toFixed(2);
+      return n.toFixed(nd);
     }
 
-    function fmtPct(x) {
+    function fmtPct(x, nd=2) {
       if (x === null || x === undefined || x === "") return "";
       const n = Number(x);
       if (!isFinite(n)) return "";
-      return n.toFixed(2) + "%";
+      return n.toFixed(nd) + "%";
     }
 
     fetch(CSV_PATH, { cache: "no-store" })
@@ -84,12 +79,30 @@
         return r.text();
       })
       .then(text => {
-        const { headers, data } = parseCSV(text);
+        const parsed = Papa.parse(text, {
+          header: true,
+          dynamicTyping: false,
+          skipEmptyLines: true
+        });
 
-        // Build the table header dynamically
+        if (parsed.errors && parsed.errors.length) {
+          console.error("PapaParse errors:", parsed.errors);
+        }
+
+        const rows = parsed.data || [];
+        if (!rows.length) throw new Error("CSV parsed but no rows");
+
+        const headers = Object.keys(rows[0]);
+
+        // Build header
         $("#screener").html(
           "<thead><tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr></thead>"
         );
+
+        // Convert to DataTables row arrays in header order
+        const data = rows.map(r => headers.map(h => r[h] ?? ""));
+
+        const idx = (name) => headers.indexOf(name);
 
         const table = new DataTable("#screener", {
           data,
@@ -98,39 +111,36 @@
           order: [[0, "desc"]],
           autoWidth: false,
           columnDefs: [
+            // Make ticker monospace if present
+            { targets: idx("Ticker"), createdCell: (td) => td.classList.add("mono") },
+
             // Price
+            { targets: idx("Price"), render: (d) => fmtNum(d, 2) },
+
+            // Percent columns (safe even if missing)
             {
-              targets: headers.indexOf("Price"),
-              render: (d) => fmtNum(d)
+              targets: [idx("DividendYield_%"), idx("PayoutRatio_%")].filter(i => i >= 0),
+              render: (d) => fmtPct(d, 2)
             },
-            // DividendYield_% and PayoutRatio_%
-            {
-              targets: [headers.indexOf("DividendYield_%"), headers.indexOf("PayoutRatio_%")].filter(i => i >= 0),
-              render: (d) => fmtPct(d)
-            },
+
             // PE
-            {
-              targets: headers.indexOf("PE"),
-              render: (d) => fmtNum(d)
-            }
-          ]
+            { targets: idx("PE"), render: (d) => fmtNum(d, 2) }
+          ].filter(x => x.targets !== -1)
         });
 
-        // Build dropdown filters (by column name)
-        function colIndex(name) { return headers.indexOf(name); }
+        // Dropdown filters
+        const idxCountry  = idx("Country");
+        const idxCurrency = idx("Currency");
+        const idxExchange = idx("Exchange");
+        const idxSector   = idx("Sector");
 
-        const idxCountry  = colIndex("Country");
-        const idxCurrency = colIndex("Currency");
-        const idxExchange = colIndex("Exchange");
-        const idxSector   = colIndex("Sector");
-
-        const countryVals  = uniqSorted(data.map(r => r[idxCountry]));
-        const currencyVals = uniqSorted(data.map(r => r[idxCurrency]));
-        const exchangeVals = uniqSorted(data.map(r => r[idxExchange]));
-        const sectorVals   = uniqSorted(data.map(r => r[idxSector]));
+        const countryVals  = idxCountry >= 0 ? uniqSorted(data.map(r => r[idxCountry])) : [];
+        const currencyVals = idxCurrency >= 0 ? uniqSorted(data.map(r => r[idxCurrency])) : [];
+        const exchangeVals = idxExchange >= 0 ? uniqSorted(data.map(r => r[idxExchange])) : [];
+        const sectorVals   = idxSector >= 0 ? uniqSorted(data.map(r => r[idxSector])) : [];
 
         function fillSelect(sel, values) {
-          values.forEach(v => $(sel).append(`<option value="${v}">${v}</option>`));
+          values.forEach(v => $(sel).append(`<option value="${String(v)}">${String(v)}</option>`));
         }
 
         fillSelect("#fCountry", countryVals);
@@ -138,10 +148,10 @@
         fillSelect("#fExchange", exchangeVals);
         fillSelect("#fSector", sectorVals);
 
-        function applyFilter(sel, idx) {
+        function applyFilter(sel, idxCol) {
+          if (idxCol < 0) return;
           const v = $(sel).val();
-          // exact match
-          table.column(idx).search(v ? "^" + v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$" : "", true, false).draw();
+          table.column(idxCol).search(v ? "^" + v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$" : "", true, false).draw();
         }
 
         $("#fCountry").on("change", () => applyFilter("#fCountry", idxCountry));
@@ -154,8 +164,9 @@
           table.search("").columns().search("").draw();
         });
 
-        const generatedUTC = data[0] && data[0][headers.indexOf("GeneratedUTC")] ? data[0][headers.indexOf("GeneratedUTC")] : "";
-        document.getElementById("status").innerText = `Data loaded ✅  Loaded ${data.length} rows from ${CSV_PATH}` + (generatedUTC ? ` · Generated: ${generatedUTC}` : "");
+        const generatedUTC = rows[0]["GeneratedUTC"] ? String(rows[0]["GeneratedUTC"]) : "";
+        document.getElementById("status").innerText =
+          `Data loaded ✅  Loaded ${rows.length} rows from ${CSV_PATH}` + (generatedUTC ? ` · Generated: ${generatedUTC}` : "");
       })
       .catch(err => {
         document.getElementById("status").innerText = "Error: " + err.message;

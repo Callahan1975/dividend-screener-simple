@@ -37,7 +37,11 @@ jobs:
 
       - name: Run screener
         run: |
-          python screener.py
+          python screener.py - name: Copy results into docs for GitHub Pages
+        run: |
+          mkdir -p docs/data/screener_results
+          # kopiér den nyeste csv til det sted som index.html loader fra
+          cp -f data/screener_results/screener_results.csv docs/data/screener_results/screener_results.csv
 
       - name: Commit updated results (CSV/HTML)
         run: |

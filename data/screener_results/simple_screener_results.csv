@@ -1,27 +1,27 @@
 Ticker,Name,PortfolioAction,Action,ScreenerAction,Reco,Score,YieldPct,DivGrowth5YPct,UpsideBestPct,Country,Sector,Industry,Weight,OwnedValue,OwnedShares,Price
 COLO-B.CO,Coloplast B A/S,HOLD,AVOID,AVOID,AVOID,1.265,4.01%,5.0%,-0.5%,Denmark,Healthcare,Medical Instruments & Supplies,0,0,0,576.4
 DSV.CO,DSV A/S,HOLD,AVOID,AVOID,AVOID,1.15,42.00%,22.9%,-78.1%,Denmark,Industrials,Integrated Freight & Logistics,0,0,0,1727.0
-V,Visa Inc.,HOLD,AVOID,AVOID,AVOID,1.065,78.00%,14.9%,-55.9%,United States,Financial Services,Credit Services,0,0,0,328.11
-MAIN,Main Street Capital Corporation,HOLD,AVOID,AVOID,AVOID,0.742,7.12%,-36.8%,-0.3%,United States,Financial Services,Asset Management,0,0,0,60.88
-MSFT,Microsoft Corporation,HOLD,AVOID,AVOID,AVOID,0.717,76.00%,10.2%,-58.0%,United States,Technology,Software - Infrastructure,0,0,0,468.445
-AVGO,Broadcom Inc.,HOLD,AVOID,AVOID,AVOID,0.597,74.00%,12.6%,-60.4%,United States,Technology,Semiconductors,0,0,0,354.6
-AAPL,Apple Inc.,HOLD,AVOID,AVOID,AVOID,0.324,40.00%,5.0%,-91.6%,United States,Technology,Consumer Electronics,0,0,0,259.54
-MA,Mastercard Incorporated,HOLD,AVOID,AVOID,AVOID,-0.8,61.00%,-13.1%,-92.0%,United States,Financial Services,Credit Services,0,0,0,545.9199
+V,Visa Inc.,HOLD,AVOID,AVOID,AVOID,1.065,78.00%,14.9%,-55.9%,United States,Financial Services,Credit Services,0,0,0,327.88
+MAIN,Main Street Capital Corporation,HOLD,AVOID,AVOID,AVOID,0.749,7.12%,-36.8%,-0.0%,United States,Financial Services,Asset Management,0,0,0,60.69
+MSFT,Microsoft Corporation,HOLD,AVOID,AVOID,AVOID,0.717,76.00%,10.2%,-58.2%,United States,Technology,Software - Infrastructure,0,0,0,470.67
+AVGO,Broadcom Inc.,HOLD,AVOID,AVOID,AVOID,0.597,74.00%,12.6%,-60.4%,United States,Technology,Semiconductors,0,0,0,354.61
+AAPL,Apple Inc.,HOLD,AVOID,AVOID,AVOID,0.324,40.00%,5.0%,-91.7%,United States,Technology,Consumer Electronics,0,0,0,261.05
+MA,Mastercard Incorporated,HOLD,AVOID,AVOID,AVOID,-0.8,61.00%,-13.1%,-92.0%,United States,Financial Services,Credit Services,0,0,0,544.99
 VWS.CO,Vestas Wind Systems A/S,HOLD,AVOID,AVOID,AVOID,-0.8,31.00%,-19.1%,-96.2%,Denmark,Industrials,Specialty Industrial Machinery,0,0,0,182.05
 MAERSK-B.CO,A.P. Møller - Mærsk B A/S,HOLD,BUY,BUY,GOLD,5.5,6.89%,49.5%,284.6%,Denmark,Industrials,Marine Shipping,0,0,0,15725.0
 PNDORA.CO,Pandora A/S,HOLD,BUY,BUY,GOLD,5.019,3.50%,17.3%,88.8%,Denmark,Consumer Cyclical,Luxury Goods,0,0,0,572.0
 NOVO-B.CO,Novo Nordisk B A/S,HOLD,BUY,BUY,GOLD,4.603,3.07%,22.1%,64.1%,Denmark,Healthcare,Drug Manufacturers - General,0,0,0,383.3
-NEE,"NextEra Energy, Inc.",HOLD,BUY,BUY,BUY,3.228,2.79%,10.1%,50.7%,United States,Utilities,Utilities - Regulated Electric,0,0,0,81.3177
-ARCC,Ares Capital Corporation,HOLD,BUY,BUY,BUY,3.141,9.36%,3.7%,54.5%,United States,Financial Services,Asset Management,0,0,0,20.505
-PEP,"Pepsico, Inc.",HOLD,BUY,BUY,BUY,2.668,4.03%,6.9%,38.0%,United States,Consumer Defensive,Beverages - Non-Alcoholic,0,0,0,143.39
-PG,Procter & Gamble Company (The),HOLD,HOLD,HOLD,HOLD,1.943,2.95%,6.0%,-0.4%,United States,Consumer Defensive,Household & Personal Products,0,0,0,143.9047
+NEE,"NextEra Energy, Inc.",HOLD,BUY,BUY,BUY,3.213,2.79%,10.1%,50.1%,United States,Utilities,Utilities - Regulated Electric,0,0,0,81.64
+ARCC,Ares Capital Corporation,HOLD,BUY,BUY,BUY,3.145,9.36%,3.7%,54.7%,United States,Financial Services,Asset Management,0,0,0,20.48
+PEP,"Pepsico, Inc.",HOLD,BUY,BUY,BUY,2.666,4.03%,6.9%,37.9%,United States,Consumer Defensive,Beverages - Non-Alcoholic,0,0,0,143.48
+PG,Procter & Gamble Company (The),HOLD,HOLD,HOLD,HOLD,1.937,2.95%,6.0%,-0.6%,United States,Consumer Defensive,Household & Personal Products,0,0,0,144.24
 CARL-B.CO,Carlsberg B A/S,HOLD,HOLD,HOLD,WATCH,1.892,3.22%,5.2%,0.2%,Denmark,Consumer Defensive,Beverages - Brewers,0,0,0,836.8
-WM,"Waste Management, Inc.",HOLD,HOLD,HOLD,WATCH,1.869,1.51%,8.6%,0.8%,United States,Industrials,Waste Management,0,0,0,216.79
-JNJ,Johnson & Johnson,HOLD,HOLD,HOLD,WATCH,1.85,2.48%,5.2%,-1.7%,United States,Healthcare,Drug Manufacturers - General,0,0,0,213.41
-KO,Coca-Cola Company (The),HOLD,HOLD,HOLD,WATCH,1.821,2.89%,4.5%,-0.6%,United States,Consumer Defensive,Beverages - Non-Alcoholic,0,0,0,70.98
+WM,"Waste Management, Inc.",HOLD,HOLD,HOLD,WATCH,1.876,1.51%,8.6%,1.1%,United States,Industrials,Waste Management,0,0,0,216.18
+JNJ,Johnson & Johnson,HOLD,HOLD,HOLD,WATCH,1.847,2.48%,5.2%,-1.9%,United States,Healthcare,Drug Manufacturers - General,0,0,0,213.65
+KO,Coca-Cola Company (The),HOLD,HOLD,HOLD,WATCH,1.812,2.89%,4.5%,-0.9%,United States,Consumer Defensive,Beverages - Non-Alcoholic,0,0,0,71.24
 TRYG.CO,Tryg A/S,HOLD,HOLD,HOLD,WATCH,1.805,5.12%,3.9%,0.5%,Denmark,Financial Services,Insurance - Diversified,0,0,0,159.3
-MCD,McDonald's Corporation,HOLD,HOLD,HOLD,WATCH,1.727,2.43%,7.3%,-0.8%,United States,Consumer Cyclical,Restaurants,0,0,0,308.76
-O,Realty Income Corporation,HOLD,HOLD,HOLD,WATCH,1.726,5.47%,5.1%,17.6%,United States,Real Estate,REIT - Retail,0,0,0,59.1577
+O,Realty Income Corporation,HOLD,HOLD,HOLD,WATCH,1.722,5.47%,5.1%,17.5%,United States,Real Estate,REIT - Retail,0,0,0,59.23
+MCD,McDonald's Corporation,HOLD,HOLD,HOLD,WATCH,1.721,2.43%,7.3%,-1.1%,United States,Consumer Cyclical,Restaurants,0,0,0,309.44
 GMAB.CO,Genmab A/S,HOLD,HOLD,HOLD,WATCH,1.5,nan%,nan%,nan%,Denmark,Healthcare,Biotechnology,0,0,0,2146.0
 JYSK.CO,Jyske Bank A/S,HOLD,HOLD,HOLD,WATCH,1.479,2.74%,nan%,-0.9%,Denmark,Financial Services,Banks - Regional,0,0,0,883.5
 DANSKE.CO,Danske Bank A/S,HOLD,HOLD,HOLD,WATCH,1.464,5.94%,nan%,-1.4%,Denmark,Financial Services,Banks - Regional,0,0,0,319.4

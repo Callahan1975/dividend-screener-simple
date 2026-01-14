@@ -1,10 +1,16 @@
+# Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 *.pyd
-.Python
-.env
-.venv
+*.pyo
+
+# Virtual env
+.venv/
 venv/
+
+# OS
 .DS_Store
-.ipynb_checkpoints/
+
+# Editor
+.vscode/
+.idea/

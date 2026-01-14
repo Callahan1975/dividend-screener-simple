@@ -6,21 +6,20 @@ on:
     - cron: "0 */4 * * *"   # every 4 hours
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: dividend-screener
+  group: "pages"
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -31,28 +30,29 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install yfinance
+          pip install -r requirements.txt
 
       - name: Run screener
+        env:
+          PYTHONUNBUFFERED: "1"
         run: |
           python screener.py
 
-      - name: Copy results into docs for GitHub Pages
+      - name: Ensure docs path exists + copy results
         run: |
           mkdir -p docs/data/screener_results
           cp -f data/screener_results/screener_results.csv docs/data/screener_results/screener_results.csv
 
-      - name: Commit & push if changed
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
 
-          git add docs/index.html docs/data/screener_results/screener_results.csv
-
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-            exit 0
-          fi
-
-          git commit -m "Auto update screener results"
-          git push
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4

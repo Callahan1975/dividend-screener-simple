@@ -1,177 +1,136 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dividend Screener (DK + US)</title>
+  <meta charset="UTF-8" />
+  <title>Dividend Screener – Quick View</title>
 
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-dt@2.1.8/css/dataTables.dataTables.min.css">
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 
   <style>
-    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin: 18px; background:#0b1220; color:#e6edf3; }
-    h1 { font-size: 22px; margin: 0 0 10px; }
-    .bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 8px 0 14px; }
-    .pill { padding:6px 10px; border:1px solid rgba(255,255,255,.12); border-radius:999px; background:rgba(255,255,255,.04); font-size:12px; }
-    select, input { background:#0f1a2d; border:1px solid rgba(255,255,255,.14); color:#e6edf3; border-radius:10px; padding:6px 10px; }
-    table.dataTable { width:100% !important; }
-    table.dataTable thead th { background:#0f1a2d; color:#e6edf3; }
-    table.dataTable tbody td { background:#0b1220; color:#e6edf3; }
-    .dt-container .dt-paging .dt-paging-button { color:#e6edf3 !important; }
-    .muted { opacity:.75; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      margin: 20px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    table.dataTable thead th {
+      white-space: nowrap;
+    }
+
+    /* Signal badges */
+    .signal-GOLD   { color: #b8860b; font-weight: 700; }
+    .signal-BUY    { color: #0b6efd; font-weight: 700; }
+    .signal-HOLD   { color: #555; }
+    .signal-WATCH  { color: #999; }
+
+    /* Confidence */
+    .conf-High { color: #198754; font-weight: 600; }
+    .conf-Med  { color: #fd7e14; font-weight: 600; }
+    .conf-Low  { color: #dc3545; font-weight: 600; }
+
+    /* Compact table */
+    table.dataTable tbody td {
+      padding: 6px 8px;
+    }
   </style>
 </head>
 
 <body>
-  <h1>Dividend Screener (DK + US)</h1>
 
-  <div class="bar">
-    <span id="status" class="pill">Loading data…</span>
+<h1>Dividend Screener – Quick Decision View</h1>
+<p>Sorted by <b>Signal → Score → Confidence</b></p>
 
-    <label class="muted">Country</label>
-    <select id="fCountry"><option value="">All</option></select>
+<table id="screener" class="display compact" style="width:100%">
+  <thead>
+    <tr>
+      <th>Ticker</th>
+      <th>Price</th>
+      <th>Yield</th>
+      <th>Upside</th>
+      <th>Score</th>
+      <th>Signal</th>
+      <th>Conf</th>
+      <th>Why</th>
+    </tr>
+  </thead>
+</table>
 
-    <label class="muted">Currency</label>
-    <select id="fCurrency"><option value="">All</option></select>
+<!-- jQuery + DataTables -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
-    <label class="muted">Exchange</label>
-    <select id="fExchange"><option value="">All</option></select>
+<!-- PapaParse for CSV -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-    <label class="muted">Sector</label>
-    <select id="fSector"><option value="">All</option></select>
+<script>
+const CSV_PATH = "../data/screener_results.csv";
 
-    <button id="reset" class="pill" style="cursor:pointer;">Reset</button>
-    <span class="pill muted">Tip: Cmd+Shift+R efter opdatering</span>
-  </div>
+/* ---------- Custom sort for Signal ---------- */
+const signalOrder = { "GOLD": 1, "BUY": 2, "HOLD": 3, "WATCH": 4 };
+$.fn.dataTable.ext.type.order["signal-pre"] = function (d) {
+  return signalOrder[d] || 99;
+};
 
-  <table id="screener" class="display"></table>
+/* ---------- Load CSV ---------- */
+Papa.parse(CSV_PATH, {
+  download: true,
+  header: true,
+  dynamicTyping: true,
+  complete: function (results) {
 
-  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/datatables.net@2.1.8/js/dataTables.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    const rows = results.data.filter(r => r.Ticker); // safety
 
-  <script>
-    const CSV_PATH = "data/screener_results/screener_results.csv";
+    $("#screener").DataTable({
+      data: rows,
 
-    function uniqSorted(values) {
-      const s = new Set(values.filter(v => v !== null && v !== undefined && String(v).trim() !== ""));
-      return Array.from(s).sort((a,b) => String(a).localeCompare(String(b)));
-    }
+      columns: [
+        { data: "Ticker" },
 
-    function fmtNum(x, nd=2) {
-      if (x === null || x === undefined || x === "") return "";
-      const n = Number(x);
-      if (!isFinite(n)) return "";
-      return n.toFixed(nd);
-    }
+        { data: "Price",
+          render: d => d == null || d === "" ? "" : d.toFixed(2)
+        },
 
-    function fmtPct(x, nd=2) {
-      if (x === null || x === undefined || x === "") return "";
-      const n = Number(x);
-      if (!isFinite(n)) return "";
-      return n.toFixed(nd) + "%";
-    }
+        { data: "Yield_TTM_%",
+          render: d => d == null || d === "" ? "" : d.toFixed(2) + "%"
+        },
 
-    fetch(CSV_PATH, { cache: "no-store" })
-      .then(r => {
-        if (!r.ok) throw new Error("CSV not found: " + CSV_PATH);
-        return r.text();
-      })
-      .then(text => {
-        const parsed = Papa.parse(text, {
-          header: true,
-          dynamicTyping: false,
-          skipEmptyLines: true
-        });
+        { data: "Upside_%",
+          render: d => d == null || d === "" ? "" : d.toFixed(1) + "%"
+        },
 
-        if (parsed.errors && parsed.errors.length) {
-          console.error("PapaParse errors:", parsed.errors);
-        }
+        { data: "Score",
+          render: d => d == null || d === "" ? "" : Math.round(d)
+        },
 
-        const rows = parsed.data || [];
-        if (!rows.length) throw new Error("CSV parsed but no rows");
+        { data: "Signal",
+          type: "signal",
+          render: d => `<span class="signal-${d}">${d}</span>`
+        },
 
-        const headers = Object.keys(rows[0]);
+        { data: "Confidence",
+          render: d => `<span class="conf-${d}">${d}</span>`
+        },
 
-        // Build header
-        $("#screener").html(
-          "<thead><tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr></thead>"
-        );
+        { data: "Why" }
+      ],
 
-        // Convert to DataTables row arrays in header order
-        const data = rows.map(r => headers.map(h => r[h] ?? ""));
+      order: [
+        [5, "asc"],   // Signal
+        [4, "desc"],  // Score
+        [6, "asc"]    // Confidence
+      ],
 
-        const idx = (name) => headers.indexOf(name);
+      pageLength: 50,
+      deferRender: true,
+      autoWidth: false
+    });
+  }
+});
+</script>
 
-        const table = new DataTable("#screener", {
-          data,
-          columns: headers.map(h => ({ title: h })),
-          pageLength: 50,
-          order: [[0, "desc"]],
-          autoWidth: false,
-          columnDefs: [
-            // Make ticker monospace if present
-            { targets: idx("Ticker"), createdCell: (td) => td.classList.add("mono") },
-
-            // Price
-            { targets: idx("Price"), render: (d) => fmtNum(d, 2) },
-
-            // Percent columns (safe even if missing)
-            {
-              targets: [idx("DividendYield_%"), idx("PayoutRatio_%")].filter(i => i >= 0),
-              render: (d) => fmtPct(d, 2)
-            },
-
-            // PE
-            { targets: idx("PE"), render: (d) => fmtNum(d, 2) }
-          ].filter(x => x.targets !== -1)
-        });
-
-        // Dropdown filters
-        const idxCountry  = idx("Country");
-        const idxCurrency = idx("Currency");
-        const idxExchange = idx("Exchange");
-        const idxSector   = idx("Sector");
-
-        const countryVals  = idxCountry >= 0 ? uniqSorted(data.map(r => r[idxCountry])) : [];
-        const currencyVals = idxCurrency >= 0 ? uniqSorted(data.map(r => r[idxCurrency])) : [];
-        const exchangeVals = idxExchange >= 0 ? uniqSorted(data.map(r => r[idxExchange])) : [];
-        const sectorVals   = idxSector >= 0 ? uniqSorted(data.map(r => r[idxSector])) : [];
-
-        function fillSelect(sel, values) {
-          values.forEach(v => $(sel).append(`<option value="${String(v)}">${String(v)}</option>`));
-        }
-
-        fillSelect("#fCountry", countryVals);
-        fillSelect("#fCurrency", currencyVals);
-        fillSelect("#fExchange", exchangeVals);
-        fillSelect("#fSector", sectorVals);
-
-        function applyFilter(sel, idxCol) {
-          if (idxCol < 0) return;
-          const v = $(sel).val();
-          table.column(idxCol).search(v ? "^" + v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$" : "", true, false).draw();
-        }
-
-        $("#fCountry").on("change", () => applyFilter("#fCountry", idxCountry));
-        $("#fCurrency").on("change", () => applyFilter("#fCurrency", idxCurrency));
-        $("#fExchange").on("change", () => applyFilter("#fExchange", idxExchange));
-        $("#fSector").on("change", () => applyFilter("#fSector", idxSector));
-
-        $("#reset").on("click", () => {
-          $("#fCountry,#fCurrency,#fExchange,#fSector").val("");
-          table.search("").columns().search("").draw();
-        });
-
-        const generatedUTC = rows[0]["GeneratedUTC"] ? String(rows[0]["GeneratedUTC"]) : "";
-        document.getElementById("status").innerText =
-          `Data loaded ✅  Loaded ${rows.length} rows from ${CSV_PATH}` + (generatedUTC ? ` · Generated: ${generatedUTC}` : "");
-      })
-      .catch(err => {
-        document.getElementById("status").innerText = "Error: " + err.message;
-        console.error(err);
-      });
-  </script>
 </body>
 </html>

@@ -2,32 +2,31 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Dividend Screener – Quick View</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dividend Screener – Quick Decision View</title>
 
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
 
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 20px; }
-    h1 { margin-bottom: 8px; }
-    p  { margin-top: 0; color: #444; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 18px; }
+    h1 { margin: 0 0 6px; font-size: 22px; }
+    .sub { margin: 0 0 14px; color: #555; font-size: 13px; }
+    .bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 10px 0 14px; }
+    .pill { padding: 6px 10px; border: 1px solid #eee; border-radius: 999px; background:#fafafa; font-size: 13px; }
+    .pill b { font-weight: 700; }
 
     table.dataTable thead th { white-space: nowrap; }
-
-    /* Minimal styling */
-    .signal-GOLD  { color: #b8860b; font-weight: 700; }
-    .signal-BUY   { color: #0b6efd; font-weight: 700; }
-    .signal-HOLD  { color: #555; }
-    .signal-WATCH { color: #999; }
-
-    .conf-High { color: #198754; font-weight: 700; }
-    .conf-Med  { color: #fd7e14; font-weight: 700; }
-    .conf-Low  { color: #dc3545; font-weight: 700; }
+    table.dataTable tbody td { padding: 6px 8px; }
 
     td.details-control {
       cursor: pointer;
       text-align: center;
       user-select: none;
-      width: 30px;
+      width: 28px;
+      color: #333;
+      font-weight: 700;
     }
 
     .details-box {
@@ -37,7 +36,6 @@
       border-radius: 10px;
       margin: 6px 0;
     }
-
     .kv {
       display: grid;
       grid-template-columns: 180px 1fr;
@@ -45,57 +43,111 @@
       align-items: start;
       font-size: 13px;
     }
-    .kv div.key { color: #666; }
-    .kv div.val { color: #111; overflow-wrap: anywhere; }
+    .kv .key { color: #666; }
+    .kv .val { color: #111; overflow-wrap: anywhere; }
 
-    table.dataTable tbody td { padding: 6px 8px; }
+    /* small flags */
+    .flag { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid #eee; background: #fff; display:inline-block; }
+    .flag-warn { border-color: #f1c40f55; background: #fffbe6; }
+    .flag-bad  { border-color: #e74c3c55; background: #fff0f0; }
+    .muted { color:#777; }
+
+    #errorBox { display:none; padding:12px 14px; border:1px solid #f5c2c7; background:#f8d7da; color:#842029; border-radius:10px; margin:12px 0; }
+
+    /* Make it look clean */
+    .dataTables_wrapper .dataTables_filter input { padding: 6px 8px; }
+    .dataTables_wrapper .dataTables_length select { padding: 4px 6px; }
   </style>
 </head>
 
 <body>
   <h1>Dividend Screener – Quick Decision View</h1>
-  <p>Quick columns shown. Click ▸ to see all other fields.</p>
+  <p class="sub">
+    Quick columns shown (Name, Country, Yield, Payout, PE). Click <b>▸</b> to see all other fields from CSV.
+  </p>
+
+  <div class="bar">
+    <span class="pill"><b>Tip:</b> Sortér på Yield / Payout / PE og brug søgefeltet til “Novo”, “AAPL”, osv.</span>
+    <span class="pill muted" id="meta"></span>
+  </div>
+
+  <div id="errorBox"></div>
 
   <table id="screener" class="display compact" style="width:100%">
     <thead>
       <tr>
         <th></th>
-        <th>Ticker</th>
+        <th>Name</th>
+        <th>Country</th>
+        <th>Currency</th>
         <th>Price</th>
         <th>Yield</th>
-        <th>Upside</th>
-        <th>Score</th>
-        <th>Signal</th>
-        <th>Conf</th>
-        <th>Why</th>
+        <th>Payout</th>
+        <th>PE</th>
+        <th>Flags</th>
       </tr>
     </thead>
   </table>
 
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
-    const CSV_PATH = "../data/screener_results.csv";
+    // IMPORTANT: Put CSV under docs/data/screener_results/screener_results.csv
+    // then it is available at: <site>/data/screener_results/screener_results.csv
+    const CSV_PATH = "data/screener_results/screener_results.csv";
 
-    // Signal sort order: GOLD > BUY > HOLD > WATCH
-    const signalOrder = { "GOLD": 1, "BUY": 2, "HOLD": 3, "WATCH": 4 };
-    $.fn.dataTable.ext.type.order["signal-pre"] = function (d) {
-      return signalOrder[d] || 99;
-    };
+    function showError(msg) {
+      const el = document.getElementById("errorBox");
+      el.style.display = "block";
+      el.textContent = msg;
+    }
 
     function fmtNum(d, digits=2, suffix="") {
       if (d == null || d === "" || Number.isNaN(d)) return "";
       return Number(d).toFixed(digits) + suffix;
     }
 
-    // Build a nice key-value view for all non-quick columns
-    function formatDetails(rowData) {
-      const quick = new Set(["Ticker","Price","Yield_TTM_%","Upside_%","Score","Signal","Confidence","Why"]);
+    function safeStr(v) {
+      if (v == null) return "";
+      return String(v);
+    }
 
-      // Sort keys for stable output
-      const keys = Object.keys(rowData || {}).filter(k => !quick.has(k)).sort();
+    // Build tiny "flags" to quickly spot weird data
+    function buildFlags(row) {
+      const flags = [];
+
+      const y = row["DividendYield_%"];
+      const p = row["PayoutRatio_%"];
+
+      // Yield sanity (generic)
+      if (y != null && y !== "" && !Number.isNaN(y)) {
+        if (y >= 20) flags.push(`<span class="flag flag-warn">Yield outlier</span>`);
+        else if (y >= 10) flags.push(`<span class="flag flag-warn">High yield</span>`);
+      }
+
+      // Payout sanity
+      if (p != null && p !== "" && !Number.isNaN(p)) {
+        if (p >= 120) flags.push(`<span class="flag flag-bad">Payout &gt; 120%</span>`);
+        else if (p >= 90) flags.push(`<span class="flag flag-warn">Payout high</span>`);
+      }
+
+      return flags.length ? flags.join(" ") : `<span class="muted">—</span>`;
+    }
+
+    // Show ALL extra fields (everything not in quick view)
+    function formatDetails(rowData) {
+      const quick = new Set([
+        "Name","Country","Currency","Price","DividendYield_%","PayoutRatio_%","PE"
+      ]);
+
+      const keys = Object.keys(rowData || {})
+        .filter(k => !quick.has(k))
+        .sort();
 
       if (keys.length === 0) {
         return `<div class="details-box"><em>No additional fields in CSV.</em></div>`;
@@ -103,16 +155,11 @@
 
       const rows = keys.map(k => {
         let v = rowData[k];
-        // Clean up common null-ish values
         if (v == null) v = "";
-        return `<div class="key">${k}</div><div class="val">${String(v)}</div>`;
+        return `<div class="key">${k}</div><div class="val">${safeStr(v)}</div>`;
       }).join("");
 
-      return `
-        <div class="details-box">
-          <div class="kv">${rows}</div>
-        </div>
-      `;
+      return `<div class="details-box"><div class="kv">${rows}</div></div>`;
     }
 
     Papa.parse(CSV_PATH, {
@@ -120,29 +167,64 @@
       header: true,
       dynamicTyping: true,
       skipEmptyLines: true,
+      error: function(err) {
+        showError("Could not load CSV at: " + CSV_PATH + " — " + (err?.message || err));
+      },
       complete: function(results) {
-        const rows = (results.data || []).filter(r => r && r.Ticker);
+        const rows = (results.data || []).filter(r => r && r["Name"]);
+
+        // Meta info
+        const meta = document.getElementById("meta");
+        meta.textContent = rows.length ? (`Rows: ${rows.length} • CSV: ${CSV_PATH}`) : (`Rows: 0 • CSV: ${CSV_PATH}`);
+
+        if (!rows.length) {
+          showError("CSV loaded, but 0 rows found. Check that the file is not empty and contains a 'Name' column.");
+        }
 
         const table = $("#screener").DataTable({
           data: rows,
+
           columns: [
-            {
-              data: null,
-              className: "details-control",
-              orderable: false,
-              defaultContent: "▸"
-            },
-            { data: "Ticker" },
-            { data: "Price", render: d => fmtNum(d, 2, "") },
-            { data: "Yield_TTM_%", render: d => fmtNum(d, 2, "%") },
-            { data: "Upside_%", render: d => fmtNum(d, 1, "%") },
-            { data: "Score", render: d => (d == null || d === "" || Number.isNaN(d)) ? "" : Math.round(Number(d)) },
-            {
-              data: "Signal",
-              type: "signal",
-              render: d => d ? `<span class="signal-${d}">${d}</span>` : ""
-            },
-            {
-              data: "Confidence",
-              render: d => d ? `<span class="conf-${d}">${d}</span>` : ""
-            },
+            { data: null, className: "details-control", orderable: false, defaultContent: "▸" },
+
+            { data: "Name", title: "Name" },
+            { data: "Country", title: "Country" },
+            { data: "Currency", title: "Currency" },
+
+            { data: "Price", title: "Price", render: d => fmtNum(d, 2, "") },
+
+            { data: "DividendYield_%", title: "Yield", render: d => fmtNum(d, 2, "%") },
+
+            { data: "PayoutRatio_%", title: "Payout", render: d => fmtNum(d, 1, "%") },
+
+            { data: "PE", title: "PE", render: d => fmtNum(d, 1, "") },
+
+            { data: null, title: "Flags", orderable: false, render: (_, __, row) => buildFlags(row) }
+          ],
+
+          order: [[5, "desc"]], // default: Yield high to low
+          pageLength: 50,
+          deferRender: true,
+          autoWidth: false,
+          fixedHeader: true,
+          dom: "lfrtip"
+        });
+
+        // Expand/collapse details
+        $("#screener tbody").on("click", "td.details-control", function () {
+          const tr = $(this).closest("tr");
+          const row = table.row(tr);
+
+          if (row.child.isShown()) {
+            row.child.hide();
+            tr.find("td.details-control").text("▸");
+          } else {
+            row.child(formatDetails(row.data())).show();
+            tr.find("td.details-control").text("▾");
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

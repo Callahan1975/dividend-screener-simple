@@ -13,7 +13,7 @@
     h1 { margin: 0 0 6px; font-size: 22px; }
     .sub { margin: 0 0 14px; color: #555; font-size: 13px; }
 
-    .bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 10px 0 14px; }
+    .bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 10px 0 10px; }
     .pill { padding: 6px 10px; border: 1px solid #eee; border-radius: 999px; background:#fafafa; font-size: 13px; }
     .pill b { font-weight: 700; }
     .muted { color:#777; }
@@ -47,7 +47,7 @@
     .kv .key { color: #666; }
     .kv .val { color: #111; overflow-wrap: anywhere; }
 
-    /* Signal badges (minimal, not full-row coloring) */
+    /* Signal badges */
     .sig { display:inline-block; padding: 2px 10px; border-radius: 999px; border:1px solid #eee; font-weight:700; font-size:12px; }
     .sig-GOLD  { background:#fff7db; border-color:#f1c40f55; color:#8a6d00; }
     .sig-BUY   { background:#eaf2ff; border-color:#0b6efd55; color:#0b4bb3; }
@@ -69,7 +69,6 @@
 
     #errorBox { display:none; padding:12px 14px; border:1px solid #f5c2c7; background:#f8d7da; color:#842029; border-radius:10px; margin:12px 0; }
 
-    /* Make search input a bit nicer */
     .dataTables_wrapper .dataTables_filter input { padding: 6px 8px; }
     .dataTables_wrapper .dataTables_length select { padding: 4px 6px; }
   </style>
@@ -106,6 +105,12 @@
       </select>
     </label>
 
+    <label>Sector:
+      <select id="filterSector">
+        <option value="">All</option>
+      </select>
+    </label>
+
     <button id="resetFilters" type="button">Reset</button>
   </div>
 
@@ -117,6 +122,7 @@
         <th></th>
         <th>Name</th>
         <th>Country</th>
+        <th>Sector</th>
         <th>Currency</th>
         <th>Price</th>
         <th>Yield</th>
@@ -135,7 +141,6 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
-    // Must exist under docs/data/screener_results/screener_results.csv
     const CSV_PATH = "data/screener_results/screener_results.csv";
 
     function showError(msg) {
@@ -162,7 +167,7 @@
 
     function formatDetails(rowData) {
       const quick = new Set([
-        "Name","Country","Currency","Price","DividendYield_%","Upside_%","Score","Signal","Confidence","Why"
+        "Name","Country","Sector","Currency","Price","DividendYield_%","Upside_%","Score","Signal","Confidence","Why"
       ]);
 
       const keys = Object.keys(rowData || {})
@@ -201,9 +206,20 @@
           showError("CSV loaded, but 0 rows found. Check that file exists and contains 'Name' column.");
         }
 
-        // Ensure "Name" exists (some datasets might only have Ticker + Name blank)
+        // Ensure Name exists
         rows.forEach(r => {
           if (!r["Name"] && r["Ticker"]) r["Name"] = r["Ticker"];
+        });
+
+        // Build Sector dropdown from data
+        const sectorSet = new Set();
+        rows.forEach(r => { if (r["Sector"]) sectorSet.add(r["Sector"]); });
+        const sectorSelect = document.getElementById("filterSector");
+        [...sectorSet].sort().forEach(s => {
+          const opt = document.createElement("option");
+          opt.value = s;
+          opt.textContent = s;
+          sectorSelect.appendChild(opt);
         });
 
         const table = $("#screener").DataTable({
@@ -213,6 +229,9 @@
 
             { data: "Name", title: "Name" },
             { data: "Country", title: "Country" },
+
+            { data: "Sector", title: "Sector", render: d => d ? safeStr(d) : "" },
+
             { data: "Currency", title: "Currency" },
 
             { data: "Price", title: "Price", render: d => fmtNum(d, 2, "") },
@@ -231,15 +250,13 @@
               render: d => d ? `<span class="conf conf-${d}">${d}</span>` : ""
             },
 
-            { data: "Why", title: "Why",
-              render: d => d ? safeStr(d) : ""
-            },
+            { data: "Why", title: "Why", render: d => d ? safeStr(d) : "" },
           ],
 
           order: [
-            [8, "asc"],  // Signal (custom)
-            [7, "desc"], // Score
-            [6, "desc"]  // Upside
+            [9, "asc"],  // Signal (custom)
+            [8, "desc"], // Score
+            [7, "desc"]  // Upside
           ],
 
           pageLength: 50,
@@ -262,9 +279,10 @@
           }
         });
 
-        // Dropdown filters: Signal + Confidence
-        const colSignal = 8; // index in DataTables columns
-        const colConf = 9;
+        // Dropdown filters: Signal + Confidence + Sector
+        const colSignal = 9;
+        const colConf = 10;
+        const colSector = 3;
 
         $("#filterSignal").on("change", function () {
           const val = this.value;
@@ -276,9 +294,15 @@
           table.column(colConf).search(val ? val : "", true, false).draw();
         });
 
+        $("#filterSector").on("change", function () {
+          const val = this.value;
+          table.column(colSector).search(val ? val : "", true, false).draw();
+        });
+
         $("#resetFilters").on("click", function () {
           $("#filterSignal").val("");
           $("#filterConf").val("");
+          $("#filterSector").val("");
           table.search("").columns().search("").draw();
         });
       }

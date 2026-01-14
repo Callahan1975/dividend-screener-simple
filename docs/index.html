@@ -6,128 +6,76 @@
   <title>Dividend Screener (DK + US)</title>
 
   <!-- DataTables -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" />
+  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css" />
 
   <style>
     :root{
       --bg:#0b1220;
-      --panel:#0e1a2f;
-      --text:#e7eefc;
-      --muted:#9fb1d1;
-      --border:rgba(255,255,255,.08);
-      --chip:#122444;
+      --panel:#0e172a;
+      --panel2:#111c33;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --border:#22304a;
+      --accent:#60a5fa;
     }
-    html, body { height:100%; }
     body{
       margin:0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 20% 0%, #142042 0%, var(--bg) 55%) fixed;
       color: var(--text);
     }
-    .wrap{
-      max-width: 1400px;
-      margin: 22px auto;
-      padding: 0 16px 30px;
-    }
-    h1{ margin:0 0 8px; font-size: 22px; font-weight: 700; }
-    .sub{
-      color: var(--muted);
-      margin-bottom: 14px;
-      font-size: 13px;
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
+    .wrap{ max-width: 1300px; margin: 28px auto; padding: 0 16px; }
+    h1{ font-size: 28px; margin: 0 0 6px 0; }
+    .sub{ color: var(--muted); font-size: 13px; margin-bottom: 14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+    .badge{ padding: 2px 8px; border:1px solid var(--border); border-radius: 999px; background: rgba(255,255,255,0.03); }
     .panel{
-      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
-      border:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 12px;
+      padding: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
     }
-    .controls{
-      display:flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: end;
-      margin-bottom: 10px;
-    }
-    .ctrl{
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      min-width: 180px;
-    }
-    .ctrl label{
-      font-size: 12px;
-      color: var(--muted);
-    }
-    select, input{
-      background: rgba(255,255,255,.04);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 8px 10px;
-      outline: none;
-    }
-    select:focus, input:focus{
-      border-color: rgba(124,160,255,.45);
-      box-shadow: 0 0 0 3px rgba(124,160,255,.15);
-    }
-    button{
-      background: var(--chip);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 9px 12px;
-      cursor:pointer;
-      height: 38px;
-    }
-    button:hover{ filter: brightness(1.1); }
 
     /* DataTables dark-ish */
-    table.dataTable{ width:100% !important; color: var(--text); }
+    table.dataTable{ color: var(--text); background: transparent; }
     table.dataTable thead th{
-      background: rgba(255,255,255,.04);
-      color: var(--muted);
+      background: rgba(255,255,255,0.02);
+      color: var(--text);
       border-bottom: 1px solid var(--border) !important;
+      font-weight: 600;
     }
     table.dataTable tbody td{
-      border-bottom: 1px solid rgba(255,255,255,.05);
+      border-top: 1px solid rgba(34,48,74,0.45);
     }
-    .dataTables_wrapper .dataTables_filter input,
-    .dataTables_wrapper .dataTables_length select{
-      background: rgba(255,255,255,.04);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 6px 10px;
-    }
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter,
     .dataTables_wrapper .dataTables_info,
     .dataTables_wrapper .dataTables_paginate{
       color: var(--muted) !important;
     }
+    .dataTables_wrapper .dataTables_filter input,
+    .dataTables_wrapper .dataTables_length select{
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 10px;
+      outline: none;
+    }
     .dataTables_wrapper .dataTables_paginate .paginate_button{
-      color: var(--text) !important;
-      border: 1px solid var(--border) !important;
-      background: rgba(255,255,255,.03) !important;
-      border-radius: 10px !important;
-      margin-left: 6px;
+      color: var(--muted) !important;
+      border-radius: 10px;
     }
     .dataTables_wrapper .dataTables_paginate .paginate_button.current{
-      background: rgba(124,160,255,.18) !important;
-      border-color: rgba(124,160,255,.35) !important;
+      background: rgba(96,165,250,0.15) !important;
+      border: 1px solid rgba(96,165,250,0.35) !important;
+      color: var(--text) !important;
     }
-    .err{
-      color:#ffb3b3;
-      font-weight:600;
-    }
-    .ok{
-      color:#b8ffcf;
-      font-weight:600;
-    }
-    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .muted{ color: var(--muted); }
+    .ok{ color: #86efac; }
+    .err{ color: #fca5a5; }
+    .small{ font-size: 12px; }
   </style>
 </head>
 
@@ -135,36 +83,13 @@
   <div class="wrap">
     <h1>Dividend Screener (DK + US)</h1>
     <div class="sub">
-      <span id="status">Loading data…</span>
-      <span id="meta" class="mono"></span>
+      <span id="status" class="badge">Loading data…</span>
+      <span id="meta" class="badge muted">—</span>
+      <span class="badge muted small">Tip: Cmd+Shift+R if you just updated files</span>
     </div>
 
     <div class="panel">
-      <div class="controls">
-        <div class="ctrl">
-          <label for="fCountry">Country</label>
-          <select id="fCountry"><option value="">All</option></select>
-        </div>
-        <div class="ctrl">
-          <label for="fCurrency">Currency</label>
-          <select id="fCurrency"><option value="">All</option></select>
-        </div>
-        <div class="ctrl">
-          <label for="fExchange">Exchange</label>
-          <select id="fExchange"><option value="">All</option></select>
-        </div>
-        <div class="ctrl">
-          <label for="fSector">Sector</label>
-          <select id="fSector"><option value="">All</option></select>
-        </div>
-
-        <button id="btnReset" type="button">Reset</button>
-      </div>
-
-      <table id="tbl" class="display" style="width:100%">
-        <thead><tr></tr></thead>
-        <tbody></tbody>
-      </table>
+      <table id="screener" class="display" style="width:100%"></table>
     </div>
   </div>
 
@@ -172,187 +97,143 @@
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+
+  <!-- Proper CSV parser (handles commas inside fields) -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
-    // ✅ Pages bygger fra /docs, så denne relative sti er korrekt:
+    // IMPORTANT: relative path works for GitHub Pages project sites
     const CSV_PATH = "data/screener_results/screener_results.csv";
 
-    // ✅ EKSPPLICIT mapping (robust mod header quirks og % tegn)
-    const columns = [
-      { key: "GeneratedUTC",   title: "GeneratedUTC" },
-      { key: "Ticker",         title: "Ticker" },
-      { key: "Name",           title: "Name" },
-      { key: "Country",        title: "Country" },
-      { key: "Currency",       title: "Currency" },
-      { key: "Exchange",       title: "Exchange" },
-      { key: "Sector",         title: "Sector" },
-      { key: "Industry",       title: "Industry" },
-      { key: "Price",          title: "Price" },
-      { key: "DividendYield_%",title: "DividendYield %" },
-      { key: "PayoutRatio_%",  title: "PayoutRatio %" },
-      { key: "PE",             title: "PE" }
+    // Preferred column order (we will include any extra columns after these)
+    const PREFERRED = [
+      "GeneratedUTC",
+      "Ticker",
+      "Name",
+      "Country",
+      "Currency",
+      "Exchange",
+      "Sector",
+      "Industry",
+      "Price",
+      "DividendYield_%",
+      "PayoutRatio_%",
+      "PE",
+      "Signal",
+      "Score",
+      "Upside_%",
+      "Upside_Yield_%"
     ];
 
-    function setStatus(msg, ok=false){
+    function setStatus(text, cls){
       const el = document.getElementById("status");
-      el.textContent = msg;
-      el.className = ok ? "ok" : "";
-    }
-    function setError(msg){
-      const el = document.getElementById("status");
-      el.textContent = msg;
-      el.className = "err";
+      el.textContent = text;
+      el.className = "badge " + (cls || "muted");
     }
 
-    function normHeaderKey(k){
-      // robust mod BOM + whitespace + weird CR
-      return (k ?? "")
-        .toString()
-        .replace(/^\uFEFF/, "")
-        .replace(/\r/g, "")
-        .trim();
-    }
-
-    function toNumberOrEmpty(v){
-      if (v === null || v === undefined) return "";
+    function toNumberMaybe(v){
+      if (v === null || v === undefined) return null;
       const s = String(v).trim();
-      if (!s) return "";
+      if (s === "") return null;
+      // try parse float safely
       const n = Number(s);
       return Number.isFinite(n) ? n : s;
     }
 
-    function uniqueSorted(arr){
-      const s = new Set(arr.filter(v => v !== "" && v !== null && v !== undefined));
-      return Array.from(s).sort((a,b) => String(a).localeCompare(String(b)));
+    function buildColumns(headers){
+      // order = preferred first, then the rest (stable)
+      const preferred = PREFERRED.filter(h => headers.includes(h));
+      const rest = headers.filter(h => !preferred.includes(h));
+      const ordered = preferred.concat(rest);
+
+      const columns = ordered.map(h => {
+        // basic numeric alignment for common numeric fields
+        const numericLike = /(Yield|Payout|Price|PE|Upside|Score|MarketCap|Beta|Growth|CAGR|Return)/i.test(h);
+        return {
+          title: h,
+          data: h,
+          className: numericLike ? "dt-body-right" : "dt-body-left",
+          render: function(data, type){
+            if (type !== "display") return data;
+
+            // Show blank cleanly
+            if (data === null || data === undefined || data === "") return "";
+
+            // Pretty format for numbers
+            if (typeof data === "number"){
+              // percent-like columns: keep 2 decimals
+              if (/%/.test(h) || /(Yield|Payout|Upside)/i.test(h)){
+                return data.toFixed(2);
+              }
+              // Price: 2 decimals
+              if (/Price/i.test(h)) return data.toFixed(2);
+              // Other: up to 2 decimals
+              return Number.isInteger(data) ? data : data.toFixed(2);
+            }
+
+            return String(data);
+          }
+        };
+      });
+
+      return { ordered, columns };
     }
 
-    function fillSelect(selectId, values){
-      const sel = document.getElementById(selectId);
-      const current = sel.value;
-      sel.innerHTML = `<option value="">All</option>` + values.map(v => `<option value="${String(v).replace(/"/g,'&quot;')}">${v}</option>`).join("");
-      // keep selection if possible
-      if ([...sel.options].some(o => o.value === current)) sel.value = current;
-    }
-
-    function applyFilter(dt, colIndex, value){
-      // exact match (escaped) when value chosen
-      if (!value) {
-        dt.column(colIndex).search("", true, false).draw();
+    function initTable(rows){
+      if (!rows || rows.length === 0){
+        setStatus("No rows found in CSV", "err");
         return;
       }
-      const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      dt.column(colIndex).search("^" + escaped + "$", true, false).draw();
+
+      // Normalize keys + numeric conversion
+      const headers = Object.keys(rows[0]).filter(Boolean);
+      const { ordered, columns } = buildColumns(headers);
+
+      const normalized = rows.map(r => {
+        const o = {};
+        ordered.forEach(k => o[k] = toNumberMaybe(r[k]));
+        return o;
+      });
+
+      // meta line: generated time if present in first row
+      const gen = normalized[0]["GeneratedUTC"] ? String(normalized[0]["GeneratedUTC"]) : "";
+      document.getElementById("meta").textContent =
+        `Loaded ${normalized.length} rows from ${CSV_PATH}` + (gen ? ` • Generated: ${gen}` : "");
+
+      setStatus("Data loaded ✅", "ok");
+
+      // Create table header explicitly (DataTables likes this)
+      const thead = "<thead><tr>" + ordered.map(h => `<th>${h}</th>`).join("") + "</tr></thead>";
+      document.getElementById("screener").innerHTML = thead;
+
+      $("#screener").DataTable({
+        data: normalized,
+        columns: columns,
+        pageLength: 50,
+        deferRender: true,
+        fixedHeader: true,
+        order: [],
+        scrollX: true
+      });
     }
 
-    function buildFilters(dt){
-      const idxCountry  = columns.findIndex(c => c.key === "Country");
-      const idxCurrency = columns.findIndex(c => c.key === "Currency");
-      const idxExchange = columns.findIndex(c => c.key === "Exchange");
-      const idxSector   = columns.findIndex(c => c.key === "Sector");
-
-      // Fill dropdowns based on currently loaded table data
-      const colData = (idx) => dt.column(idx).data().toArray().map(v => (v ?? "").toString()).filter(Boolean);
-
-      fillSelect("fCountry",  uniqueSorted(colData(idxCountry)));
-      fillSelect("fCurrency", uniqueSorted(colData(idxCurrency)));
-      fillSelect("fExchange", uniqueSorted(colData(idxExchange)));
-      fillSelect("fSector",   uniqueSorted(colData(idxSector)));
-
-      document.getElementById("fCountry").onchange  = (e) => applyFilter(dt, idxCountry,  e.target.value);
-      document.getElementById("fCurrency").onchange = (e) => applyFilter(dt, idxCurrency, e.target.value);
-      document.getElementById("fExchange").onchange = (e) => applyFilter(dt, idxExchange, e.target.value);
-      document.getElementById("fSector").onchange   = (e) => applyFilter(dt, idxSector,   e.target.value);
-
-      document.getElementById("btnReset").onclick = () => {
-        document.getElementById("fCountry").value  = "";
-        document.getElementById("fCurrency").value = "";
-        document.getElementById("fExchange").value = "";
-        document.getElementById("fSector").value   = "";
-        dt.search("").columns().search("").draw();
-      };
-    }
-
-    async function load(){
-      try{
-        setStatus("Loading data…");
-
-        // Build header row
-        document.querySelector("#tbl thead tr").innerHTML =
-          columns.map(c => `<th>${c.title}</th>`).join("");
-
-        Papa.parse(CSV_PATH, {
-          download: true,
-          header: true,
-          skipEmptyLines: true,
-          transformHeader: (h) => normHeaderKey(h),
-          complete: (result) => {
-            try{
-              if (result.errors && result.errors.length) {
-                console.warn("PapaParse errors:", result.errors);
-              }
-              const data = (result.data || []).filter(r => r && Object.keys(r).length > 0);
-
-              if (!data.length) {
-                setError(`No rows found in CSV: ${CSV_PATH}`);
-                return;
-              }
-
-              // Convert to table rows in the exact column order
-              const rows = data.map(r => {
-                // normalize keys once (in case)
-                const normalized = {};
-                for (const k of Object.keys(r)) normalized[normHeaderKey(k)] = r[k];
-
-                return columns.map(c => {
-                  const val = normalized[c.key];
-                  // numbers for sorting where possible
-                  if (["Price","DividendYield_%","PayoutRatio_%","PE"].includes(c.key)) {
-                    return toNumberOrEmpty(val);
-                  }
-                  return (val ?? "").toString().replace(/\r/g, "");
-                });
-              });
-
-              // Destroy old datatable if exists
-              if ($.fn.DataTable.isDataTable("#tbl")) {
-                $("#tbl").DataTable().destroy();
-                $("#tbl tbody").empty();
-              }
-
-              const dt = $("#tbl").DataTable({
-                data: rows,
-                columns: columns.map(c => ({ title: c.title })),
-                pageLength: 50,
-                fixedHeader: true,
-                order: [[0, "desc"]]
-              });
-
-              // Meta + status
-              const generated = data[0]["GeneratedUTC"] || "";
-              document.getElementById("meta").textContent =
-                generated ? `Generated: ${generated}` : "";
-              setStatus(`Loaded ${rows.length} rows from ${CSV_PATH}`, true);
-
-              buildFilters(dt);
-            } catch (e) {
-              console.error(e);
-              setError("UI error while building table. See console.");
-            }
-          },
-          error: (err) => {
-            console.error(err);
-            setError(`Could not load CSV: ${CSV_PATH}`);
-          }
-        });
-
-      } catch (err){
+    // Fetch + parse CSV robustly (handles commas inside fields)
+    Papa.parse(CSV_PATH, {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      dynamicTyping: true,
+      complete: function(results){
+        if (results.errors && results.errors.length){
+          console.warn("CSV parse warnings/errors:", results.errors);
+        }
+        initTable(results.data || []);
+      },
+      error: function(err){
         console.error(err);
-        setError("Unexpected error. See console.");
+        setStatus(`Error loading CSV: ${err}`, "err");
       }
-    }
-
-    load();
+    });
   </script>
 </body>
 </html>

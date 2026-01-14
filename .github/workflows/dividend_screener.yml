@@ -3,7 +3,7 @@ name: Dividend Screener (DK + US)
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */4 * * *"   # every 4 hours (UTC)
+    - cron: "0 */4 * * *"
 
 permissions:
   contents: write
@@ -15,12 +15,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      PYTHONDONTWRITEBYTECODE: "1"
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -37,36 +35,37 @@ jobs:
 
       - name: Run screener
         run: |
-          python -B screener.py
+          python screener.py
 
       - name: Copy results into docs for GitHub Pages
         run: |
           mkdir -p docs/data/screener_results
           cp -f data/screener_results/screener_results.csv docs/data/screener_results/screener_results.csv
+          if [ -f data/screener_results/errors.csv ]; then
+            cp -f data/screener_results/errors.csv docs/data/screener_results/errors.csv
+          fi
 
-      - name: Commit updated results
+      - name: Clean pycache
+        run: |
+          rm -rf __pycache__ src/__pycache__ || true
+          find . -name "*.pyc" -delete || true
+
+      - name: Commit updated results (CSV/HTML)
         run: |
           set -e
-
-          # show status (debug)
           git status --porcelain
 
-          # If nothing changed, exit cleanly
-          if [ -z "$(git status --porcelain)" ]; then
+          # Stage only what we care about
+          git add docs/ data/screener_results/ .gitignore requirements.txt screener.py tickers.txt || true
+
+          # If nothing staged, exit cleanly
+          if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git add -A
-
-          # If staging is empty, exit
-          if git diff --cached --quiet; then
-            echo "No staged changes."
-            exit 0
-          fi
 
           git commit -m "Auto update screener results"
           git push

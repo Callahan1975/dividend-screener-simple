@@ -2,238 +2,146 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Dividend Screener (DK + US)</title>
 
-  <!-- DataTables -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" />
-  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-dt@2.0.8/css/dataTables.dataTables.min.css">
 
   <style>
     :root{
       --bg:#0b1220;
-      --panel:#0e172a;
-      --panel2:#111c33;
-      --text:#e5e7eb;
-      --muted:#94a3b8;
-      --border:#22304a;
-      --accent:#60a5fa;
+      --panel:#0f1a2e;
+      --text:#e7eefc;
+      --muted:#9fb0d0;
+      --line:rgba(255,255,255,.08);
+      --chip:#122442;
     }
-    body{
-      margin:0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      background: radial-gradient(1200px 600px at 20% 0%, #142042 0%, var(--bg) 55%) fixed;
-      color: var(--text);
+    body{ margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--text); }
+    .wrap{ max-width:1200px; margin:28px auto; padding:0 18px; }
+    h1{ margin:0 0 8px; font-size:28px; }
+    .bar{
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      background:var(--panel); border:1px solid var(--line); border-radius:14px;
+      padding:12px 12px;
+      margin:12px 0 14px;
     }
-    .wrap{ max-width: 1300px; margin: 28px auto; padding: 0 16px; }
-    h1{ font-size: 28px; margin: 0 0 6px 0; }
-    .sub{ color: var(--muted); font-size: 13px; margin-bottom: 14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-    .badge{ padding: 2px 8px; border:1px solid var(--border); border-radius: 999px; background: rgba(255,255,255,0.03); }
-    .panel{
-      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 14px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-    }
+    .chip{ background:var(--chip); border:1px solid var(--line); padding:6px 10px; border-radius:999px; font-size:12px; color:var(--muted); }
+    .ok{ color:#3ddc84; font-weight:600; }
+    .err{ color:#ff6b6b; font-weight:600; }
 
-    /* DataTables dark-ish */
-    table.dataTable{ color: var(--text); background: transparent; }
-    table.dataTable thead th{
-      background: rgba(255,255,255,0.02);
-      color: var(--text);
-      border-bottom: 1px solid var(--border) !important;
-      font-weight: 600;
+    table.dataTable{ background:transparent; color:var(--text); }
+    table.dataTable thead th{ color:var(--muted); border-bottom:1px solid var(--line) !important; }
+    table.dataTable tbody td{ border-bottom:1px solid var(--line) !important; }
+    .dt-search input, .dt-length select{
+      background:#0b1730 !important; color:var(--text) !important;
+      border:1px solid var(--line) !important; border-radius:10px !important;
+      padding:6px 10px !important;
     }
-    table.dataTable tbody td{
-      border-top: 1px solid rgba(34,48,74,0.45);
-    }
-    .dataTables_wrapper .dataTables_length,
-    .dataTables_wrapper .dataTables_filter,
-    .dataTables_wrapper .dataTables_info,
-    .dataTables_wrapper .dataTables_paginate{
-      color: var(--muted) !important;
-    }
-    .dataTables_wrapper .dataTables_filter input,
-    .dataTables_wrapper .dataTables_length select{
-      background: rgba(255,255,255,0.04);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 6px 10px;
-      outline: none;
-    }
-    .dataTables_wrapper .dataTables_paginate .paginate_button{
-      color: var(--muted) !important;
-      border-radius: 10px;
-    }
-    .dataTables_wrapper .dataTables_paginate .paginate_button.current{
-      background: rgba(96,165,250,0.15) !important;
-      border: 1px solid rgba(96,165,250,0.35) !important;
-      color: var(--text) !important;
-    }
-    .muted{ color: var(--muted); }
-    .ok{ color: #86efac; }
-    .err{ color: #fca5a5; }
-    .small{ font-size: 12px; }
   </style>
 </head>
 
 <body>
   <div class="wrap">
     <h1>Dividend Screener (DK + US)</h1>
-    <div class="sub">
-      <span id="status" class="badge">Loading data…</span>
-      <span id="meta" class="badge muted">—</span>
-      <span class="badge muted small">Tip: Cmd+Shift+R if you just updated files</span>
+
+    <div class="bar">
+      <span id="status" class="chip">Loading…</span>
+      <span id="meta" class="chip"></span>
+      <span class="chip">Tip: Cmd+Shift+R hvis du lige har opdateret filer</span>
     </div>
 
-    <div class="panel">
-      <table id="screener" class="display" style="width:100%"></table>
-    </div>
+    <table id="tbl" class="display" style="width:100%"></table>
   </div>
 
-  <!-- libs -->
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
-
-  <!-- Proper CSV parser (handles commas inside fields) -->
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/datatables.net@2.0.8/js/dataTables.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
-    // IMPORTANT: relative path works for GitHub Pages project sites
     const CSV_PATH = "data/screener_results/screener_results.csv";
 
-    // Preferred column order (we will include any extra columns after these)
-    const PREFERRED = [
-      "GeneratedUTC",
-      "Ticker",
-      "Name",
-      "Country",
-      "Currency",
-      "Exchange",
-      "Sector",
-      "Industry",
-      "Price",
-      "DividendYield_%",
-      "PayoutRatio_%",
-      "PE",
-      "Signal",
-      "Score",
-      "Upside_%",
-      "Upside_Yield_%"
+    const COLS = [
+      { key:"GeneratedUTC", title:"GeneratedUTC" },
+      { key:"Ticker", title:"Ticker" },
+      { key:"Name", title:"Name" },
+      { key:"Country", title:"Country" },
+      { key:"Currency", title:"Currency" },
+      { key:"Exchange", title:"Exchange" },
+      { key:"Sector", title:"Sector" },
+      { key:"Industry", title:"Industry" },
+      { key:"Price", title:"Price", render:numRender(4) },
+      { key:"DividendYield_%", title:"DividendYield_%", render:pctRender(2) },
+      { key:"PayoutRatio_%", title:"PayoutRatio_%", render:pctRender(2) },
+      { key:"PE", title:"PE", render:numRender(2) },
     ];
 
-    function setStatus(text, cls){
+    function numRender(decimals){
+      return function(data){
+        if(data===null || data===undefined || data==="") return "";
+        const v = Number(data);
+        if(!Number.isFinite(v)) return data;
+        return v.toFixed(decimals);
+      }
+    }
+
+    function pctRender(decimals){
+      return function(data){
+        if(data===null || data===undefined || data==="") return "";
+        const v = Number(data);
+        if(!Number.isFinite(v)) return data;
+        return v.toFixed(decimals);
+      }
+    }
+
+    function setStatusOk(msg){
       const el = document.getElementById("status");
-      el.textContent = text;
-      el.className = "badge " + (cls || "muted");
+      el.innerHTML = `<span class="ok">Data loaded ✓</span>`;
+      document.getElementById("meta").textContent = msg;
     }
 
-    function toNumberMaybe(v){
-      if (v === null || v === undefined) return null;
-      const s = String(v).trim();
-      if (s === "") return null;
-      // try parse float safely
-      const n = Number(s);
-      return Number.isFinite(n) ? n : s;
+    function setStatusErr(msg){
+      const el = document.getElementById("status");
+      el.innerHTML = `<span class="err">Error:</span> ${msg}`;
+      document.getElementById("meta").textContent = "";
     }
 
-    function buildColumns(headers){
-      // order = preferred first, then the rest (stable)
-      const preferred = PREFERRED.filter(h => headers.includes(h));
-      const rest = headers.filter(h => !preferred.includes(h));
-      const ordered = preferred.concat(rest);
-
-      const columns = ordered.map(h => {
-        // basic numeric alignment for common numeric fields
-        const numericLike = /(Yield|Payout|Price|PE|Upside|Score|MarketCap|Beta|Growth|CAGR|Return)/i.test(h);
-        return {
-          title: h,
-          data: h,
-          className: numericLike ? "dt-body-right" : "dt-body-left",
-          render: function(data, type){
-            if (type !== "display") return data;
-
-            // Show blank cleanly
-            if (data === null || data === undefined || data === "") return "";
-
-            // Pretty format for numbers
-            if (typeof data === "number"){
-              // percent-like columns: keep 2 decimals
-              if (/%/.test(h) || /(Yield|Payout|Upside)/i.test(h)){
-                return data.toFixed(2);
-              }
-              // Price: 2 decimals
-              if (/Price/i.test(h)) return data.toFixed(2);
-              // Other: up to 2 decimals
-              return Number.isInteger(data) ? data : data.toFixed(2);
-            }
-
-            return String(data);
-          }
-        };
-      });
-
-      return { ordered, columns };
-    }
-
-    function initTable(rows){
-      if (!rows || rows.length === 0){
-        setStatus("No rows found in CSV", "err");
-        return;
-      }
-
-      // Normalize keys + numeric conversion
-      const headers = Object.keys(rows[0]).filter(Boolean);
-      const { ordered, columns } = buildColumns(headers);
-
-      const normalized = rows.map(r => {
-        const o = {};
-        ordered.forEach(k => o[k] = toNumberMaybe(r[k]));
-        return o;
-      });
-
-      // meta line: generated time if present in first row
-      const gen = normalized[0]["GeneratedUTC"] ? String(normalized[0]["GeneratedUTC"]) : "";
-      document.getElementById("meta").textContent =
-        `Loaded ${normalized.length} rows from ${CSV_PATH}` + (gen ? ` • Generated: ${gen}` : "");
-
-      setStatus("Data loaded ✅", "ok");
-
-      // Create table header explicitly (DataTables likes this)
-      const thead = "<thead><tr>" + ordered.map(h => `<th>${h}</th>`).join("") + "</tr></thead>";
-      document.getElementById("screener").innerHTML = thead;
-
-      $("#screener").DataTable({
-        data: normalized,
-        columns: columns,
-        pageLength: 50,
-        deferRender: true,
-        fixedHeader: true,
-        order: [],
-        scrollX: true
-      });
-    }
-
-    // Fetch + parse CSV robustly (handles commas inside fields)
-    Papa.parse(CSV_PATH, {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      dynamicTyping: true,
-      complete: function(results){
-        if (results.errors && results.errors.length){
-          console.warn("CSV parse warnings/errors:", results.errors);
+    fetch(CSV_PATH, { cache: "no-store" })
+      .then(r => {
+        if(!r.ok) throw new Error(`CSV not found (${r.status}) at ${CSV_PATH}`);
+        return r.text();
+      })
+      .then(text => {
+        const parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
+        if(parsed.errors && parsed.errors.length){
+          console.warn(parsed.errors);
         }
-        initTable(results.data || []);
-      },
-      error: function(err){
+
+        const rows = parsed.data || [];
+        const gen = rows[0]?.GeneratedUTC || "";
+        setStatusOk(`Loaded ${rows.length} rows from ${CSV_PATH} • Generated: ${gen}`);
+
+        // build table header from COLS
+        $("#tbl").html(
+          "<thead><tr>" + COLS.map(c => `<th>${c.title}</th>`).join("") + "</tr></thead>"
+        );
+
+        $("#tbl").DataTable({
+          data: rows,
+          columns: COLS.map(c => ({
+            title: c.title,
+            data: c.key,
+            render: c.render
+          })),
+          pageLength: 50,
+          order: [[0, "desc"]],
+          deferRender: true,
+        });
+      })
+      .catch(err => {
         console.error(err);
-        setStatus(`Error loading CSV: ${err}`, "err");
-      }
-    });
+        setStatusErr(err.message);
+      });
   </script>
 </body>
 </html>

@@ -1,30 +1,49 @@
 import csv
 import datetime as dt
-import os
 import time
-from typing import Any, Dict, List, Optional
+from pathlib import Path
 
 import yfinance as yf
 
 
-TICKERS_FILE = "tickers.txt"
-OUT_DIR = os.path.join("data", "screener_results")
-OUT_CSV = os.path.join(OUT_DIR, "screener_results.csv")
+TICKERS_FILE = Path("tickers.txt")
+
+OUT_DATA_DIR = Path("data") / "screener_results"
+OUT_DATA_DIR.mkdir(parents=True, exist_ok=True)
+OUT_CSV = OUT_DATA_DIR / "screener_results.csv"
 
 
-def read_tickers(path: str) -> List[str]:
-    tickers: List[str] = []
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            s = line.strip()
-            if not s or s.startswith("#"):
-                continue
-            # allow inline comments
-            if "#" in s:
-                s = s.split("#", 1)[0].strip()
-            if s:
-                tickers.append(s)
-    # de-dup while preserving order
+# Output columns (keep stable so UI doesn't break)
+FIELDS = [
+    "GeneratedUTC",
+    "Ticker",
+    "Name",
+    "Country",
+    "Currency",
+    "Exchange",
+    "Sector",
+    "Industry",
+    "Price",
+    "DividendYield_%",
+    "PayoutRatio_%",
+    "PE",
+]
+
+
+def read_tickers(path: Path) -> list[str]:
+    tickers: list[str] = []
+    if not path.exists():
+        raise FileNotFoundError(f"Missing {path}")
+
+    for line in path.read_text(encoding="utf-8").splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        # Skip obviously invalid tickers
+        if "?" in s:
+            continue
+        tickers.append(s)
+    # de-dup preserve order
     seen = set()
     out = []
     for t in tickers:
@@ -34,196 +53,163 @@ def read_tickers(path: str) -> List[str]:
     return out
 
 
-def safe_float(x: Any) -> Optional[float]:
+def safe_float(x):
     try:
         if x is None:
-            return None
-        if isinstance(x, bool):
             return None
         return float(x)
     except Exception:
         return None
 
 
-def normalize_percent(value: Optional[float]) -> Optional[float]:
+def to_pct(value) -> float | None:
     """
-    Normalize percent-like metrics so we store:
-      - DividendYield_% as 0..100 (e.g., 3.04)
-      - PayoutRatio_%  as 0..500-ish (some can be >100)
-
-    Rules:
-      - if value is 0..1 => treat as fraction and multiply by 100
-      - if value is 1..100 => treat as already percent
-      - if value is huge (>5000) => probably wrong, return None
+    yfinance sometimes returns:
+      - 0.0312 (fraction)
+      - 3.12 (already percent)
+      - None
+    We normalize to percent (e.g. 3.12)
     """
-    if value is None:
+    v = safe_float(value)
+    if v is None:
         return None
-
-    # Sometimes yfinance gives 0.0304 (fraction)
-    if 0 <= value <= 1:
-        return value * 100
-
-    # Sometimes we already computed percent (e.g. 3.04)
-    if 1 < value <= 1000:
-        return value
-
-    # absurd
-    if value > 5000:
-        return None
-
-    return value
-
-
-def get_info(ticker: str, pause: float = 0.2) -> Dict[str, Any]:
-    """
-    Robust yfinance fetch: use fast_info where possible and info as fallback.
-    """
-    t = yf.Ticker(ticker)
-
-    info: Dict[str, Any] = {}
-    try:
-        # info can be slow / rate limited; still ok in moderation
-        info = t.info or {}
-    except Exception:
-        info = {}
-
-    # fast_info often more reliable for price
-    fast = {}
-    try:
-        fast = getattr(t, "fast_info", {}) or {}
-    except Exception:
-        fast = {}
-
-    # small pause to reduce throttling
-    time.sleep(pause)
-
-    return {"info": info, "fast": fast}
+    # If it looks like a fraction (0-1.5), convert to percent
+    if 0 <= v <= 1.5:
+        return v * 100.0
+    # If it is already percent-like (1.5-200), keep
+    if 1.5 < v <= 200:
+        return v
+    # If it's crazy huge (e.g. 304), it might be percent*100
+    if v > 200:
+        # Try divide by 100
+        v2 = v / 100.0
+        if 0 <= v2 <= 200:
+            return v2
+    return v
 
 
-def pick_first(*vals):
-    for v in vals:
-        if v is not None and v != "":
-            return v
+def pick_first(d: dict, keys: list[str]):
+    for k in keys:
+        if k in d and d[k] not in (None, "", "N/A"):
+            return d[k]
     return None
 
 
+def get_last_12m_div_yield_pct(ticker_obj: yf.Ticker, price: float | None) -> float | None:
+    """
+    Fallback: sum dividends last 365 days / price * 100
+    """
+    if price is None or price <= 0:
+        return None
+    try:
+        divs = ticker_obj.dividends
+        if divs is None or len(divs) == 0:
+            return None
+        cutoff = dt.datetime.utcnow() - dt.timedelta(days=365)
+        divs_12m = divs[divs.index.to_pydatetime() >= cutoff]
+        if len(divs_12m) == 0:
+            return None
+        total = float(divs_12m.sum())
+        return (total / price) * 100.0
+    except Exception:
+        return None
+
+
+def fetch_one(ticker: str, pause_s: float = 0.25) -> dict:
+    generated = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    row = {k: "" for k in FIELDS}
+    row["GeneratedUTC"] = generated
+    row["Ticker"] = ticker
+
+    t = yf.Ticker(ticker)
+
+    # fast_info is quicker/less fragile when it works
+    price = None
+    currency = None
+    exchange = None
+    try:
+        fi = getattr(t, "fast_info", None)
+        if fi:
+            price = safe_float(fi.get("last_price") or fi.get("lastPrice") or fi.get("regularMarketPrice"))
+            currency = fi.get("currency")
+            exchange = fi.get("exchange")
+    except Exception:
+        pass
+
+    # main info (can be slower)
+    info = {}
+    try:
+        info = t.get_info() or {}
+    except Exception:
+        info = {}
+
+    name = pick_first(info, ["longName", "shortName", "displayName", "name"])
+    country = pick_first(info, ["country"])
+    sector = pick_first(info, ["sector"])
+    industry = pick_first(info, ["industry"])
+    currency = currency or pick_first(info, ["currency"])
+    exchange = exchange or pick_first(info, ["exchange", "fullExchangeName"])
+
+    # price fallback from info
+    if price is None:
+        price = safe_float(pick_first(info, ["regularMarketPrice", "currentPrice", "previousClose"]))
+
+    # dividend yield + payout + PE
+    dy_raw = pick_first(
+        info,
+        [
+            "dividendYield",                 # often fraction
+            "trailingAnnualDividendYield",   # often fraction
+        ],
+    )
+    dy_pct = to_pct(dy_raw)
+
+    # fallback from dividends series if missing
+    if dy_pct is None:
+        dy_pct = get_last_12m_div_yield_pct(t, price)
+
+    payout_raw = pick_first(info, ["payoutRatio"])
+    payout_pct = to_pct(payout_raw)
+
+    pe = safe_float(pick_first(info, ["trailingPE", "forwardPE"]))
+
+    # write
+    row["Name"] = name or ""
+    row["Country"] = country or ""
+    row["Currency"] = currency or ""
+    row["Exchange"] = exchange or ""
+    row["Sector"] = sector or ""
+    row["Industry"] = industry or ""
+    row["Price"] = f"{price:.4f}" if isinstance(price, (int, float)) and price is not None else ""
+    row["DividendYield_%"] = f"{dy_pct:.4f}" if isinstance(dy_pct, (int, float)) and dy_pct is not None else ""
+    row["PayoutRatio_%"] = f"{payout_pct:.4f}" if isinstance(payout_pct, (int, float)) and payout_pct is not None else ""
+    row["PE"] = f"{pe:.4f}" if isinstance(pe, (int, float)) and pe is not None else ""
+
+    time.sleep(pause_s)
+    return row
+
+
 def main():
-    os.makedirs(OUT_DIR, exist_ok=True)
-
     tickers = read_tickers(TICKERS_FILE)
-    now_utc = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    if not tickers:
+        raise SystemExit("No tickers found in tickers.txt")
 
-    rows: List[Dict[str, Any]] = []
-
-    for tk in tickers:
+    rows = []
+    for i, tk in enumerate(tickers, 1):
         try:
-            data = get_info(tk)
-            info = data["info"]
-            fast = data["fast"]
-
-            name = pick_first(info.get("shortName"), info.get("longName"), "")
-            country = pick_first(info.get("country"), "")
-            currency = pick_first(info.get("currency"), "")
-            exchange = pick_first(info.get("exchange"), info.get("exchangeName"), "")
-            sector = pick_first(info.get("sector"), "")
-            industry = pick_first(info.get("industry"), "")
-
-            # Price
-            price = safe_float(
-                pick_first(
-                    fast.get("last_price"),
-                    fast.get("lastPrice"),
-                    info.get("currentPrice"),
-                    info.get("regularMarketPrice"),
-                )
-            )
-
-            # Dividend yield (yfinance often provides dividendYield as fraction 0.03)
-            div_yield_raw = safe_float(info.get("dividendYield"))
-
-            # If dividendYield is missing, we can compute from trailing annual dividend if present
-            # (NOTE: info.get("dividendRate") is typically annual dividend per share)
-            div_rate = safe_float(info.get("dividendRate"))
-            div_yield_calc = None
-            if (div_yield_raw is None or div_yield_raw == 0) and price and div_rate:
-                div_yield_calc = (div_rate / price) * 100  # already percent
-
-            dividend_yield_pct = normalize_percent(
-                pick_first(div_yield_raw, div_yield_calc)
-            )
-
-            # Payout ratio (often fraction 0.55)
-            payout_raw = safe_float(info.get("payoutRatio"))
-            payout_pct = normalize_percent(payout_raw)
-
-            # PE
-            pe = safe_float(
-                pick_first(
-                    info.get("trailingPE"),
-                    info.get("forwardPE"),
-                )
-            )
-
-            rows.append(
-                {
-                    "GeneratedUTC": now_utc,
-                    "Ticker": tk,
-                    "Name": name,
-                    "Country": country,
-                    "Currency": currency,
-                    "Exchange": exchange,
-                    "Sector": sector,
-                    "Industry": industry,
-                    "Price": price,
-                    "DividendYield_%": dividend_yield_pct,
-                    "PayoutRatio_%": payout_pct,
-                    "PE": pe,
-                }
-            )
-
+            rows.append(fetch_one(tk))
+            if i % 25 == 0:
+                print(f"Fetched {i}/{len(tickers)}")
         except Exception as e:
-            rows.append(
-                {
-                    "GeneratedUTC": now_utc,
-                    "Ticker": tk,
-                    "Name": "",
-                    "Country": "",
-                    "Currency": "",
-                    "Exchange": "",
-                    "Sector": "",
-                    "Industry": "",
-                    "Price": "",
-                    "DividendYield_%": "",
-                    "PayoutRatio_%": "",
-                    "PE": "",
-                    "Error": str(e),
-                }
-            )
+            print(f"[WARN] {tk} failed: {e}")
 
     # Write CSV
-    fieldnames = [
-        "GeneratedUTC",
-        "Ticker",
-        "Name",
-        "Country",
-        "Currency",
-        "Exchange",
-        "Sector",
-        "Industry",
-        "Price",
-        "DividendYield_%",
-        "PayoutRatio_%",
-        "PE",
-    ]
-
-    with open(OUT_CSV, "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fieldnames)
+    with OUT_CSV.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=FIELDS)
         w.writeheader()
-        for r in rows:
-            clean = {k: r.get(k, "") for k in fieldnames}
-            w.writerow(clean)
+        w.writerows(rows)
 
-    print(f"Wrote {len(rows)} rows -> {OUT_CSV}")
+    print(f"Saved: {OUT_CSV} ({len(rows)} rows)")
 
 
 if __name__ == "__main__":

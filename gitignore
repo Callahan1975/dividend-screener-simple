@@ -1,8 +1,10 @@
 # Python
 __pycache__/
-*.py[cod]
-*.pyd
+*.pyc
 *.pyo
+*.pyd
+*.egg-info/
+.dist-info/
 
 # Virtual env
 .venv/
@@ -14,3 +16,6 @@ venv/
 # Editor
 .vscode/
 .idea/
+
+# Local outputs (we keep CSV in repo, so do NOT ignore it)
+# data/screener_results/

@@ -1,255 +1,64 @@
-<!doctype html>
-<html lang="da">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8">
   <title>Dividend Screener (DK + US)</title>
 
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
   <style>
-    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:0; background:#0b1220; color:#e7eefc; }
-    header { padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.08); position:sticky; top:0; background:#0b1220; z-index:10; }
-    h1 { margin:0 0 6px 0; font-size:18px; font-weight:650; }
-    .sub { margin:0; color:rgba(231,238,252,.7); font-size:12px; }
-
-    .filters {
-      display:grid;
-      grid-template-columns: repeat(6, minmax(140px, 1fr));
-      gap:10px;
-      align-items:end;
-      margin-top:10px;
+    body {
+      background: #0f172a;
+      color: #e5e7eb;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 20px;
     }
-    .fgrp label { display:block; font-size:11px; color:rgba(231,238,252,.7); margin-bottom:4px; }
-    .fgrp select, .fgrp input {
-      width:100%; padding:8px 10px; border:1px solid rgba(255,255,255,.12); border-radius:10px;
-      font-size:13px; background:#0f1a2e; color:#e7eefc;
+    table.dataTable {
+      color: #e5e7eb;
     }
-    .toggles { display:flex; gap:10px; align-items:center; padding-top:2px; }
-    .btn {
-      cursor:pointer; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:#0f1a2e;
-      font-size:13px; color:#e7eefc;
-    }
-    .btn:hover { background:#12213b; }
-    .wrap { padding:14px 16px; }
-
-    table.dataTable { color:#e7eefc; }
-    table.dataTable thead th { border-bottom:1px solid rgba(255,255,255,.12) !important; }
-    table.dataTable tbody td { border-top:1px solid rgba(255,255,255,.06); vertical-align:middle; }
-    .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_info { color:rgba(231,238,252,.7); }
-    .dataTables_wrapper .dataTables_paginate .paginate_button { color:rgba(231,238,252,.8) !important; }
-    div.dataTables_filter { display:none; }
-
-    .badge { display:inline-block; padding:3px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.15); font-size:12px; background:#0f1a2e; }
-    .right { text-align:right; }
-    .small { font-size:12px; color:rgba(231,238,252,.75); }
   </style>
 </head>
 
 <body>
-  <header>
-    <h1>Dividend Screener (DK + US)</h1>
-    <p class="sub" id="meta">Loader…</p>
+  <h1>Dividend Screener (DK + US)</h1>
+  <p id="status">Loading data…</p>
 
-    <div class="filters">
-      <div class="fgrp"><label>Country</label><select id="fltCountry"><option value="">All</option></select></div>
-      <div class="fgrp"><label>Sector</label><select id="fltSector"><option value="">All</option></select></div>
-      <div class="fgrp"><label>Industry</label><select id="fltIndustry"><option value="">All</option></select></div>
-      <div class="fgrp"><label>Min DividendYield %</label><input id="minYield" type="number" step="0.1" placeholder="fx 2.0"></div>
-      <div class="fgrp"><label>Max Payout %</label><input id="maxPayout" type="number" step="1" placeholder="fx 80"></div>
-      <div class="fgrp">
-        <label>&nbsp;</label>
-        <div class="toggles">
-          <button class="btn" id="btnReset">Reset</button>
-          <label class="small"><input type="checkbox" id="tglAdvanced"> Show advanced</label>
-        </div>
-      </div>
-    </div>
-  </header>
+  <table id="screener" class="display" style="width:100%">
+    <thead></thead>
+  </table>
 
-  <div class="wrap">
-    <table id="tbl" class="display" style="width:100%"></table>
-  </div>
+<script>
+const CSV_PATH = "data/screener_results/screener_results.csv";
 
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+fetch(CSV_PATH)
+  .then(r => {
+    if (!r.ok) throw new Error("CSV not found");
+    return r.text();
+  })
+  .then(text => {
+    const rows = text.trim().split("\n").map(r => r.split(","));
+    const headers = rows.shift();
 
-  <script>
-    // Loader din nuværende CSV (fra dit screenshot)
-    const CSV_URL = "../data/screener_results/screener_results.csv";
+    $("#screener thead").html(
+      "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>"
+    );
 
-    // Slim kolonner vi vil vise som standard (hvis de findes)
-    const DEFAULT_VISIBLE = [
-      "Ticker","Name","Country","Sector","Industry",
-      "Price","DividendYield","AnnualDividend","PayoutRatio","PE",
-      "DividendGrowth5Y","YieldForModel"
-    ];
-
-    function parseCSV(text) {
-      const rows = [];
-      let row = [], cell = "", inQuotes = false;
-      for (let i=0; i<text.length; i++) {
-        const c = text[i], n = text[i+1];
-        if (c === '"') {
-          if (inQuotes && n === '"') { cell += '"'; i++; }
-          else { inQuotes = !inQuotes; }
-        } else if (c === ',' && !inQuotes) {
-          row.push(cell); cell = "";
-        } else if ((c === '\n' || c === '\r') && !inQuotes) {
-          if (c === '\r' && n === '\n') i++;
-          row.push(cell);
-          if (row.join("").trim().length) rows.push(row);
-          row = []; cell = "";
-        } else {
-          cell += c;
-        }
-      }
-      if (cell.length || row.length) { row.push(cell); rows.push(row); }
-      return rows;
-    }
-
-    function uniqSorted(arr) {
-      return [...new Set(arr.filter(v => v !== null && v !== undefined && String(v).trim() !== ""))]
-        .map(v => String(v))
-        .sort((a,b) => a.localeCompare(b));
-    }
-
-    function setDropdown(id, values) {
-      const el = document.getElementById(id);
-      el.innerHTML = '<option value="">All</option>' + values.map(v => `<option value="${v}">${v}</option>`).join("");
-    }
-
-    function n(x) {
-      const v = Number(String(x||"").replace(",", "."));
-      return isFinite(v) ? v : null;
-    }
-
-    function fmt2(x) {
-      const v = n(x);
-      return v === null ? "" : v.toFixed(2);
-    }
-
-    // DividendYield og PayoutRatio i din CSV er ratio (0.04 = 4%)
-    function fmtPctFromRatio(x) {
-      const v = n(x);
-      return v === null ? "" : (v * 100).toFixed(2) + "%";
-    }
-
-    async function init() {
-      const r = await fetch(CSV_URL, { cache: "no-store" });
-      if (!r.ok) throw new Error("Kunne ikke loade CSV: " + CSV_URL);
-      const text = await r.text();
-      const parsed = parseCSV(text);
-
-      const headers = parsed[0].map(h => h.trim());
-      const rows = parsed.slice(1).map(row => {
-        const obj = {};
-        headers.forEach((h, i) => obj[h] = (row[i] ?? "").trim());
-        return obj;
-      });
-
-      document.getElementById("meta").textContent = `Rows: ${rows.length} • Source: data/screener_results/screener_results.csv`;
-
-      const columns = headers.map(h => {
-        const visible = DEFAULT_VISIBLE.includes(h);
-
-        let render = null;
-
-        if (h === "Ticker") render = (d)=> `<span class="badge">${String(d||"")}</span>`;
-
-        if (h === "Price" || h === "PE" || h === "AnnualDividend" || h === "YieldForModel" || h === "DividendGrowth5Y") {
-          render = (d)=> `<span class="right">${fmt2(d)}</span>`;
-        }
-
-        if (h === "DividendYield" || h === "PayoutRatio") {
-          render = (d)=> `<span class="right">${fmtPctFromRatio(d)}</span>`;
-        }
-
-        return { title: h, data: h, visible, render };
-      });
-
-      const table = $("#tbl").DataTable({
-        data: rows,
-        columns,
-        pageLength: 50,
-        order: [],
-        fixedHeader: true
-      });
-
-      // dropdowns
-      if (headers.includes("Country")) setDropdown("fltCountry", uniqSorted(rows.map(r => r.Country)));
-      if (headers.includes("Sector")) setDropdown("fltSector", uniqSorted(rows.map(r => r.Sector)));
-      if (headers.includes("Industry")) setDropdown("fltIndustry", uniqSorted(rows.map(r => r.Industry)));
-
-      function applyFilters() {
-        const fCountry = document.getElementById("fltCountry").value;
-        const fSector = document.getElementById("fltSector").value;
-        const fIndustry = document.getElementById("fltIndustry").value;
-
-        const minYield = n(document.getElementById("minYield").value);
-        const maxPayout = n(document.getElementById("maxPayout").value);
-
-        $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(fn => fn.__ours !== true);
-
-        const fn = function(settings, data, dataIndex) {
-          const row = table.row(dataIndex).data() || {};
-
-          if (fCountry && String(row.Country||"") !== fCountry) return false;
-          if (fSector && String(row.Sector||"") !== fSector) return false;
-          if (fIndustry && String(row.Industry||"") !== fIndustry) return false;
-
-          // ratio -> %
-          const y = n(row.DividendYield);
-          const p = n(row.PayoutRatio);
-
-          if (minYield !== null) {
-            if (y === null) return false;
-            if ((y*100) < minYield) return false;
-          }
-
-          if (maxPayout !== null) {
-            if (p === null) return false;
-            if ((p*100) > maxPayout) return false;
-          }
-
-          return true;
-        };
-        fn.__ours = true;
-        $.fn.dataTable.ext.search.push(fn);
-
-        table.draw();
-      }
-
-      ["fltCountry","fltSector","fltIndustry","minYield","maxPayout"].forEach(id => {
-        document.getElementById(id).addEventListener("change", applyFilters);
-        document.getElementById(id).addEventListener("keyup", applyFilters);
-      });
-
-      document.getElementById("btnReset").addEventListener("click", () => {
-        ["fltCountry","fltSector","fltIndustry"].forEach(id => document.getElementById(id).value = "");
-        document.getElementById("minYield").value = "";
-        document.getElementById("maxPayout").value = "";
-        applyFilters();
-      });
-
-      document.getElementById("tglAdvanced").addEventListener("change", (e) => {
-        const on = e.target.checked;
-        headers.forEach((h, idx) => {
-          const shouldShow = DEFAULT_VISIBLE.includes(h) ? true : on;
-          table.column(idx).visible(shouldShow, false);
-        });
-        table.columns.adjust().draw(false);
-      });
-
-      applyFilters();
-    }
-
-    init().catch(err => {
-      document.getElementById("meta").textContent = "Error: " + err.message;
-      console.error(err);
+    $("#screener").DataTable({
+      data: rows,
+      columns: headers.map(h => ({ title: h })),
+      pageLength: 50
     });
-  </script>
+
+    document.getElementById("status").innerText =
+      `Loaded ${rows.length} rows`;
+  })
+  .catch(err => {
+    document.getElementById("status").innerText =
+      "Error loading CSV: " + err.message;
+  });
+</script>
+
 </body>
 </html>

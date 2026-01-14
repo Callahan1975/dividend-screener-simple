@@ -2,145 +2,164 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dividend Screener (DK + US)</title>
 
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-dt@2.0.8/css/dataTables.dataTables.min.css">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-dt@2.1.8/css/dataTables.dataTables.min.css">
 
   <style>
-    :root{
-      --bg:#0b1220;
-      --panel:#0f1a2e;
-      --text:#e7eefc;
-      --muted:#9fb0d0;
-      --line:rgba(255,255,255,.08);
-      --chip:#122442;
-    }
-    body{ margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--text); }
-    .wrap{ max-width:1200px; margin:28px auto; padding:0 18px; }
-    h1{ margin:0 0 8px; font-size:28px; }
-    .bar{
-      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-      background:var(--panel); border:1px solid var(--line); border-radius:14px;
-      padding:12px 12px;
-      margin:12px 0 14px;
-    }
-    .chip{ background:var(--chip); border:1px solid var(--line); padding:6px 10px; border-radius:999px; font-size:12px; color:var(--muted); }
-    .ok{ color:#3ddc84; font-weight:600; }
-    .err{ color:#ff6b6b; font-weight:600; }
-
-    table.dataTable{ background:transparent; color:var(--text); }
-    table.dataTable thead th{ color:var(--muted); border-bottom:1px solid var(--line) !important; }
-    table.dataTable tbody td{ border-bottom:1px solid var(--line) !important; }
-    .dt-search input, .dt-length select{
-      background:#0b1730 !important; color:var(--text) !important;
-      border:1px solid var(--line) !important; border-radius:10px !important;
-      padding:6px 10px !important;
-    }
+    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin: 18px; background:#0b1220; color:#e6edf3; }
+    h1 { font-size: 22px; margin: 0 0 10px; }
+    .bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 8px 0 14px; }
+    .pill { padding:6px 10px; border:1px solid rgba(255,255,255,.12); border-radius:999px; background:rgba(255,255,255,.04); font-size:12px; }
+    select, input { background:#0f1a2d; border:1px solid rgba(255,255,255,.14); color:#e6edf3; border-radius:10px; padding:6px 10px; }
+    table.dataTable { width:100% !important; }
+    table.dataTable thead th { background:#0f1a2d; color:#e6edf3; }
+    table.dataTable tbody td { background:#0b1220; color:#e6edf3; }
+    .dt-container .dt-paging .dt-paging-button { color:#e6edf3 !important; }
+    .muted { opacity:.75; }
   </style>
 </head>
 
 <body>
-  <div class="wrap">
-    <h1>Dividend Screener (DK + US)</h1>
+  <h1>Dividend Screener (DK + US)</h1>
 
-    <div class="bar">
-      <span id="status" class="chip">Loading…</span>
-      <span id="meta" class="chip"></span>
-      <span class="chip">Tip: Cmd+Shift+R hvis du lige har opdateret filer</span>
-    </div>
+  <div class="bar">
+    <span id="status" class="pill">Loading data…</span>
 
-    <table id="tbl" class="display" style="width:100%"></table>
+    <label class="muted">Country</label>
+    <select id="fCountry"><option value="">All</option></select>
+
+    <label class="muted">Currency</label>
+    <select id="fCurrency"><option value="">All</option></select>
+
+    <label class="muted">Exchange</label>
+    <select id="fExchange"><option value="">All</option></select>
+
+    <label class="muted">Sector</label>
+    <select id="fSector"><option value="">All</option></select>
+
+    <button id="reset" class="pill" style="cursor:pointer;">Reset</button>
   </div>
 
+  <table id="screener" class="display"></table>
+
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/datatables.net@2.0.8/js/dataTables.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/datatables.net@2.1.8/js/dataTables.min.js"></script>
 
   <script>
     const CSV_PATH = "data/screener_results/screener_results.csv";
 
-    const COLS = [
-      { key:"GeneratedUTC", title:"GeneratedUTC" },
-      { key:"Ticker", title:"Ticker" },
-      { key:"Name", title:"Name" },
-      { key:"Country", title:"Country" },
-      { key:"Currency", title:"Currency" },
-      { key:"Exchange", title:"Exchange" },
-      { key:"Sector", title:"Sector" },
-      { key:"Industry", title:"Industry" },
-      { key:"Price", title:"Price", render:numRender(4) },
-      { key:"DividendYield_%", title:"DividendYield_%", render:pctRender(2) },
-      { key:"PayoutRatio_%", title:"PayoutRatio_%", render:pctRender(2) },
-      { key:"PE", title:"PE", render:numRender(2) },
-    ];
-
-    function numRender(decimals){
-      return function(data){
-        if(data===null || data===undefined || data==="") return "";
-        const v = Number(data);
-        if(!Number.isFinite(v)) return data;
-        return v.toFixed(decimals);
-      }
+    function parseCSV(text) {
+      // simple CSV parser (works because our output has no quoted commas)
+      const lines = text.trim().split("\n");
+      const headers = lines.shift().split(",");
+      const data = lines.map(line => line.split(","));
+      return { headers, data };
     }
 
-    function pctRender(decimals){
-      return function(data){
-        if(data===null || data===undefined || data==="") return "";
-        const v = Number(data);
-        if(!Number.isFinite(v)) return data;
-        return v.toFixed(decimals);
-      }
+    function uniqSorted(values) {
+      const s = new Set(values.filter(v => v && v.trim() !== ""));
+      return Array.from(s).sort((a,b) => a.localeCompare(b));
     }
 
-    function setStatusOk(msg){
-      const el = document.getElementById("status");
-      el.innerHTML = `<span class="ok">Data loaded ✓</span>`;
-      document.getElementById("meta").textContent = msg;
+    function fmtNum(x) {
+      if (x === null || x === undefined || x === "") return "";
+      const n = Number(x);
+      if (!isFinite(n)) return "";
+      return n.toFixed(2);
     }
 
-    function setStatusErr(msg){
-      const el = document.getElementById("status");
-      el.innerHTML = `<span class="err">Error:</span> ${msg}`;
-      document.getElementById("meta").textContent = "";
+    function fmtPct(x) {
+      if (x === null || x === undefined || x === "") return "";
+      const n = Number(x);
+      if (!isFinite(n)) return "";
+      return n.toFixed(2) + "%";
     }
 
     fetch(CSV_PATH, { cache: "no-store" })
       .then(r => {
-        if(!r.ok) throw new Error(`CSV not found (${r.status}) at ${CSV_PATH}`);
+        if (!r.ok) throw new Error("CSV not found: " + CSV_PATH);
         return r.text();
       })
       .then(text => {
-        const parsed = Papa.parse(text, { header:true, skipEmptyLines:true });
-        if(parsed.errors && parsed.errors.length){
-          console.warn(parsed.errors);
-        }
+        const { headers, data } = parseCSV(text);
 
-        const rows = parsed.data || [];
-        const gen = rows[0]?.GeneratedUTC || "";
-        setStatusOk(`Loaded ${rows.length} rows from ${CSV_PATH} • Generated: ${gen}`);
-
-        // build table header from COLS
-        $("#tbl").html(
-          "<thead><tr>" + COLS.map(c => `<th>${c.title}</th>`).join("") + "</tr></thead>"
+        // Build the table header dynamically
+        $("#screener").html(
+          "<thead><tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr></thead>"
         );
 
-        $("#tbl").DataTable({
-          data: rows,
-          columns: COLS.map(c => ({
-            title: c.title,
-            data: c.key,
-            render: c.render
-          })),
+        const table = new DataTable("#screener", {
+          data,
+          columns: headers.map(h => ({ title: h })),
           pageLength: 50,
           order: [[0, "desc"]],
-          deferRender: true,
+          autoWidth: false,
+          columnDefs: [
+            // Price
+            {
+              targets: headers.indexOf("Price"),
+              render: (d) => fmtNum(d)
+            },
+            // DividendYield_% and PayoutRatio_%
+            {
+              targets: [headers.indexOf("DividendYield_%"), headers.indexOf("PayoutRatio_%")].filter(i => i >= 0),
+              render: (d) => fmtPct(d)
+            },
+            // PE
+            {
+              targets: headers.indexOf("PE"),
+              render: (d) => fmtNum(d)
+            }
+          ]
         });
+
+        // Build dropdown filters (by column name)
+        function colIndex(name) { return headers.indexOf(name); }
+
+        const idxCountry  = colIndex("Country");
+        const idxCurrency = colIndex("Currency");
+        const idxExchange = colIndex("Exchange");
+        const idxSector   = colIndex("Sector");
+
+        const countryVals  = uniqSorted(data.map(r => r[idxCountry]));
+        const currencyVals = uniqSorted(data.map(r => r[idxCurrency]));
+        const exchangeVals = uniqSorted(data.map(r => r[idxExchange]));
+        const sectorVals   = uniqSorted(data.map(r => r[idxSector]));
+
+        function fillSelect(sel, values) {
+          values.forEach(v => $(sel).append(`<option value="${v}">${v}</option>`));
+        }
+
+        fillSelect("#fCountry", countryVals);
+        fillSelect("#fCurrency", currencyVals);
+        fillSelect("#fExchange", exchangeVals);
+        fillSelect("#fSector", sectorVals);
+
+        function applyFilter(sel, idx) {
+          const v = $(sel).val();
+          // exact match
+          table.column(idx).search(v ? "^" + v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$" : "", true, false).draw();
+        }
+
+        $("#fCountry").on("change", () => applyFilter("#fCountry", idxCountry));
+        $("#fCurrency").on("change", () => applyFilter("#fCurrency", idxCurrency));
+        $("#fExchange").on("change", () => applyFilter("#fExchange", idxExchange));
+        $("#fSector").on("change", () => applyFilter("#fSector", idxSector));
+
+        $("#reset").on("click", () => {
+          $("#fCountry,#fCurrency,#fExchange,#fSector").val("");
+          table.search("").columns().search("").draw();
+        });
+
+        const generatedUTC = data[0] && data[0][headers.indexOf("GeneratedUTC")] ? data[0][headers.indexOf("GeneratedUTC")] : "";
+        document.getElementById("status").innerText = `Data loaded ✅  Loaded ${data.length} rows from ${CSV_PATH}` + (generatedUTC ? ` · Generated: ${generatedUTC}` : "");
       })
       .catch(err => {
+        document.getElementById("status").innerText = "Error: " + err.message;
         console.error(err);
-        setStatusErr(err.message);
       });
   </script>
 </body>

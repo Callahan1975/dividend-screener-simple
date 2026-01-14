@@ -5,119 +5,193 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Dividend Screener (DK + US)</title>
 
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" />
+  <!-- DataTables -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+
   <style>
-    body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; margin: 20px; }
-    h1 { margin: 0 0 10px 0; }
-    #status { margin: 8px 0 16px 0; opacity: 0.85; }
-    .filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
-    .filters label { display: flex; gap: 6px; align-items: center; }
-    select { padding: 4px 6px; }
-    table.dataTable thead th { white-space: nowrap; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      margin: 0;
+      background: #0b1220;
+      color: #e5e7eb;
+    }
+    .wrap { padding: 18px 18px 28px; }
+    h1 { margin: 0 0 6px; font-size: 20px; font-weight: 700; }
+    #status { margin: 0 0 14px; opacity: 0.85; }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      gap: 10px;
+      margin: 10px 0 14px;
+    }
+    .filters label { font-size: 12px; opacity: 0.9; display: block; margin-bottom: 4px; }
+    .filters select {
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: #0f1a2e;
+      color: #e5e7eb;
+      outline: none;
+    }
+
+    /* DataTables dark */
+    table.dataTable {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      background: #0f1a2e;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    table.dataTable thead th {
+      background: #0f1a2e;
+      color: #cbd5e1;
+      border-bottom: 1px solid rgba(255,255,255,0.12) !important;
+      font-size: 12px;
+    }
+    table.dataTable tbody td {
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 12px;
+      color: #e5e7eb;
+    }
+
+    .dataTables_wrapper .dataTables_filter input,
+    .dataTables_wrapper .dataTables_length select {
+      background: #0b1220;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #e5e7eb;
+      border-radius: 8px;
+      padding: 6px 8px;
+    }
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+      color: #cbd5e1 !important;
+      font-size: 12px;
+      margin-top: 10px;
+    }
   </style>
 </head>
 
 <body>
-  <h1>Dividend Screener (DK + US)</h1>
-  <div id="status">Loading data…</div>
+  <div class="wrap">
+    <h1>Dividend Screener (DK + US)</h1>
+    <p id="status">Loading data…</p>
 
-  <div class="filters" id="filters"></div>
+    <div class="filters">
+      <div>
+        <label>Country</label>
+        <select id="fCountry"><option value="">All</option></select>
+      </div>
+      <div>
+        <label>Currency</label>
+        <select id="fCurrency"><option value="">All</option></select>
+      </div>
+      <div>
+        <label>Exchange</label>
+        <select id="fExchange"><option value="">All</option></select>
+      </div>
+      <div>
+        <label>Sector</label>
+        <select id="fSector"><option value="">All</option></select>
+      </div>
+    </div>
 
-  <table id="screener" class="display" style="width:100%">
-    <thead></thead>
-    <tbody></tbody>
-  </table>
+    <table id="tbl" class="display stripe" style="width:100%">
+      <thead><tr></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
 
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+
+  <!-- Robust CSV parser -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
-    // For GitHub Pages project site (…/dividend-screener-simple/), this relative path is correct:
     const CSV_PATH = "data/screener_results/screener_results.csv";
 
-    function uniqueSorted(values) {
-      const s = new Set(values.filter(v => v !== null && v !== undefined && String(v).trim() !== ""));
-      return Array.from(s).sort((a,b) => String(a).localeCompare(String(b)));
+    function uniqSorted(arr) {
+      return [...new Set(arr.filter(Boolean))].sort((a,b) => (""+a).localeCompare(""+b));
     }
 
-    function addDropdownFilter(dt, colName) {
-      const idx = dt.column(`${colName}:name`).index();
-      if (idx === undefined) return;
-
-      const col = dt.column(idx);
-      const values = uniqueSorted(col.data().toArray());
-
-      const id = `f_${colName}`;
-      const $wrap = $(`
-        <label>
-          <span>${colName}</span>
-          <select id="${id}">
-            <option value="">All</option>
-          </select>
-        </label>
-      `);
-
-      const $sel = $wrap.find("select");
-      values.forEach(v => $sel.append(`<option value="${String(v)}">${String(v)}</option>`));
-
-      $sel.on("change", function() {
-        const v = this.value;
-        // exact match
-        col.search(v ? `^${$.fn.dataTable.util.escapeRegex(v)}$` : "", true, false).draw();
-      });
-
-      $("#filters").append($wrap);
+    function fillSelect(selectId, values) {
+      const sel = document.getElementById(selectId);
+      const current = sel.value;
+      sel.innerHTML = '<option value="">All</option>' + values.map(v => `<option value="${v}">${v}</option>`).join("");
+      sel.value = current;
     }
 
-    Papa.parse(CSV_PATH, {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      dynamicTyping: false,
-      complete: function(results) {
-        if (!results || !results.data) {
-          document.getElementById("status").innerText = `Error: Could not parse CSV: ${CSV_PATH}`;
-          return;
-        }
+    function applyFilters(dt, colIndexMap) {
+      const vCountry = document.getElementById("fCountry").value;
+      const vCurrency = document.getElementById("fCurrency").value;
+      const vExchange = document.getElementById("fExchange").value;
+      const vSector = document.getElementById("fSector").value;
 
-        const data = results.data;
-        const fields = results.meta && results.meta.fields ? results.meta.fields : [];
+      dt.column(colIndexMap.Country).search(vCountry ? "^" + $.fn.dataTable.util.escapeRegex(vCountry) + "$" : "", true, false);
+      dt.column(colIndexMap.Currency).search(vCurrency ? "^" + $.fn.dataTable.util.escapeRegex(vCurrency) + "$" : "", true, false);
+      dt.column(colIndexMap.Exchange).search(vExchange ? "^" + $.fn.dataTable.util.escapeRegex(vExchange) + "$" : "", true, false);
+      dt.column(colIndexMap.Sector).search(vSector ? "^" + $.fn.dataTable.util.escapeRegex(vSector) + "$" : "", true, false);
 
-        if (data.length === 0 || fields.length === 0) {
-          document.getElementById("status").innerText = `No data in CSV: ${CSV_PATH}`;
-          return;
-        }
+      dt.draw();
+    }
 
-        // Build header
-        const thead = "<tr>" + fields.map(f => `<th>${f}</th>`).join("") + "</tr>";
-        $("#screener thead").html(thead);
+    fetch(CSV_PATH, { cache: "no-store" })
+      .then(r => {
+        if (!r.ok) throw new Error("Could not load CSV: " + CSV_PATH);
+        return r.text();
+      })
+      .then(text => {
+        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+        const data = parsed.data;
 
-        // DataTables wants columns + data objects
-        const columns = fields.map(f => ({ title: f, data: f, name: f }));
+        if (!data || !data.length) throw new Error("CSV is empty");
 
-        const dt = $("#screener").DataTable({
-          data,
-          columns,
+        const headers = Object.keys(data[0]);
+
+        // Build header row
+        document.querySelector("#tbl thead tr").innerHTML =
+          headers.map(h => `<th>${h}</th>`).join("");
+
+        // Convert to row arrays in the same header order
+        const rows = data.map(obj => headers.map(h => obj[h]));
+
+        // Column index map for filters
+        const colIndexMap = {
+          Country: headers.indexOf("Country"),
+          Currency: headers.indexOf("Currency"),
+          Exchange: headers.indexOf("Exchange"),
+          Sector: headers.indexOf("Sector"),
+        };
+
+        // Fill dropdowns
+        fillSelect("fCountry",  uniqSorted(data.map(r => r.Country)));
+        fillSelect("fCurrency", uniqSorted(data.map(r => r.Currency)));
+        fillSelect("fExchange", uniqSorted(data.map(r => r.Exchange)));
+        fillSelect("fSector",   uniqSorted(data.map(r => r.Sector)));
+
+        const dt = $("#tbl").DataTable({
+          data: rows,
+          columns: headers.map(h => ({ title: h })),
           pageLength: 50,
-          deferRender: true,
-          order: [],
-          autoWidth: false
+          fixedHeader: true
         });
 
-        // Update status
-        const gen = (data[0] && data[0].GeneratedUTC) ? ` • Generated: ${data[0].GeneratedUTC}` : "";
-        document.getElementById("status").innerText = `Loaded ${data.length} rows from ${CSV_PATH}${gen}`;
+        document.getElementById("status").innerText =
+          `Loaded ${data.length} rows from ${CSV_PATH}`;
 
-        // Add dropdown filters if these columns exist
-        ["Country", "Currency", "Exchange", "Sector"].forEach(c => {
-          if (fields.includes(c)) addDropdownFilter(dt, c);
+        // Hook filters
+        ["fCountry","fCurrency","fExchange","fSector"].forEach(id => {
+          document.getElementById(id).addEventListener("change", () => applyFilters(dt, colIndexMap));
         });
-      },
-      error: function(err) {
-        document.getElementById("status").innerText = `Error loading CSV: ${CSV_PATH} (${err})`;
-      }
-    });
+      })
+      .catch(err => {
+        document.getElementById("status").innerText = "Error: " + err.message;
+        console.error(err);
+      });
   </script>
 </body>
 </html>

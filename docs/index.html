@@ -30,7 +30,8 @@
   </table>
 
 <script>
-const CSV_PATH = "data/screener_results/screener_results.csv";
+const CSV_PATH = "./data/screener_results/screener_results.csv";
+
 
 fetch(new URL(CSV_PATH, window.location.href).toString(), { cache: "no-store" })
 

@@ -31,31 +31,24 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install yfinance
 
       - name: Run screener
         run: |
           python screener.py
 
-      - name: Ensure docs output exists
+      - name: Copy results into docs for GitHub Pages
         run: |
           mkdir -p docs/data/screener_results
-
-      - name: Copy CSV into docs for GitHub Pages
-        run: |
           cp -f data/screener_results/screener_results.csv docs/data/screener_results/screener_results.csv
 
       - name: Commit & push if changed
         run: |
-          set -e
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Ignore any cached build trash
-          git status --porcelain
-          git add -A
+          git add docs/index.html docs/data/screener_results/screener_results.csv
 
-          # If nothing staged -> exit clean
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0

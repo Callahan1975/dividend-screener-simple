@@ -1,4 +1,5 @@
 import os
+import time
 import csv
 from datetime import datetime, timezone
 
@@ -7,109 +8,117 @@ import yfinance as yf
 
 
 TICKERS_FILE = "tickers.txt"
-OUT_CSV = "data/screener_results/screener_results.csv"
+OUT_DIR = os.path.join("data", "screener_results")
+OUT_CSV = os.path.join(OUT_DIR, "screener_results.csv")
 
 
-def read_tickers(path: str) -> list[str]:
+def load_tickers(path: str) -> list[str]:
     tickers: list[str] = []
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Missing {path}")
+
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
+
+            # skip empty lines and full-line comments
             if not line or line.startswith("#"):
                 continue
-            # allow comma/space separated
-            parts = [p.strip() for p in line.replace(",", " ").split()]
-            tickers.extend([p for p in parts if p])
-    # unique preserve order
+
+            # allow inline comments: "ABC # comment"
+            if "#" in line:
+                line = line.split("#", 1)[0].strip()
+
+            if line:
+                tickers.append(line)
+
+    # de-dup while preserving order
     seen = set()
     out = []
     for t in tickers:
         if t not in seen:
-            out.append(t)
             seen.add(t)
+            out.append(t)
     return out
 
 
-def safe_float(x):
+def safe_get(d: dict, key: str, default=None):
     try:
-        if x is None:
-            return None
-        return float(x)
+        v = d.get(key, default)
+        return default if v is None else v
     except Exception:
-        return None
+        return default
 
 
 def main():
-    tickers = read_tickers(TICKERS_FILE)
-    if not tickers:
-        raise SystemExit("No tickers found in tickers.txt")
+    os.makedirs(OUT_DIR, exist_ok=True)
 
-    os.makedirs(os.path.dirname(OUT_CSV), exist_ok=True)
+    tickers = load_tickers(TICKERS_FILE)
+    if not tickers:
+        raise RuntimeError("No tickers found in tickers.txt")
 
     rows = []
-    # Chunk to avoid yfinance issues with huge batches
-    chunk_size = 50
+    errors = []
 
-    for i in range(0, len(tickers), chunk_size):
-        chunk = tickers[i : i + chunk_size]
-        data = yf.Tickers(" ".join(chunk))
+    # Slight throttling helps avoid sporadic Yahoo rate limiting
+    for i, t in enumerate(tickers, start=1):
+        try:
+            tk = yf.Ticker(t)
+            info = tk.info or {}
 
-        for t in chunk:
-            try:
-                tk = data.tickers.get(t)
-                if tk is None:
-                    continue
-
-                info = tk.info or {}
-
-                name = info.get("shortName") or info.get("longName") or ""
-                country = info.get("country") or ""
-                sector = info.get("sector") or ""
-                industry = info.get("industry") or ""
-                currency = info.get("currency") or ""
-                exchange = info.get("exchange") or ""
-
-                price = safe_float(info.get("currentPrice") or info.get("regularMarketPrice"))
-                dividend_yield = safe_float(info.get("dividendYield"))  # usually fraction (0.03 = 3%)
-                payout_ratio = safe_float(info.get("payoutRatio"))      # fraction
-                pe = safe_float(info.get("trailingPE") or info.get("forwardPE"))
-
-                # Convert to percents for display
-                dividend_yield_pct = (dividend_yield * 100.0) if dividend_yield is not None else None
-                payout_ratio_pct = (payout_ratio * 100.0) if payout_ratio is not None else None
-
-                rows.append({
+            rows.append(
+                {
                     "Ticker": t,
-                    "Name": name,
-                    "Country": country,
-                    "Currency": currency,
-                    "Exchange": exchange,
-                    "Sector": sector,
-                    "Industry": industry,
-                    "Price": price,
-                    "DividendYield_%": dividend_yield_pct,
-                    "PayoutRatio_%": payout_ratio_pct,
-                    "PE": pe,
-                })
-            except Exception:
-                # skip ticker on any error
-                continue
+                    "Name": safe_get(info, "longName", safe_get(info, "shortName", "")),
+                    "Country": safe_get(info, "country", ""),
+                    "Currency": safe_get(info, "currency", ""),
+                    "Exchange": safe_get(info, "exchange", ""),
+                    "Sector": safe_get(info, "sector", ""),
+                    "Industry": safe_get(info, "industry", ""),
+                    "Price": safe_get(info, "regularMarketPrice", safe_get(info, "currentPrice", "")),
+                    "MarketCap": safe_get(info, "marketCap", ""),
+                    "DividendYield_%": (
+                        float(info["dividendYield"]) * 100.0
+                        if isinstance(info.get("dividendYield", None), (int, float))
+                        else ""
+                    ),
+                    "PayoutRatio": safe_get(info, "payoutRatio", ""),
+                    "PE": safe_get(info, "trailingPE", safe_get(info, "forwardPE", "")),
+                }
+            )
+
+        except Exception as e:
+            errors.append({"Ticker": t, "Error": str(e)})
+
+        # throttle a bit
+        time.sleep(0.25)
 
     df = pd.DataFrame(rows)
 
-    # Add metadata columns at end (optional)
+    # Sort for stable output
+    if "Country" in df.columns and "Ticker" in df.columns:
+        df = df.sort_values(["Country", "Ticker"], kind="stable")
+
+    # Write CSV with correct quoting so names like "T-Mobile US, Inc." won't break
     generated_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     df.insert(0, "GeneratedUTC", generated_utc)
 
-    # Write CSV with quoting (CRITICAL)
     df.to_csv(
         OUT_CSV,
         index=False,
         encoding="utf-8",
-        quoting=csv.QUOTE_MINIMAL
+        quoting=csv.QUOTE_MINIMAL,
     )
 
-    print(f"Saved {len(df)} rows to {OUT_CSV}")
+    # Optional: write an errors file for debugging
+    if errors:
+        err_path = os.path.join(OUT_DIR, "errors.csv")
+        pd.DataFrame(errors).to_csv(err_path, index=False, encoding="utf-8", quoting=csv.QUOTE_MINIMAL)
+
+    print(f"Generated rows: {len(df)}")
+    print(f"CSV written to: {OUT_CSV}")
+    if errors:
+        print(f"Errors: {len(errors)} (see {os.path.join(OUT_DIR, 'errors.csv')})")
 
 
 if __name__ == "__main__":

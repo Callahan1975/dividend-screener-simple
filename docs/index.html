@@ -2,108 +2,66 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Dividend Screener (DK + US)</title>
 
-  <!-- DataTables CSS -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" />
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 20px; }
-    h1 { margin: 0 0 8px 0; }
-    #status { margin: 8px 0 14px 0; opacity: 0.9; }
-    .error { color: #c0392b; font-weight: 600; }
-    .ok { color: #2c3e50; }
-    table.dataTable thead th { white-space: nowrap; }
+    body { font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial; margin: 18px; background:#0b1220; color:#e5e7eb; }
+    h1 { margin: 0 0 8px 0; font-size: 22px; }
+    #status { margin: 0 0 12px 0; opacity: 0.85; }
+    table.dataTable { width: 100% !important; }
   </style>
 </head>
+
 <body>
   <h1>Dividend Screener (DK + US)</h1>
-  <div id="status" class="ok">Loading…</div>
+  <p id="status">Loading data…</p>
 
-  <table id="screener" class="display" style="width:100%">
-    <thead></thead>
-    <tbody></tbody>
-  </table>
+  <table id="screener" class="display"></table>
 
-  <!-- jQuery + DataTables -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-
-  <!-- PapaParse (robust CSV parsing) -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
-    // IMPORTANT: keep it relative to docs/index.html
-    const CSV_PATH = "./data/screener_results/screener_results.csv";
+    // IMPORTANT: This is relative to docs/index.html (GitHub Pages uses /docs as root)
+    const CSV_PATH = "data/screener_results/screener_results.csv";
 
-    const statusEl = document.getElementById("status");
-    const setStatus = (msg, isError=false) => {
-      statusEl.textContent = msg;
-      statusEl.className = isError ? "error" : "ok";
-    };
+    // Cache-buster so GitHub Pages/CDN does not serve an old file
+    const url = CSV_PATH + "?ts=" + Date.now();
 
-    async function loadCSV() {
-      try {
-        // Build an absolute URL based on the current page URL (works reliably on GitHub Pages subpaths)
-        const csvUrl = new URL(CSV_PATH, window.location.href).toString();
-
-        setStatus("Fetching CSV…");
-        const r = await fetch(csvUrl, { cache: "no-store" });
-        if (!r.ok) throw new Error(`CSV fetch failed (${r.status}) - ${csvUrl}`);
-
-        const text = await r.text();
-
-        setStatus("Parsing CSV…");
-        const parsed = Papa.parse(text, {
-          header: true,
-          skipEmptyLines: true,
-          dynamicTyping: false
-        });
-
-        if (parsed.errors && parsed.errors.length) {
-          // show the first parse error
-          throw new Error(`CSV parse error: ${parsed.errors[0].message}`);
+    Papa.parse(url, {
+      download: true,
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        const data = results.data || [];
+        if (!data.length) {
+          document.getElementById("status").innerText = "No rows loaded (CSV empty).";
+          return;
         }
 
-        const rows = parsed.data || [];
-        const headers = rows.length ? Object.keys(rows[0]) : [];
-
-        if (!headers.length) throw new Error("CSV parsed, but no headers found (empty file?)");
-
-        setStatus(`Rendering table… (${rows.length} rows)`);
-
-        // Build columns
-        const columns = headers.map(h => ({ title: h, data: h }));
-
-        // Destroy if reloading
-        if ($.fn.dataTable.isDataTable("#screener")) {
-          $("#screener").DataTable().destroy();
-          $("#screener thead").empty();
-          $("#screener tbody").empty();
-        }
-
-        // Build header row
-        $("#screener thead").html(
-          "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>"
-        );
+        const columns = Object.keys(data[0]).map(k => ({ title: k, data: k }));
 
         $("#screener").DataTable({
-          data: rows,
-          columns,
+          data: data,
+          columns: columns,
           pageLength: 50,
-          deferRender: true,
-          order: []
+          order: [],
+          deferRender: true
         });
 
-        setStatus(`Loaded ${rows.length} rows ✅`);
-      } catch (err) {
+        document.getElementById("status").innerText =
+          `Loaded ${data.length} rows from ${CSV_PATH}`;
+      },
+      error: function(err) {
+        document.getElementById("status").innerText =
+          "Error: Could not load CSV: " + CSV_PATH;
         console.error(err);
-        setStatus(`Error: ${err.message}`, true);
       }
-    }
-
-    loadCSV();
+    });
   </script>
 </body>
 </html>

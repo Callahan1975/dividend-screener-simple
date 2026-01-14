@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dividend Screener (DK + US)</title>
 
   <!-- DataTables -->
@@ -10,188 +10,349 @@
   <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
 
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      margin: 0;
-      background: #0b1220;
-      color: #e5e7eb;
+    :root{
+      --bg:#0b1220;
+      --panel:#0e1a2f;
+      --text:#e7eefc;
+      --muted:#9fb1d1;
+      --border:rgba(255,255,255,.08);
+      --chip:#122444;
     }
-    .wrap { padding: 18px 18px 28px; }
-    h1 { margin: 0 0 6px; font-size: 20px; font-weight: 700; }
-    #status { margin: 0 0 14px; opacity: 0.85; }
-
-    .filters {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(160px, 1fr));
+    html, body { height:100%; }
+    body{
+      margin:0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap{
+      max-width: 1400px;
+      margin: 22px auto;
+      padding: 0 16px 30px;
+    }
+    h1{ margin:0 0 8px; font-size: 22px; font-weight: 700; }
+    .sub{
+      color: var(--muted);
+      margin-bottom: 14px;
+      font-size: 13px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      border:1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .controls{
+      display:flex;
       gap: 10px;
-      margin: 10px 0 14px;
+      flex-wrap: wrap;
+      align-items: end;
+      margin-bottom: 10px;
     }
-    .filters label { font-size: 12px; opacity: 0.9; display: block; margin-bottom: 4px; }
-    .filters select {
-      width: 100%;
-      padding: 8px;
-      border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: #0f1a2e;
-      color: #e5e7eb;
+    .ctrl{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width: 180px;
+    }
+    .ctrl label{
+      font-size: 12px;
+      color: var(--muted);
+    }
+    select, input{
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
       outline: none;
     }
+    select:focus, input:focus{
+      border-color: rgba(124,160,255,.45);
+      box-shadow: 0 0 0 3px rgba(124,160,255,.15);
+    }
+    button{
+      background: var(--chip);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 12px;
+      cursor:pointer;
+      height: 38px;
+    }
+    button:hover{ filter: brightness(1.1); }
 
-    /* DataTables dark */
-    table.dataTable {
-      width: 100% !important;
-      border-collapse: collapse !important;
-      background: #0f1a2e;
-      border-radius: 12px;
-      overflow: hidden;
+    /* DataTables dark-ish */
+    table.dataTable{ width:100% !important; color: var(--text); }
+    table.dataTable thead th{
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      border-bottom: 1px solid var(--border) !important;
     }
-    table.dataTable thead th {
-      background: #0f1a2e;
-      color: #cbd5e1;
-      border-bottom: 1px solid rgba(255,255,255,0.12) !important;
-      font-size: 12px;
+    table.dataTable tbody td{
+      border-bottom: 1px solid rgba(255,255,255,.05);
     }
-    table.dataTable tbody td {
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      font-size: 12px;
-      color: #e5e7eb;
-    }
-
     .dataTables_wrapper .dataTables_filter input,
-    .dataTables_wrapper .dataTables_length select {
-      background: #0b1220;
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #e5e7eb;
-      border-radius: 8px;
-      padding: 6px 8px;
+    .dataTables_wrapper .dataTables_length select{
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 10px;
     }
     .dataTables_wrapper .dataTables_info,
-    .dataTables_wrapper .dataTables_paginate {
-      color: #cbd5e1 !important;
-      font-size: 12px;
-      margin-top: 10px;
+    .dataTables_wrapper .dataTables_paginate{
+      color: var(--muted) !important;
     }
+    .dataTables_wrapper .dataTables_paginate .paginate_button{
+      color: var(--text) !important;
+      border: 1px solid var(--border) !important;
+      background: rgba(255,255,255,.03) !important;
+      border-radius: 10px !important;
+      margin-left: 6px;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current{
+      background: rgba(124,160,255,.18) !important;
+      border-color: rgba(124,160,255,.35) !important;
+    }
+    .err{
+      color:#ffb3b3;
+      font-weight:600;
+    }
+    .ok{
+      color:#b8ffcf;
+      font-weight:600;
+    }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
   </style>
 </head>
 
 <body>
   <div class="wrap">
     <h1>Dividend Screener (DK + US)</h1>
-    <p id="status">Loading data…</p>
-
-    <div class="filters">
-      <div>
-        <label>Country</label>
-        <select id="fCountry"><option value="">All</option></select>
-      </div>
-      <div>
-        <label>Currency</label>
-        <select id="fCurrency"><option value="">All</option></select>
-      </div>
-      <div>
-        <label>Exchange</label>
-        <select id="fExchange"><option value="">All</option></select>
-      </div>
-      <div>
-        <label>Sector</label>
-        <select id="fSector"><option value="">All</option></select>
-      </div>
+    <div class="sub">
+      <span id="status">Loading data…</span>
+      <span id="meta" class="mono"></span>
     </div>
 
-    <table id="tbl" class="display stripe" style="width:100%">
-      <thead><tr></tr></thead>
-      <tbody></tbody>
-    </table>
+    <div class="panel">
+      <div class="controls">
+        <div class="ctrl">
+          <label for="fCountry">Country</label>
+          <select id="fCountry"><option value="">All</option></select>
+        </div>
+        <div class="ctrl">
+          <label for="fCurrency">Currency</label>
+          <select id="fCurrency"><option value="">All</option></select>
+        </div>
+        <div class="ctrl">
+          <label for="fExchange">Exchange</label>
+          <select id="fExchange"><option value="">All</option></select>
+        </div>
+        <div class="ctrl">
+          <label for="fSector">Sector</label>
+          <select id="fSector"><option value="">All</option></select>
+        </div>
+
+        <button id="btnReset" type="button">Reset</button>
+      </div>
+
+      <table id="tbl" class="display" style="width:100%">
+        <thead><tr></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 
+  <!-- libs -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
-
-  <!-- Robust CSV parser -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
+    // ✅ Pages bygger fra /docs, så denne relative sti er korrekt:
     const CSV_PATH = "data/screener_results/screener_results.csv";
 
-    function uniqSorted(arr) {
-      return [...new Set(arr.filter(Boolean))].sort((a,b) => (""+a).localeCompare(""+b));
+    // ✅ EKSPPLICIT mapping (robust mod header quirks og % tegn)
+    const columns = [
+      { key: "GeneratedUTC",   title: "GeneratedUTC" },
+      { key: "Ticker",         title: "Ticker" },
+      { key: "Name",           title: "Name" },
+      { key: "Country",        title: "Country" },
+      { key: "Currency",       title: "Currency" },
+      { key: "Exchange",       title: "Exchange" },
+      { key: "Sector",         title: "Sector" },
+      { key: "Industry",       title: "Industry" },
+      { key: "Price",          title: "Price" },
+      { key: "DividendYield_%",title: "DividendYield %" },
+      { key: "PayoutRatio_%",  title: "PayoutRatio %" },
+      { key: "PE",             title: "PE" }
+    ];
+
+    function setStatus(msg, ok=false){
+      const el = document.getElementById("status");
+      el.textContent = msg;
+      el.className = ok ? "ok" : "";
+    }
+    function setError(msg){
+      const el = document.getElementById("status");
+      el.textContent = msg;
+      el.className = "err";
     }
 
-    function fillSelect(selectId, values) {
+    function normHeaderKey(k){
+      // robust mod BOM + whitespace + weird CR
+      return (k ?? "")
+        .toString()
+        .replace(/^\uFEFF/, "")
+        .replace(/\r/g, "")
+        .trim();
+    }
+
+    function toNumberOrEmpty(v){
+      if (v === null || v === undefined) return "";
+      const s = String(v).trim();
+      if (!s) return "";
+      const n = Number(s);
+      return Number.isFinite(n) ? n : s;
+    }
+
+    function uniqueSorted(arr){
+      const s = new Set(arr.filter(v => v !== "" && v !== null && v !== undefined));
+      return Array.from(s).sort((a,b) => String(a).localeCompare(String(b)));
+    }
+
+    function fillSelect(selectId, values){
       const sel = document.getElementById(selectId);
       const current = sel.value;
-      sel.innerHTML = '<option value="">All</option>' + values.map(v => `<option value="${v}">${v}</option>`).join("");
-      sel.value = current;
+      sel.innerHTML = `<option value="">All</option>` + values.map(v => `<option value="${String(v).replace(/"/g,'&quot;')}">${v}</option>`).join("");
+      // keep selection if possible
+      if ([...sel.options].some(o => o.value === current)) sel.value = current;
     }
 
-    function applyFilters(dt, colIndexMap) {
-      const vCountry = document.getElementById("fCountry").value;
-      const vCurrency = document.getElementById("fCurrency").value;
-      const vExchange = document.getElementById("fExchange").value;
-      const vSector = document.getElementById("fSector").value;
-
-      dt.column(colIndexMap.Country).search(vCountry ? "^" + $.fn.dataTable.util.escapeRegex(vCountry) + "$" : "", true, false);
-      dt.column(colIndexMap.Currency).search(vCurrency ? "^" + $.fn.dataTable.util.escapeRegex(vCurrency) + "$" : "", true, false);
-      dt.column(colIndexMap.Exchange).search(vExchange ? "^" + $.fn.dataTable.util.escapeRegex(vExchange) + "$" : "", true, false);
-      dt.column(colIndexMap.Sector).search(vSector ? "^" + $.fn.dataTable.util.escapeRegex(vSector) + "$" : "", true, false);
-
-      dt.draw();
+    function applyFilter(dt, colIndex, value){
+      // exact match (escaped) when value chosen
+      if (!value) {
+        dt.column(colIndex).search("", true, false).draw();
+        return;
+      }
+      const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      dt.column(colIndex).search("^" + escaped + "$", true, false).draw();
     }
 
-    fetch(CSV_PATH, { cache: "no-store" })
-      .then(r => {
-        if (!r.ok) throw new Error("Could not load CSV: " + CSV_PATH);
-        return r.text();
-      })
-      .then(text => {
-        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
-        const data = parsed.data;
+    function buildFilters(dt){
+      const idxCountry  = columns.findIndex(c => c.key === "Country");
+      const idxCurrency = columns.findIndex(c => c.key === "Currency");
+      const idxExchange = columns.findIndex(c => c.key === "Exchange");
+      const idxSector   = columns.findIndex(c => c.key === "Sector");
 
-        if (!data || !data.length) throw new Error("CSV is empty");
+      // Fill dropdowns based on currently loaded table data
+      const colData = (idx) => dt.column(idx).data().toArray().map(v => (v ?? "").toString()).filter(Boolean);
 
-        const headers = Object.keys(data[0]);
+      fillSelect("fCountry",  uniqueSorted(colData(idxCountry)));
+      fillSelect("fCurrency", uniqueSorted(colData(idxCurrency)));
+      fillSelect("fExchange", uniqueSorted(colData(idxExchange)));
+      fillSelect("fSector",   uniqueSorted(colData(idxSector)));
+
+      document.getElementById("fCountry").onchange  = (e) => applyFilter(dt, idxCountry,  e.target.value);
+      document.getElementById("fCurrency").onchange = (e) => applyFilter(dt, idxCurrency, e.target.value);
+      document.getElementById("fExchange").onchange = (e) => applyFilter(dt, idxExchange, e.target.value);
+      document.getElementById("fSector").onchange   = (e) => applyFilter(dt, idxSector,   e.target.value);
+
+      document.getElementById("btnReset").onclick = () => {
+        document.getElementById("fCountry").value  = "";
+        document.getElementById("fCurrency").value = "";
+        document.getElementById("fExchange").value = "";
+        document.getElementById("fSector").value   = "";
+        dt.search("").columns().search("").draw();
+      };
+    }
+
+    async function load(){
+      try{
+        setStatus("Loading data…");
 
         // Build header row
         document.querySelector("#tbl thead tr").innerHTML =
-          headers.map(h => `<th>${h}</th>`).join("");
+          columns.map(c => `<th>${c.title}</th>`).join("");
 
-        // Convert to row arrays in the same header order
-        const rows = data.map(obj => headers.map(h => obj[h]));
+        Papa.parse(CSV_PATH, {
+          download: true,
+          header: true,
+          skipEmptyLines: true,
+          transformHeader: (h) => normHeaderKey(h),
+          complete: (result) => {
+            try{
+              if (result.errors && result.errors.length) {
+                console.warn("PapaParse errors:", result.errors);
+              }
+              const data = (result.data || []).filter(r => r && Object.keys(r).length > 0);
 
-        // Column index map for filters
-        const colIndexMap = {
-          Country: headers.indexOf("Country"),
-          Currency: headers.indexOf("Currency"),
-          Exchange: headers.indexOf("Exchange"),
-          Sector: headers.indexOf("Sector"),
-        };
+              if (!data.length) {
+                setError(`No rows found in CSV: ${CSV_PATH}`);
+                return;
+              }
 
-        // Fill dropdowns
-        fillSelect("fCountry",  uniqSorted(data.map(r => r.Country)));
-        fillSelect("fCurrency", uniqSorted(data.map(r => r.Currency)));
-        fillSelect("fExchange", uniqSorted(data.map(r => r.Exchange)));
-        fillSelect("fSector",   uniqSorted(data.map(r => r.Sector)));
+              // Convert to table rows in the exact column order
+              const rows = data.map(r => {
+                // normalize keys once (in case)
+                const normalized = {};
+                for (const k of Object.keys(r)) normalized[normHeaderKey(k)] = r[k];
 
-        const dt = $("#tbl").DataTable({
-          data: rows,
-          columns: headers.map(h => ({ title: h })),
-          pageLength: 50,
-          fixedHeader: true
+                return columns.map(c => {
+                  const val = normalized[c.key];
+                  // numbers for sorting where possible
+                  if (["Price","DividendYield_%","PayoutRatio_%","PE"].includes(c.key)) {
+                    return toNumberOrEmpty(val);
+                  }
+                  return (val ?? "").toString().replace(/\r/g, "");
+                });
+              });
+
+              // Destroy old datatable if exists
+              if ($.fn.DataTable.isDataTable("#tbl")) {
+                $("#tbl").DataTable().destroy();
+                $("#tbl tbody").empty();
+              }
+
+              const dt = $("#tbl").DataTable({
+                data: rows,
+                columns: columns.map(c => ({ title: c.title })),
+                pageLength: 50,
+                fixedHeader: true,
+                order: [[0, "desc"]]
+              });
+
+              // Meta + status
+              const generated = data[0]["GeneratedUTC"] || "";
+              document.getElementById("meta").textContent =
+                generated ? `Generated: ${generated}` : "";
+              setStatus(`Loaded ${rows.length} rows from ${CSV_PATH}`, true);
+
+              buildFilters(dt);
+            } catch (e) {
+              console.error(e);
+              setError("UI error while building table. See console.");
+            }
+          },
+          error: (err) => {
+            console.error(err);
+            setError(`Could not load CSV: ${CSV_PATH}`);
+          }
         });
 
-        document.getElementById("status").innerText =
-          `Loaded ${data.length} rows from ${CSV_PATH}`;
-
-        // Hook filters
-        ["fCountry","fCurrency","fExchange","fSector"].forEach(id => {
-          document.getElementById(id).addEventListener("change", () => applyFilters(dt, colIndexMap));
-        });
-      })
-      .catch(err => {
-        document.getElementById("status").innerText = "Error: " + err.message;
+      } catch (err){
         console.error(err);
-      });
+        setError("Unexpected error. See console.");
+      }
+    }
+
+    load();
   </script>
 </body>
 </html>

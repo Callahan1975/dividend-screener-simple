@@ -32,10 +32,8 @@
 <script>
 const CSV_PATH = "data/screener_results/screener_results.csv";
 
-fetch(CSV_PATH)
-  .then(r => {
-    if (!r.ok) throw new Error("CSV not found");
-    return r.text();
+fetch(new URL(CSV_PATH, window.location.href).toString(), { cache: "no-store" })
+
   })
   .then(text => {
     const rows = text.trim().split("\n").map(r => r.split(","));

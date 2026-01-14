@@ -1,20 +1,20 @@
+from __future__ import annotations
+
 import csv
 import datetime as dt
 import time
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
+import pandas as pd
 import yfinance as yf
 
 
 TICKERS_FILE = Path("tickers.txt")
+OUT_DIR = Path("data/screener_results")
+OUT_CSV = OUT_DIR / "screener_results.csv"
 
-OUT_DATA_DIR = Path("data") / "screener_results"
-OUT_DATA_DIR.mkdir(parents=True, exist_ok=True)
-OUT_CSV = OUT_DATA_DIR / "screener_results.csv"
-
-
-# Output columns (keep stable so UI doesn't break)
-FIELDS = [
+COLUMNS = [
     "GeneratedUTC",
     "Ticker",
     "Name",
@@ -30,186 +30,183 @@ FIELDS = [
 ]
 
 
-def read_tickers(path: Path) -> list[str]:
-    tickers: list[str] = []
+def read_tickers(path: Path) -> List[str]:
     if not path.exists():
         raise FileNotFoundError(f"Missing {path}")
 
+    tickers: List[str] = []
     for line in path.read_text(encoding="utf-8").splitlines():
-        s = line.strip()
-        if not s or s.startswith("#"):
+        line = line.strip()
+        if not line or line.startswith("#"):
             continue
-        # Skip obviously invalid tickers
-        if "?" in s:
-            continue
-        tickers.append(s)
+        # allow inline comments: "TICKER  # comment"
+        if "#" in line:
+          line = line.split("#", 1)[0].strip()
+        if line:
+            tickers.append(line)
     # de-dup preserve order
     seen = set()
     out = []
     for t in tickers:
         if t not in seen:
-            seen.add(t)
             out.append(t)
+            seen.add(t)
     return out
 
 
-def safe_float(x):
+def _to_float(x: Any) -> Optional[float]:
+    if x is None:
+        return None
     try:
-        if x is None:
-            return None
         return float(x)
     except Exception:
         return None
 
 
-def to_pct(value) -> float | None:
+def normalize_percent(value: Optional[float]) -> Optional[float]:
     """
-    yfinance sometimes returns:
-      - 0.0312 (fraction)
-      - 3.12 (already percent)
-      - None
-    We normalize to percent (e.g. 3.12)
+    Normalizes numbers that might be:
+      - fraction: 0.025 => 2.5
+      - percent: 2.5 => 2.5
+      - already *100 twice: 250 => 2.5
     """
-    v = safe_float(value)
-    if v is None:
+    if value is None:
         return None
-    # If it looks like a fraction (0-1.5), convert to percent
-    if 0 <= v <= 1.5:
-        return v * 100.0
-    # If it is already percent-like (1.5-200), keep
-    if 1.5 < v <= 200:
+
+    v = float(value)
+
+    # negative / nonsense: just return as-is (caller may blank it out)
+    if v < 0:
         return v
-    # If it's crazy huge (e.g. 304), it might be percent*100
-    if v > 200:
-        # Try divide by 100
-        v2 = v / 100.0
-        if 0 <= v2 <= 200:
-            return v2
+
+    # typical fractions
+    if 0 <= v <= 1:
+        return v * 100.0
+
+    # if it's extremely high, it's usually double-scaled
+    if v > 100:
+        return v / 100.0
+
+    # 1..100 treat as percent already
     return v
 
 
-def pick_first(d: dict, keys: list[str]):
-    for k in keys:
-        if k in d and d[k] not in (None, "", "N/A"):
-            return d[k]
+def safe_round(x: Optional[float], nd: int = 2) -> Optional[float]:
+    if x is None:
+        return None
+    try:
+        return round(float(x), nd)
+    except Exception:
+        return None
+
+
+def fetch_info(ticker: str, tries: int = 3, sleep_s: float = 1.0) -> Dict[str, Any]:
+    last_err = None
+    for i in range(tries):
+        try:
+            tk = yf.Ticker(ticker)
+            info = tk.get_info()
+            if isinstance(info, dict) and info:
+                return info
+            # sometimes empty dict; try history fallback
+            last_err = RuntimeError("Empty info dict")
+        except Exception as e:
+            last_err = e
+        time.sleep(sleep_s * (i + 1))
+    # return empty dict if fail (we keep ticker but blank values)
+    return {}
+
+
+def pick_price(info: Dict[str, Any]) -> Optional[float]:
+    # Try common fields in order
+    for k in ["currentPrice", "regularMarketPrice", "previousClose"]:
+        v = _to_float(info.get(k))
+        if v is not None and v > 0:
+            return v
     return None
 
 
-def get_last_12m_div_yield_pct(ticker_obj: yf.Ticker, price: float | None) -> float | None:
-    """
-    Fallback: sum dividends last 365 days / price * 100
-    """
-    if price is None or price <= 0:
+def pick_dividend_yield(info: Dict[str, Any]) -> Optional[float]:
+    # yfinance may return either dividendYield or trailingAnnualDividendYield
+    for k in ["dividendYield", "trailingAnnualDividendYield"]:
+        v = _to_float(info.get(k))
+        if v is not None:
+            return normalize_percent(v)
+    return None
+
+
+def pick_payout_ratio(info: Dict[str, Any]) -> Optional[float]:
+    v = _to_float(info.get("payoutRatio"))
+    if v is None:
         return None
-    try:
-        divs = ticker_obj.dividends
-        if divs is None or len(divs) == 0:
-            return None
-        cutoff = dt.datetime.utcnow() - dt.timedelta(days=365)
-        divs_12m = divs[divs.index.to_pydatetime() >= cutoff]
-        if len(divs_12m) == 0:
-            return None
-        total = float(divs_12m.sum())
-        return (total / price) * 100.0
-    except Exception:
-        return None
+    return normalize_percent(v)
 
 
-def fetch_one(ticker: str, pause_s: float = 0.25) -> dict:
-    generated = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-    row = {k: "" for k in FIELDS}
-    row["GeneratedUTC"] = generated
-    row["Ticker"] = ticker
+def pick_pe(info: Dict[str, Any]) -> Optional[float]:
+    for k in ["trailingPE", "forwardPE"]:
+        v = _to_float(info.get(k))
+        if v is not None and v != 0:
+            return v
+    return None
 
-    t = yf.Ticker(ticker)
 
-    # fast_info is quicker/less fragile when it works
-    price = None
-    currency = None
-    exchange = None
-    try:
-        fi = getattr(t, "fast_info", None)
-        if fi:
-            price = safe_float(fi.get("last_price") or fi.get("lastPrice") or fi.get("regularMarketPrice"))
-            currency = fi.get("currency")
-            exchange = fi.get("exchange")
-    except Exception:
-        pass
+def to_row(ticker: str, info: Dict[str, Any], now_utc: str) -> Dict[str, Any]:
+    name = info.get("shortName") or info.get("longName") or ""
+    country = info.get("country") or ""
+    currency = info.get("currency") or ""
+    exchange = info.get("exchange") or info.get("fullExchangeName") or ""
+    sector = info.get("sector") or ""
+    industry = info.get("industry") or ""
 
-    # main info (can be slower)
-    info = {}
-    try:
-        info = t.get_info() or {}
-    except Exception:
-        info = {}
+    price = safe_round(pick_price(info), 2)
+    div_y = safe_round(pick_dividend_yield(info), 2)
+    payout = safe_round(pick_payout_ratio(info), 2)
+    pe = safe_round(pick_pe(info), 2)
 
-    name = pick_first(info, ["longName", "shortName", "displayName", "name"])
-    country = pick_first(info, ["country"])
-    sector = pick_first(info, ["sector"])
-    industry = pick_first(info, ["industry"])
-    currency = currency or pick_first(info, ["currency"])
-    exchange = exchange or pick_first(info, ["exchange", "fullExchangeName"])
+    # If extreme weird values still slip through, blank them out:
+    # Dividend yield: if > 30% it's often junk (except special cases). You can tweak.
+    if div_y is not None and div_y > 30:
+        # keep but you can choose to blank. I'd rather keep but capped? Here: blank.
+        div_y = None
 
-    # price fallback from info
-    if price is None:
-        price = safe_float(pick_first(info, ["regularMarketPrice", "currentPrice", "previousClose"]))
+    # Payout ratio: allow up to 200% (REITs/MLPs can be weird), else blank.
+    if payout is not None and payout > 2000:
+        payout = None
 
-    # dividend yield + payout + PE
-    dy_raw = pick_first(
-        info,
-        [
-            "dividendYield",                 # often fraction
-            "trailingAnnualDividendYield",   # often fraction
-        ],
-    )
-    dy_pct = to_pct(dy_raw)
-
-    # fallback from dividends series if missing
-    if dy_pct is None:
-        dy_pct = get_last_12m_div_yield_pct(t, price)
-
-    payout_raw = pick_first(info, ["payoutRatio"])
-    payout_pct = to_pct(payout_raw)
-
-    pe = safe_float(pick_first(info, ["trailingPE", "forwardPE"]))
-
-    # write
-    row["Name"] = name or ""
-    row["Country"] = country or ""
-    row["Currency"] = currency or ""
-    row["Exchange"] = exchange or ""
-    row["Sector"] = sector or ""
-    row["Industry"] = industry or ""
-    row["Price"] = f"{price:.4f}" if isinstance(price, (int, float)) and price is not None else ""
-    row["DividendYield_%"] = f"{dy_pct:.4f}" if isinstance(dy_pct, (int, float)) and dy_pct is not None else ""
-    row["PayoutRatio_%"] = f"{payout_pct:.4f}" if isinstance(payout_pct, (int, float)) and payout_pct is not None else ""
-    row["PE"] = f"{pe:.4f}" if isinstance(pe, (int, float)) and pe is not None else ""
-
-    time.sleep(pause_s)
+    row = {
+        "GeneratedUTC": now_utc,
+        "Ticker": ticker,
+        "Name": name,
+        "Country": country,
+        "Currency": currency,
+        "Exchange": exchange,
+        "Sector": sector,
+        "Industry": industry,
+        "Price": price,
+        "DividendYield_%": div_y,
+        "PayoutRatio_%": payout,
+        "PE": pe,
+    }
     return row
 
 
-def main():
+def main() -> None:
     tickers = read_tickers(TICKERS_FILE)
-    if not tickers:
-        raise SystemExit("No tickers found in tickers.txt")
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    rows = []
-    for i, tk in enumerate(tickers, 1):
-        try:
-            rows.append(fetch_one(tk))
-            if i % 25 == 0:
-                print(f"Fetched {i}/{len(tickers)}")
-        except Exception as e:
-            print(f"[WARN] {tk} failed: {e}")
+    now_utc = dt.datetime.utcnow().replace(microsecond=0).isoformat(sep=" ") + " UTC"
 
-    # Write CSV
-    with OUT_CSV.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=FIELDS)
-        w.writeheader()
-        w.writerows(rows)
+    rows: List[Dict[str, Any]] = []
+    for t in tickers:
+        info = fetch_info(t)
+        rows.append(to_row(t, info, now_utc))
 
-    print(f"Saved: {OUT_CSV} ({len(rows)} rows)")
+    df = pd.DataFrame(rows, columns=COLUMNS)
+
+    # Ensure consistent CSV formatting
+    df.to_csv(OUT_CSV, index=False)
+
+    print(f"Saved {len(df)} rows -> {OUT_CSV}")
 
 
 if __name__ == "__main__":

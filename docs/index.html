@@ -1,122 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Dividend Screener – Decision View</title>
 
+  <!-- DataTables -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
 
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 18px; }
-    h1 { margin: 0 0 6px; font-size: 22px; }
-    .sub { margin: 0 0 14px; color: #555; font-size: 13px; }
-
-    .bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 10px 0 10px; }
-    .pill { padding: 6px 10px; border: 1px solid #eee; border-radius: 999px; background:#fafafa; font-size: 13px; }
-    .pill b { font-weight: 700; }
-    .muted { color:#777; }
-
-    table.dataTable thead th { white-space: nowrap; }
-    table.dataTable tbody td { padding: 6px 8px; }
-
-    td.details-control {
-      cursor: pointer;
-      text-align: center;
-      user-select: none;
-      width: 28px;
-      color: #333;
-      font-weight: 700;
-    }
-
-    .details-box {
-      padding: 10px 14px;
-      background: #fafafa;
-      border: 1px solid #eee;
-      border-radius: 10px;
-      margin: 6px 0;
-    }
-    .kv {
-      display: grid;
-      grid-template-columns: 180px 1fr;
-      gap: 6px 12px;
-      align-items: start;
-      font-size: 13px;
-    }
-    .kv .key { color: #666; }
-    .kv .val { color: #111; overflow-wrap: anywhere; }
-
-    /* Signal badges */
-    .sig { display:inline-block; padding: 2px 10px; border-radius: 999px; border:1px solid #eee; font-weight:700; font-size:12px; }
-    .sig-GOLD  { background:#fff7db; border-color:#f1c40f55; color:#8a6d00; }
-    .sig-BUY   { background:#eaf2ff; border-color:#0b6efd55; color:#0b4bb3; }
-    .sig-HOLD  { background:#f2f2f2; border-color:#99999933; color:#444; }
-    .sig-WATCH { background:#f6f6f6; border-color:#bbbbbb33; color:#777; }
-
-    /* Confidence chips */
-    .conf { display:inline-block; padding: 2px 10px; border-radius: 999px; border:1px solid #eee; font-weight:700; font-size:12px; }
-    .conf-High { background:#eaf7ef; border-color:#19875455; color:#13703f; }
-    .conf-Med  { background:#fff4e6; border-color:#fd7e1455; color:#a34f00; }
-    .conf-Low  { background:#fff0f0; border-color:#dc354555; color:#8b1d2a; }
-
-    /* Filters */
-    .filters { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 8px 0 14px; }
-    .filters label { font-size: 13px; color:#333; }
-    .filters select { padding: 6px 8px; border:1px solid #ddd; border-radius: 10px; background:#fff; }
-    .filters button { padding: 6px 10px; border:1px solid #ddd; border-radius: 10px; background:#fff; cursor:pointer; }
-    .filters button:hover { background:#f7f7f7; }
-
-    #errorBox { display:none; padding:12px 14px; border:1px solid #f5c2c7; background:#f8d7da; color:#842029; border-radius:10px; margin:12px 0; }
-
-    .dataTables_wrapper .dataTables_filter input { padding: 6px 8px; }
-    .dataTables_wrapper .dataTables_length select { padding: 4px 6px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 18px; color:#111; }
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    .sub { color:#444; margin: 0 0 10px; font-size: 13px; }
+    .bar { display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin: 10px 0 14px; }
+    .pill { display:inline-block; padding: 2px 8px; border-radius: 999px; border:1px solid #ddd; font-size: 12px; }
+    .signal { font-weight:600; }
+    .sig-GOLD { background:#fff4cc; border-color:#f1d66a; color:#7a5b00; }
+    .sig-BUY { background:#e9f2ff; border-color:#b6d3ff; color:#0b4aa6; }
+    .sig-HOLD { background:#f2f2f2; border-color:#d7d7d7; color:#444; }
+    .sig-WATCH { background:#f7f0ff; border-color:#d9c2ff; color:#4a2a7a; }
+    .conf-High { background:#e9f8ef; border-color:#bfe7cf; color:#1f6a3a; }
+    .conf-Med { background:#fff4e6; border-color:#ffd3a6; color:#7a4a00; }
+    .conf-Low { background:#ffecec; border-color:#ffb7b7; color:#7a0000; }
+    .tip { display:inline-block; padding: 4px 10px; border:1px solid #e6e6e6; border-radius:999px; font-size:12px; color:#333; background:#fafafa; }
+    .meta { display:inline-block; padding: 4px 10px; border:1px solid #e6e6e6; border-radius:999px; font-size:12px; color:#333; background:#fff; }
+    .filters label { font-size: 12px; color:#444; margin-right:6px; }
+    .filters select { font-size: 12px; padding: 3px 6px; }
+    .btn { font-size: 12px; padding: 4px 10px; border:1px solid #d9d9d9; border-radius:8px; background:#fff; cursor:pointer; }
+    table.dataTable thead th { font-weight: 600; }
+    .details { padding: 12px; border: 1px solid #eee; border-radius: 12px; background: #fafafa; }
+    .kv { display:grid; grid-template-columns: 160px 1fr; gap: 6px 14px; font-size: 12px; }
+    .kv div { padding: 2px 0; }
+    .muted { color:#666; }
+    .num { text-align:right; }
   </style>
 </head>
-
 <body>
   <h1>Dividend Screener – Decision View</h1>
-  <p class="sub">
-    Sort: <b>Signal → Score → Upside</b>. Use dropdowns to filter. Click <b>▸</b> for full details.
-  </p>
+  <p class="sub">Sort: Signal → Score → Upside. Use dropdowns to filter. Click ▶ for full details.</p>
 
   <div class="bar">
-    <span class="pill"><b>Tip:</b> Filter “GOLD/BUY” for “røverkøb”, sort on Upside/Score.</span>
-    <span class="pill muted" id="meta"></span>
+    <span class="tip">Tip: Filter “GOLD/BUY” for “røverkøb”, sort on Upside/Score.</span>
+    <span class="meta" id="meta">Loading…</span>
   </div>
 
-  <div class="filters">
-    <label>Signal:
-      <select id="filterSignal">
-        <option value="">All</option>
-        <option value="GOLD">GOLD</option>
-        <option value="BUY">BUY</option>
-        <option value="HOLD">HOLD</option>
-        <option value="WATCH">WATCH</option>
+  <div class="bar filters">
+    <div>
+      <label for="fSignal">Signal:</label>
+      <select id="fSignal">
+        <option value="All">All</option>
       </select>
-    </label>
+    </div>
 
-    <label>Confidence:
-      <select id="filterConf">
-        <option value="">All</option>
-        <option value="High">High</option>
-        <option value="Med">Med</option>
-        <option value="Low">Low</option>
+    <div>
+      <label for="fConf">Confidence:</label>
+      <select id="fConf">
+        <option value="All">All</option>
       </select>
-    </label>
+    </div>
 
-    <label>Sector:
-      <select id="filterSector">
-        <option value="">All</option>
+    <div>
+      <label for="fSector">Sector:</label>
+      <select id="fSector">
+        <option value="All">All</option>
       </select>
-    </label>
+    </div>
 
-    <button id="resetFilters" type="button">Reset</button>
+    <div>
+      <label for="fCagr">Min DivCAGR (5Y):</label>
+      <select id="fCagr">
+        <option value="All">All</option>
+        <option value="0">0%</option>
+        <option value="3">3%</option>
+        <option value="5">5%</option>
+        <option value="7">7% (S&P-ish)</option>
+        <option value="10">10%</option>
+        <option value="15">15%</option>
+      </select>
+    </div>
+
+    <button class="btn" id="resetBtn">Reset</button>
   </div>
 
-  <div id="errorBox"></div>
-
-  <table id="screener" class="display compact" style="width:100%">
+  <table id="tbl" class="display nowrap" style="width:100%">
     <thead>
       <tr>
         <th></th>
@@ -124,188 +91,240 @@
         <th>Country</th>
         <th>Sector</th>
         <th>Currency</th>
-        <th>Price</th>
-        <th>Yield</th>
-        <th>Upside</th>
-        <th>Score</th>
+        <th class="num">Price</th>
+        <th class="num">Yield</th>
+        <th class="num">DivCAGR 5Y</th>
+        <th class="num">Upside</th>
+        <th class="num">Score</th>
         <th>Signal</th>
         <th>Conf</th>
         <th>Why</th>
       </tr>
     </thead>
+    <tbody></tbody>
   </table>
 
+  <!-- jQuery + DataTables -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 
   <script>
-    const CSV_PATH = "data/screener_results/screener_results.csv";
+    const CSV_URL = "data/screener_results/screener_results.csv";
 
-    function showError(msg) {
-      const el = document.getElementById("errorBox");
-      el.style.display = "block";
-      el.textContent = msg;
-    }
+    // ---- CSV parsing (simple but robust enough for this file)
+    function parseCSV(text) {
+      const lines = text.replace(/\r/g, "").split("\n").filter(l => l.trim().length);
+      const headers = lines[0].split(",").map(h => h.trim());
+      const rows = [];
 
-    function fmtNum(d, digits=2, suffix="") {
-      if (d == null || d === "" || Number.isNaN(d)) return "";
-      return Number(d).toFixed(digits) + suffix;
-    }
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        const cols = [];
+        let cur = "";
+        let inQ = false;
 
-    function safeStr(v) {
-      if (v == null) return "";
-      return String(v);
-    }
-
-    // Custom sort for Signal: GOLD > BUY > HOLD > WATCH
-    const signalOrder = { "GOLD": 1, "BUY": 2, "HOLD": 3, "WATCH": 4 };
-    $.fn.dataTable.ext.type.order["signal-pre"] = function (d) {
-      return signalOrder[d] || 99;
-    };
-
-    function formatDetails(rowData) {
-      const quick = new Set([
-        "Name","Country","Sector","Currency","Price","DividendYield_%","Upside_%","Score","Signal","Confidence","Why"
-      ]);
-
-      const keys = Object.keys(rowData || {})
-        .filter(k => !quick.has(k))
-        .sort();
-
-      if (keys.length === 0) {
-        return `<div class="details-box"><em>No additional fields in CSV.</em></div>`;
-      }
-
-      const rows = keys.map(k => {
-        let v = rowData[k];
-        if (v == null) v = "";
-        return `<div class="key">${k}</div><div class="val">${safeStr(v)}</div>`;
-      }).join("");
-
-      return `<div class="details-box"><div class="kv">${rows}</div></div>`;
-    }
-
-    Papa.parse(CSV_PATH, {
-      download: true,
-      header: true,
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      error: function(err) {
-        showError("Could not load CSV at: " + CSV_PATH + " — " + (err?.message || err));
-      },
-      complete: function(results) {
-        const rows = (results.data || []).filter(r => r && (r["Name"] || r["Ticker"]));
-
-        // meta
-        const meta = document.getElementById("meta");
-        meta.textContent = rows.length ? (`Rows: ${rows.length} • CSV: ${CSV_PATH}`) : (`Rows: 0 • CSV: ${CSV_PATH}`);
-
-        if (!rows.length) {
-          showError("CSV loaded, but 0 rows found. Check that file exists and contains 'Name' column.");
-        }
-
-        // Ensure Name exists
-        rows.forEach(r => {
-          if (!r["Name"] && r["Ticker"]) r["Name"] = r["Ticker"];
-        });
-
-        // Build Sector dropdown from data
-        const sectorSet = new Set();
-        rows.forEach(r => { if (r["Sector"]) sectorSet.add(r["Sector"]); });
-        const sectorSelect = document.getElementById("filterSector");
-        [...sectorSet].sort().forEach(s => {
-          const opt = document.createElement("option");
-          opt.value = s;
-          opt.textContent = s;
-          sectorSelect.appendChild(opt);
-        });
-
-        const table = $("#screener").DataTable({
-          data: rows,
-          columns: [
-            { data: null, className: "details-control", orderable: false, defaultContent: "▸" },
-
-            { data: "Name", title: "Name" },
-            { data: "Country", title: "Country" },
-
-            { data: "Sector", title: "Sector", render: d => d ? safeStr(d) : "" },
-
-            { data: "Currency", title: "Currency" },
-
-            { data: "Price", title: "Price", render: d => fmtNum(d, 2, "") },
-
-            { data: "DividendYield_%", title: "Yield", render: d => fmtNum(d, 2, "%") },
-
-            { data: "Upside_%", title: "Upside", render: d => fmtNum(d, 1, "%") },
-
-            { data: "Score", title: "Score", render: d => (d == null || d === "" || Number.isNaN(d)) ? "" : Math.round(Number(d)) },
-
-            { data: "Signal", title: "Signal", type: "signal",
-              render: d => d ? `<span class="sig sig-${d}">${d}</span>` : ""
-            },
-
-            { data: "Confidence", title: "Conf",
-              render: d => d ? `<span class="conf conf-${d}">${d}</span>` : ""
-            },
-
-            { data: "Why", title: "Why", render: d => d ? safeStr(d) : "" },
-          ],
-
-          order: [
-            [9, "asc"],  // Signal (custom)
-            [8, "desc"], // Score
-            [7, "desc"]  // Upside
-          ],
-
-          pageLength: 50,
-          deferRender: true,
-          autoWidth: false,
-          fixedHeader: true
-        });
-
-        // Expand details
-        $("#screener tbody").on("click", "td.details-control", function () {
-          const tr = $(this).closest("tr");
-          const row = table.row(tr);
-
-          if (row.child.isShown()) {
-            row.child.hide();
-            tr.find("td.details-control").text("▸");
+        for (let j = 0; j < line.length; j++) {
+          const ch = line[j];
+          if (ch === '"' ) {
+            if (inQ && line[j + 1] === '"') { cur += '"'; j++; }
+            else inQ = !inQ;
+          } else if (ch === "," && !inQ) {
+            cols.push(cur);
+            cur = "";
           } else {
-            row.child(formatDetails(row.data())).show();
-            tr.find("td.details-control").text("▾");
+            cur += ch;
           }
-        });
+        }
+        cols.push(cur);
 
-        // Dropdown filters: Signal + Confidence + Sector
-        const colSignal = 9;
-        const colConf = 10;
-        const colSector = 3;
-
-        $("#filterSignal").on("change", function () {
-          const val = this.value;
-          table.column(colSignal).search(val ? val : "", true, false).draw();
-        });
-
-        $("#filterConf").on("change", function () {
-          const val = this.value;
-          table.column(colConf).search(val ? val : "", true, false).draw();
-        });
-
-        $("#filterSector").on("change", function () {
-          const val = this.value;
-          table.column(colSector).search(val ? val : "", true, false).draw();
-        });
-
-        $("#resetFilters").on("click", function () {
-          $("#filterSignal").val("");
-          $("#filterConf").val("");
-          $("#filterSector").val("");
-          table.search("").columns().search("").draw();
-        });
+        const obj = {};
+        headers.forEach((h, idx) => obj[h] = (cols[idx] ?? "").trim());
+        rows.push(obj);
       }
+      return { headers, rows };
+    }
+
+    function asNum(v) {
+      if (v === null || v === undefined) return null;
+      const s = String(v).trim();
+      if (!s) return null;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function fmtPct(v, decimals=1) {
+      const n = asNum(v);
+      if (n === null) return "";
+      return n.toFixed(decimals) + "%";
+    }
+
+    function fmtNum(v, decimals=2) {
+      const n = asNum(v);
+      if (n === null) return "";
+      return n.toFixed(decimals);
+    }
+
+    function badgeSignal(v) {
+      const s = (v || "").toUpperCase();
+      const cls = "pill signal sig-" + s;
+      return `<span class="${cls}">${s || ""}</span>`;
+    }
+
+    function badgeConf(v) {
+      const c = (v || "");
+      const cls = "pill conf-" + c;
+      return `<span class="${cls}">${c || ""}</span>`;
+    }
+
+    // --- custom filter: Signal / Confidence / Sector / Min CAGR
+    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+      const signal = $("#fSignal").val() || "All";
+      const conf = $("#fConf").val() || "All";
+      const sector = $("#fSector").val() || "All";
+      const minCagr = $("#fCagr").val() || "All";
+
+      // data columns (as rendered order):
+      // 0: details control, 1: Name, 2: Country, 3: Sector, 4: Currency, 5: Price, 6: Yield, 7: DivCAGR, 8: Upside, 9: Score, 10: Signal, 11: Conf, 12: Why
+      const rowSector = data[3] || "";
+      const rowSignal = (data[10] || "").replace(/<[^>]*>/g, "").trim(); // strip badge html
+      const rowConf = (data[11] || "").replace(/<[^>]*>/g, "").trim();
+      const rowCagrRaw = (data[7] || "").replace("%","").trim();
+      const rowCagr = Number(rowCagrRaw);
+
+      if (signal !== "All" && rowSignal !== signal) return false;
+      if (conf !== "All" && rowConf !== conf) return false;
+      if (sector !== "All" && rowSector !== sector) return false;
+
+      if (minCagr !== "All") {
+        const min = Number(minCagr);
+        if (!Number.isFinite(rowCagr)) return false;
+        if (rowCagr < min) return false;
+      }
+
+      return true;
+    });
+
+    function formatDetails(rowObj, headers) {
+      const kv = headers
+        .filter(h => h && !(["Name","Country","Sector","Currency","Price","DividendYield_%","DivCAGR_5Y_%","Upside_%","Score","Signal","Confidence","Why"].includes(h)))
+        .map(h => `<div class="muted">${h}</div><div>${(rowObj[h] ?? "")}</div>`)
+        .join("");
+
+      return `
+        <div class="details">
+          <div class="kv">
+            <div class="muted">Exchange</div><div>${rowObj["Exchange"] || ""}</div>
+            <div class="muted">Industry</div><div>${rowObj["Industry"] || ""}</div>
+            <div class="muted">Ticker</div><div>${rowObj["Ticker"] || ""}</div>
+            <div class="muted">GeneratedUTC</div><div>${rowObj["GeneratedUTC"] || ""}</div>
+            <div class="muted">PayoutRatio_%</div><div>${rowObj["PayoutRatio_%"] || ""}</div>
+            <div class="muted">PE</div><div>${rowObj["PE"] || ""}</div>
+            <div class="muted">YearsGrowing</div><div>${rowObj["YearsGrowing"] || ""}</div>
+            <div class="muted">DividendClass</div><div>${rowObj["DividendClass"] || ""}</div>
+            <div class="muted">LastDivDate</div><div>${rowObj["LastDivDate"] || ""}</div>
+            <div class="muted">FairPE</div><div>${rowObj["FairPE"] || ""}</div>
+            <div class="muted">FairValue</div><div>${rowObj["FairValue"] || ""}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function load() {
+      const res = await fetch(CSV_URL + "?v=" + Date.now());
+      if (!res.ok) throw new Error("Failed to load CSV: " + res.status);
+      const text = await res.text();
+      const parsed = parseCSV(text);
+
+      const rows = parsed.rows;
+
+      // meta
+      document.getElementById("meta").textContent = `Rows: ${rows.length} • CSV: ${CSV_URL}`;
+
+      // dropdown options
+      const signals = new Set(["GOLD","BUY","HOLD","WATCH"]);
+      const confs = new Set(["High","Med","Low"]);
+      const sectors = new Set();
+
+      rows.forEach(r => {
+        if (r["Signal"]) signals.add(String(r["Signal"]).toUpperCase());
+        if (r["Confidence"]) confs.add(r["Confidence"]);
+        if (r["Sector"]) sectors.add(r["Sector"]);
+      });
+
+      function fillSelect(id, values, keepAll=true) {
+        const el = document.getElementById(id);
+        const curAll = el.querySelector('option[value="All"]');
+        el.innerHTML = "";
+        if (keepAll) el.appendChild(curAll || new Option("All","All"));
+        [...values].sort().forEach(v => el.appendChild(new Option(v, v)));
+      }
+
+      fillSelect("fSignal", signals);
+      fillSelect("fConf", confs);
+      fillSelect("fSector", sectors);
+
+      // build DataTable
+      const table = $("#tbl").DataTable({
+        data: rows,
+        responsive: true,
+        pageLength: 50,
+        order: [[10, "desc"], [9, "desc"], [8, "desc"]], // Signal badge sorts by string; OK enough
+        columns: [
+          {
+            className: "dt-control",
+            orderable: false,
+            data: null,
+            defaultContent: "▶"
+          },
+          { data: "Name" },
+          { data: "Country" },
+          { data: "Sector" },
+          { data: "Currency" },
+          { data: "Price", render: (d) => fmtNum(d, 2), className:"num" },
+          { data: "DividendYield_%", render: (d) => fmtPct(d, 2), className:"num" },
+          { data: "DivCAGR_5Y_%", render: (d) => fmtPct(d, 1), className:"num" },
+          { data: "Upside_%", render: (d) => fmtPct(d, 1), className:"num" },
+          { data: "Score", render: (d) => (asNum(d) ?? ""), className:"num" },
+          { data: "Signal", render: (d) => badgeSignal(d) },
+          { data: "Confidence", render: (d) => badgeConf(d) },
+          { data: "Why" },
+        ],
+      });
+
+      // details expansion
+      $("#tbl tbody").on("click", "td.dt-control", function () {
+        const tr = $(this).closest("tr");
+        const row = table.row(tr);
+
+        if (row.child.isShown()) {
+          row.child.hide();
+          tr.removeClass("shown");
+        } else {
+          const rowObj = row.data();
+          row.child(formatDetails(rowObj, parsed.headers)).show();
+          tr.addClass("shown");
+        }
+      });
+
+      // filter bindings
+      $("#fSignal, #fConf, #fSector, #fCagr").on("change", function() {
+        table.draw();
+      });
+
+      $("#resetBtn").on("click", function() {
+        $("#fSignal").val("All");
+        $("#fConf").val("All");
+        $("#fSector").val("All");
+        $("#fCagr").val("All");
+        table.search("").draw();
+      });
+    }
+
+    load().catch(err => {
+      document.getElementById("meta").textContent = "Error loading CSV. Check path.";
+      console.error(err);
+      alert("Failed to load data. Check CSV path in index.html and that file exists.");
     });
   </script>
 </body>

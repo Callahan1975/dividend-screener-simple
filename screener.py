@@ -30,6 +30,7 @@ COLUMNS = [
     "PE",
     "YearsPaying",
     "YearsGrowing",
+    "DividendClass",
     "DivCAGR_5Y_%",
     "LastDivDate",
     "FairPE",
@@ -210,6 +211,24 @@ def sector_is_reit_like(sector: str, industry: str) -> bool:
     return ("real estate" in s) or ("reit" in i) or ("reit" in s)
 
 
+def dividend_class(years_growing: Optional[int]) -> str:
+    """
+    Classic labels:
+      King:       50+ years growing dividends
+      Aristocrat: 25-49
+      Contender:  10-24
+    """
+    if years_growing is None:
+        return ""
+    if years_growing >= 50:
+        return "King"
+    if years_growing >= 25:
+        return "Aristocrat"
+    if years_growing >= 10:
+        return "Contender"
+    return ""
+
+
 def compute_fair_pe(pe: Optional[float], sector: str) -> Optional[float]:
     """
     Stable “fair PE” heuristic.
@@ -335,7 +354,7 @@ def compute_score_signal_confidence(
     score = 50
     conf = 100
 
-    # data quality
+    # ---- data quality penalties ----
     if price is None:
         conf -= 40
         flags.append("Missing price")
@@ -352,18 +371,24 @@ def compute_score_signal_confidence(
         conf -= 10
         flags.append("Missing payout")
 
-    # dividend growth / streak boost
+    # ---- dividend streak / growth ----
+    div_class = dividend_class(years_growing)
+
+    # small quality boost (NOT too strong)
     if years_growing is None:
         conf -= 5
     else:
-        if years_growing >= 25:
-            score += 12
-            flags.append("Dividend streak 25+")
-        elif years_growing >= 10:
-            score += 8
-            flags.append("Dividend streak 10+")
-        elif years_growing >= 5:
+        if years_growing >= 50:
+            score += 6
+            flags.append("Dividend King")
+        elif years_growing >= 25:
             score += 4
+            flags.append("Dividend Aristocrat")
+        elif years_growing >= 10:
+            score += 2
+            flags.append("Dividend Contender")
+        elif years_growing >= 5:
+            score += 1
             flags.append("Dividend streak 5+")
 
     if div_cagr_5y is not None:
@@ -374,7 +399,7 @@ def compute_score_signal_confidence(
             score += 3
             flags.append("Div growth ok")
 
-    # yield sanity
+    # ---- yield sanity ----
     if yield_pct is not None:
         if yield_pct > 20:
             conf -= 20
@@ -389,7 +414,7 @@ def compute_score_signal_confidence(
         elif yield_pct < 1:
             score -= 2
 
-    # payout sanity (sector aware)
+    # ---- payout sanity (sector aware) ----
     reit_like = sector_is_reit_like(sector, industry)
     if payout_pct is not None:
         if payout_pct > 140 and not reit_like:
@@ -407,7 +432,7 @@ def compute_score_signal_confidence(
         elif payout_pct < 80:
             score += 8
 
-    # valuation via upside
+    # ---- valuation via upside ----
     if upside_pct is None:
         conf -= 10
         flags.append("No upside calc")
@@ -426,7 +451,7 @@ def compute_score_signal_confidence(
         elif upside_pct <= -5:
             score -= 6
 
-    # PE sanity
+    # ---- PE sanity ----
     if pe is not None:
         if pe > 40:
             score -= 6
@@ -437,6 +462,8 @@ def compute_score_signal_confidence(
 
     score = int(max(0, min(100, score)))
 
+    # ---- Confidence thresholds (keep as before to avoid breaking your view) ----
+    # If you want more spread later, change to 90/70 thresholds.
     if conf >= 80:
         confidence = "High"
     elif conf >= 60:
@@ -444,7 +471,7 @@ def compute_score_signal_confidence(
     else:
         confidence = "Low"
 
-    # Signal (avoid GOLD/BUY if confidence low)
+    # ---- Signal ----
     if confidence == "Low":
         signal = "WATCH"
     else:
@@ -459,7 +486,7 @@ def compute_score_signal_confidence(
         else:
             signal = "WATCH"
 
-    # Why: 1 warning + 1 positive (short)
+    # ---- Why: keep short (1 warning + 1 positive) ----
     why_parts: List[str] = []
 
     for p in ("Yield outlier", "Payout very high", "Payout high", "Overvalued", "Missing EPS", "No upside calc"):
@@ -467,12 +494,14 @@ def compute_score_signal_confidence(
             why_parts.append(p)
             break
 
-    for p in ("Undervalued", "Good upside", "Dividend streak 10+", "Dividend streak 25+", "Div growth strong", "Div growth ok"):
+    # Prefer "King/Aristocrat/Contender" as the positive if present
+    for p in ("Dividend King", "Dividend Aristocrat", "Dividend Contender", "Undervalued", "Good upside", "Div growth strong", "Div growth ok"):
         if p in flags and p not in why_parts:
             why_parts.append(p)
             break
 
     why = " / ".join(why_parts) if why_parts else ""
+
     return score, signal, confidence, why
 
 
@@ -490,11 +519,12 @@ def to_row(ticker: str, info: Dict[str, Any], divs: Optional[pd.Series]) -> Dict
     pe = pick_pe(info)
     eps = pick_eps(info)
 
-    # ✅ robust yield calculation (fix)
+    # robust yield calculation
     div_yield_pct = pick_dividend_yield_percent(info, price, divs)
     payout_pct = pick_payout_ratio_percent(info)
 
     years_paying, years_growing, div_cagr_5y, last_div_date = compute_dividend_stats(divs)
+    div_class = dividend_class(years_growing)
 
     fair_pe = compute_fair_pe(pe, sector)
     fair_value, upside_pct = compute_upside(price, eps, fair_pe)
@@ -529,6 +559,8 @@ def to_row(ticker: str, info: Dict[str, Any], divs: Optional[pd.Series]) -> Dict
 
         "YearsPaying": years_paying if years_paying is not None else "",
         "YearsGrowing": years_growing if years_growing is not None else "",
+        "DividendClass": div_class,
+
         "DivCAGR_5Y_%": safe_round(div_cagr_5y, 1),
         "LastDivDate": last_div_date,
 
@@ -542,6 +574,7 @@ def to_row(ticker: str, info: Dict[str, Any], divs: Optional[pd.Series]) -> Dict
         "Why": why,
     }
 
+    # ensure all columns exist
     for c in COLUMNS:
         row.setdefault(c, "")
     return row

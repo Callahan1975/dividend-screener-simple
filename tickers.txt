@@ -123,3 +123,26 @@ PKOH
 REX
 SCM
 WVFC
+# --- Sweden (dividend focus) ---
+SHB-A.ST
+SWED-A.ST
+SEB-A.ST
+NDA-SE.ST
+TEL2-B.ST
+VOLV-B.ST
+ATCO-A.ST
+ATCO-B.ST
+CIBUS.ST
+BETS-B.ST
+
+# --- Canada (dividend focus) ---
+ENB.TO
+TRP.TO
+FTS.TO
+RY.TO
+TD.TO
+BMO.TO
+BNS.TO
+T.TO
+CNQ.TO
+SU.TO

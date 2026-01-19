@@ -8,12 +8,13 @@ CARL-B.CO
 PNDORA.CO
 COLO-B.CO
 DANSKE.CO
-ALSYDB
 JYSK?            # (fjern - findes ikke som børsnoteret ticker)
 TRYG.CO
 TOP.CO           # TORM (hvis du vil have shipping)
 SPNO.CO          # Spar Nord (hvis den findes på Yahoo som SPNO.CO)
 NDA-DK.CO        # Nordea DK listing (kan variere – fjern hvis den fejler)
+CPH: ALSYDB
+
 
 # ---------------------------
 # US Dividend “quality core”

@@ -14,7 +14,7 @@ TRYG.CO
 TOP.CO           # TORM (hvis du vil have shipping)
 SPNO.CO          # Spar Nord (hvis den findes på Yahoo som SPNO.CO)
 NDA-DK.CO        # Nordea DK listing (kan variere – fjern hvis den fejler)
-
+alsydb
 # ---------------------------
 # US Dividend “quality core”
 # (mix af Aristocrats/Kings + defensive kvalitetsnavne)

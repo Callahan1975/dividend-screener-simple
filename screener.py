@@ -619,6 +619,15 @@ def infer_country_from_ticker(ticker: str) -> str:
     if t.endswith(".TO"):
         return "Canada"
     return "United States"
+def infer_country_from_ticker(ticker: str) -> str:
+    t = ticker.upper()
+    if t.endswith(".CO"):
+        return "Denmark"
+    if t.endswith(".ST"):
+        return "Sweden"
+    if t.endswith(".TO"):
+        return "Canada"
+    return "United States"
 
 
 if __name__ == "__main__":

@@ -2,19 +2,34 @@ from __future__ import annotations
 
 import csv
 import datetime as dt
+import math
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import yfinance as yf
 
+# ----------------------------
+# Paths
+# ----------------------------
 TICKERS_FILE = Path("tickers.txt")
 
 OUT_DIR = Path("data/screener_results")
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+
 OUT_CSV = OUT_DIR / "screener_results.csv"
 
-# ---- Output columns (locked schema) ----
+DOCS_DATA_DIR = Path("docs/data/screener_results")
+DOCS_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+DOCS_CSV = DOCS_DATA_DIR / "screener_results.csv"
+
+
+# ----------------------------
+# Columns for CSV / UI
+# ----------------------------
 COLUMNS = [
     "GeneratedUTC",
     "Ticker",
@@ -25,199 +40,83 @@ COLUMNS = [
     "Sector",
     "Industry",
     "Price",
-    "DividendYield_%",
-    "PayoutRatio_%",
+    "DividendYield_%",      # percent
+    "PayoutRatio_%",        # percent
     "PE",
-    "YearsPaying",
-    "YearsGrowing",
-    "DividendClass",
-    "DivCAGR_5Y_%",
-    "LastDivDate",
+    "EPS",
     "FairPE",
     "FairValue",
-    "Upside_%",
-    "Score",
-    "Signal",
-    "Confidence",
-    "Why",
+    "Upside_%",             # percent
+    "DivCAGR_5Y_%",          # percent
+    "YearsGrowing",          # integer
+    "DividendClass",         # King/Aristocrat/Contender/""
+    "Score",                 # 0-100
+    "Signal",                # GOLD/BUY/HOLD/WATCH/ERROR
+    "Confidence",            # High/Medium/Low
+    "Why",                   # short reason
+    "Flags",                 # pipe separated flags
 ]
 
 
-# ---------------------------
+# ----------------------------
 # Helpers
-# ---------------------------
-
-def read_tickers(path: Path) -> List[str]:
-    if not path.exists():
-        raise FileNotFoundError(f"Missing {path}")
-
-    tickers: List[str] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        # allow inline comments: TICKER # comment
-        if "#" in line:
-            line = line.split("#", 1)[0].strip()
-        if line:
-            tickers.append(line)
-
-    # de-dup preserve order
-    seen = set()
-    out: List[str] = []
-    for t in tickers:
-        if t not in seen:
-            out.append(t)
-            seen.add(t)
-    return out
-
-
-def to_float(x: Any) -> Optional[float]:
-    if x is None:
-        return None
+# ----------------------------
+def safe_float(x: Any) -> Optional[float]:
     try:
-        return float(x)
-    except Exception:
-        return None
-
-
-def safe_round(x: Optional[float], ndigits: int = 2) -> Optional[float]:
-    if x is None:
-        return None
-    try:
-        return round(float(x), ndigits)
-    except Exception:
-        return None
-
-
-def clamp(x: Optional[float], lo: float, hi: float) -> Optional[float]:
-    if x is None:
-        return None
-    return max(lo, min(hi, x))
-
-
-def normalize_percent(x: Optional[float]) -> Optional[float]:
-    """
-    Normalize to percent points.
-    If value <= 1.5 -> treat as fraction (0.034) => 3.4%
-    else treat as already percent points.
-    """
-    if x is None:
-        return None
-    if x <= 1.5:
-        return x * 100.0
-    return x
-
-
-def fetch_info_and_dividends(ticker: str) -> Tuple[Dict[str, Any], Optional[pd.Series]]:
-    """
-    Returns (info, dividends_series).
-    dividends_series is a pandas Series with DatetimeIndex.
-    """
-    t = yf.Ticker(ticker)
-    try:
-        info = t.info or {}
-    except Exception:
-        info = {}
-
-    try:
-        divs = t.dividends
-        if divs is not None and len(divs) == 0:
-            divs = None
-    except Exception:
-        divs = None
-
-    return info, divs
-
-
-def pick_price(info: Dict[str, Any]) -> Optional[float]:
-    for k in ("currentPrice", "regularMarketPrice", "previousClose"):
-        v = to_float(info.get(k))
-        if v and v > 0:
-            return v
-    return None
-
-
-def pick_pe(info: Dict[str, Any]) -> Optional[float]:
-    for k in ("trailingPE", "forwardPE"):
-        v = to_float(info.get(k))
-        if v and v > 0:
-            return v
-    return None
-
-
-def pick_eps(info: Dict[str, Any]) -> Optional[float]:
-    for k in ("forwardEps", "trailingEps"):
-        v = to_float(info.get(k))
-        if v and v > 0:
-            return v
-    return None
-
-
-def pick_payout_ratio_percent(info: Dict[str, Any]) -> Optional[float]:
-    v = to_float(info.get("payoutRatio"))
-    if v is None:
-        return None
-    v = normalize_percent(v)
-    if v is not None and v >= 0:
+        if x is None:
+            return None
+        if isinstance(x, str) and x.strip() == "":
+            return None
+        v = float(x)
+        if math.isnan(v) or math.isinf(v):
+            return None
         return v
-    return None
+    except Exception:
+        return None
 
 
-def pick_dividend_yield_percent(info: Dict[str, Any], price: Optional[float], divs: Optional[pd.Series]) -> Optional[float]:
-    """
-    Robust yield (fixes the 40%-120% nonsense):
-    1) Use trailingAnnualDividendRate (cash amount per year) / price
-    2) Else compute trailing 12 months (TTM) dividends from dividends series / price
-    3) Else fallback to yahoo yield fields (normalized)
-    """
-    # 1) annual dividend rate / price
-    if price and price > 0:
-        rate = to_float(info.get("trailingAnnualDividendRate"))
-        if rate is not None and rate >= 0:
-            return (rate / price) * 100.0
-
-        # 2) TTM from dividends series
-        if divs is not None and len(divs) > 0:
-            try:
-                divs_clean = divs.dropna()
-                if len(divs_clean) > 0:
-                    if not isinstance(divs_clean.index, pd.DatetimeIndex):
-                        divs_clean.index = pd.to_datetime(divs_clean.index)
-
-                    end = divs_clean.index.max()
-                    start = end - pd.Timedelta(days=365)
-                    ttm = float(divs_clean[divs_clean.index > start].sum())
-                    if ttm >= 0:
-                        return (ttm / price) * 100.0
-            except Exception:
-                pass
-
-    # 3) fallback yahoo fields
-    for k in ("dividendYield", "trailingAnnualDividendYield"):
-        v = to_float(info.get(k))
-        if v is None:
-            continue
-        v = normalize_percent(v)
-        if v is not None and v >= 0:
-            return v
-
-    return None
+def safe_int(x: Any) -> Optional[int]:
+    try:
+        if x is None:
+            return None
+        if isinstance(x, str) and x.strip() == "":
+            return None
+        return int(float(x))
+    except Exception:
+        return None
 
 
-def sector_is_reit_like(sector: str, industry: str) -> bool:
-    s = (sector or "").lower()
-    i = (industry or "").lower()
-    return ("real estate" in s) or ("reit" in i) or ("reit" in s)
+def clamp(v: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, v))
+
+
+def infer_country_from_ticker(ticker: str) -> str:
+    t = ticker.upper()
+    if t.endswith(".CO"):
+        return "Denmark"
+    if t.endswith(".ST"):
+        return "Sweden"
+    if t.endswith(".TO"):
+        return "Canada"
+    if t.endswith(".HE"):
+        return "Finland"
+    return "United States"
+
+
+def infer_currency_from_ticker(ticker: str) -> Optional[str]:
+    t = ticker.upper()
+    if t.endswith(".CO"):
+        return "DKK"
+    if t.endswith(".ST"):
+        return "SEK"
+    if t.endswith(".TO"):
+        return "CAD"
+    if t.endswith(".HE"):
+        return "EUR"
+    return "USD"
 
 
 def dividend_class(years_growing: Optional[int]) -> str:
-    """
-    Classic labels:
-      King:       50+ years growing dividends
-      Aristocrat: 25-49
-      Contender:  10-24
-    """
     if years_growing is None:
         return ""
     if years_growing >= 50:
@@ -229,414 +128,554 @@ def dividend_class(years_growing: Optional[int]) -> str:
     return ""
 
 
-def compute_fair_pe(pe: Optional[float], sector: str) -> Optional[float]:
+def normalize_percent(x: Optional[float]) -> Optional[float]:
     """
-    Stable “fair PE” heuristic.
-    If PE exists: clamp into a reasonable band as proxy.
-    If missing: sector defaults.
+    Ensure percent is in 0..100 range if possible.
+    Accepts either 0.034 -> 3.4, or 3.4 -> 3.4.
     """
-    sector_l = (sector or "").lower()
-    defaults = {
-        "technology": 22.0,
-        "consumer defensive": 20.0,
-        "consumer cyclical": 18.0,
-        "healthcare": 18.0,
-        "financial services": 12.0,
-        "industrials": 16.0,
-        "utilities": 16.0,
-        "energy": 12.0,
-        "basic materials": 12.0,
-        "communication services": 18.0,
-        "real estate": 16.0,
-    }
-
-    if pe and pe > 0:
-        return clamp(pe, 8.0, 28.0)
-
-    for key, val in defaults.items():
-        if key in sector_l:
-            return val
-    return 18.0
+    if x is None:
+        return None
+    if x < 0:
+        return x
+    if x <= 1.5:
+        return x * 100.0
+    return x
 
 
-def compute_upside(price: Optional[float], eps: Optional[float], fair_pe: Optional[float]) -> Tuple[Optional[float], Optional[float]]:
+def compute_ltm_dividend_yield(dividends: pd.Series, price: Optional[float]) -> Optional[float]:
     """
-    Returns (fair_value, upside_%)
-    upside_% clamped to [-50, +100]
+    LTM dividend yield in percent from dividend history.
     """
-    if not price or price <= 0:
-        return None, None
-    if not eps or eps <= 0:
-        return None, None
-    if not fair_pe or fair_pe <= 0:
-        return None, None
+    if price is None or price <= 0:
+        return None
+    if dividends is None or len(dividends) == 0:
+        return None
+    end = dividends.index.max()
+    start = end - pd.Timedelta(days=365)
+    ltm = dividends.loc[dividends.index > start].sum()
+    if ltm <= 0:
+        return None
+    return (ltm / price) * 100.0
 
-    fair_value = eps * fair_pe
-    upside = (fair_value / price - 1.0) * 100.0
-    upside = clamp(upside, -50.0, 100.0)
-    return fair_value, upside
+
+def annual_dividends(dividends: pd.Series) -> pd.Series:
+    if dividends is None or len(dividends) == 0:
+        return pd.Series(dtype=float)
+    s = dividends.copy()
+    s.index = pd.to_datetime(s.index)
+    return s.resample("Y").sum()  # year-end bins
 
 
-def compute_dividend_stats(divs: Optional[pd.Series]) -> Tuple[Optional[int], Optional[int], Optional[float], str]:
+def compute_years_growing(dividends: pd.Series) -> Optional[int]:
     """
-    Returns:
-      YearsPaying: number of years with positive annual dividends
-      YearsGrowing: consecutive annual increases (streak length, at least 1 if paying)
-      DivCAGR_5Y_%: 5y CAGR of annual dividends (if enough data)
-      LastDivDate: last dividend date YYYY-MM-DD
+    Count consecutive years of dividend growth using full-year totals.
+    Conservative: uses year totals and checks strictly increasing year over year.
     """
-    if divs is None or len(divs) == 0:
-        return None, None, None, ""
+    ann = annual_dividends(dividends)
+    if ann.empty or len(ann) < 3:
+        return None
 
-    try:
-        divs = divs.dropna()
-        if len(divs) == 0:
-            return None, None, None, ""
+    # Convert to calendar years and drop current year if incomplete
+    ann.index = ann.index.year
+    # drop latest year if too small timeframe (conservative)
+    # Keep last completed year: we assume current calendar year may be incomplete
+    current_year = dt.datetime.utcnow().year
+    if current_year in ann.index:
+        ann = ann.drop(index=current_year, errors="ignore")
 
-        if not isinstance(divs.index, pd.DatetimeIndex):
-            divs.index = pd.to_datetime(divs.index)
+    if len(ann) < 3:
+        return None
 
-        last_date = divs.index.max().strftime("%Y-%m-%d")
+    ann = ann.sort_index()
+    # Walk backwards counting strictly increasing totals
+    years = list(ann.index)
+    vals = [float(ann.loc[y]) for y in years]
 
-        annual = divs.resample("YE").sum()
-        annual.index = annual.index.year
-        annual = annual[annual > 0]
-
-        if len(annual) == 0:
-            return None, None, None, last_date
-
-        years_paying = int(len(annual))
-
-        years_sorted = annual.sort_index()
-        vals = years_sorted.values
-
-        growing_increases = 0
-        for i in range(len(vals) - 1, 0, -1):
-            if vals[i] > vals[i - 1]:
-                growing_increases += 1
-            else:
-                break
-
-        if years_paying >= 2 and growing_increases >= 1:
-            years_growing = growing_increases + 1
+    # Start from last year
+    count = 0
+    for i in range(len(vals) - 1, 0, -1):
+        if vals[i] > 0 and vals[i] > vals[i - 1]:
+            count += 1
         else:
-            years_growing = 1
+            break
 
-        cagr_5y = None
-        if len(years_sorted) >= 6:
-            start = float(years_sorted.iloc[-6])
-            end = float(years_sorted.iloc[-1])
-            if start > 0 and end > 0:
-                cagr_5y = ((end / start) ** (1 / 5) - 1) * 100.0
-
-        return years_paying, int(years_growing), cagr_5y, last_date
-    except Exception:
-        return None, None, None, ""
+    return count
 
 
-def compute_score_signal_confidence(
-    sector: str,
-    industry: str,
+def compute_div_cagr(dividends: pd.Series, years: int = 5) -> Optional[float]:
+    """
+    CAGR of annual dividend totals over 'years' years, percent.
+    Uses completed years only. Requires start and end totals > 0.
+    """
+    ann = annual_dividends(dividends)
+    if ann.empty:
+        return None
+    ann.index = ann.index.year
+    current_year = dt.datetime.utcnow().year
+    ann = ann.drop(index=current_year, errors="ignore")
+    ann = ann.sort_index()
+    if len(ann) < years + 1:
+        return None
+
+    end_year = ann.index.max()
+    start_year = end_year - years
+    if start_year not in ann.index or end_year not in ann.index:
+        return None
+
+    start_val = float(ann.loc[start_year])
+    end_val = float(ann.loc[end_year])
+    if start_val <= 0 or end_val <= 0:
+        return None
+
+    cagr = (end_val / start_val) ** (1.0 / years) - 1.0
+    return cagr * 100.0
+
+
+def sanity_yield(y: Optional[float]) -> Tuple[Optional[float], List[str]]:
+    flags = []
+    if y is None:
+        return None, flags
+    # absurd yields are usually data glitches (or special situations)
+    if y > 30:
+        flags.append("Yield outlier")
+        # keep it but flagged
+    if y > 100:
+        flags.append("Yield invalid")
+    return y, flags
+
+
+def sanity_payout(p: Optional[float], sector: str) -> Tuple[Optional[float], List[str]]:
+    flags = []
+    if p is None:
+        return None, flags
+    if p < 0:
+        flags.append("Payout negative")
+    # sector-smart thresholds (simple)
+    high_thr = 90.0
+    if sector in ("Real Estate",):  # REITs often higher
+        high_thr = 110.0
+    if sector in ("Financial Services",):
+        high_thr = 110.0
+    if p > high_thr:
+        flags.append("Payout high")
+    if p > 200:
+        flags.append("Payout extreme")
+    return p, flags
+
+
+def score_signal_conf(
     yield_pct: Optional[float],
     payout_pct: Optional[float],
-    pe: Optional[float],
     upside_pct: Optional[float],
-    eps: Optional[float],
-    price: Optional[float],
-    years_growing: Optional[int],
     div_cagr_5y: Optional[float],
+    years_growing: Optional[int],
+    div_class: str,
+    flags: List[str],
+    has_price: bool,
+    has_name: bool,
 ) -> Tuple[int, str, str, str]:
     """
-    Returns (Score 0..100, Signal, Confidence, Why)
+    Return (score, signal, confidence, why)
     """
+    if not has_price or not has_name:
+        return 0, "ERROR", "Low", "Missing price/name"
 
-    flags: List[str] = []
     score = 50
-    conf = 100
 
-    # ---- data quality penalties ----
-    if price is None:
-        conf -= 40
-        flags.append("Missing price")
-    if eps is None:
-        conf -= 20
-        flags.append("Missing EPS")
-    if pe is None:
-        conf -= 10
-        flags.append("Missing PE")
-    if yield_pct is None:
-        conf -= 10
-        flags.append("Missing yield")
-    if payout_pct is None:
-        conf -= 10
-        flags.append("Missing payout")
-
-    # ---- dividend streak / growth ----
-    div_class = dividend_class(years_growing)
-
-    # small quality boost (NOT too strong)
-    if years_growing is None:
-        conf -= 5
-    else:
-        if years_growing >= 50:
-            score += 6
-            flags.append("Dividend King")
-        elif years_growing >= 25:
-            score += 4
-            flags.append("Dividend Aristocrat")
-        elif years_growing >= 10:
-            score += 2
-            flags.append("Dividend Contender")
-        elif years_growing >= 5:
-            score += 1
-            flags.append("Dividend streak 5+")
-
-    if div_cagr_5y is not None:
-        if div_cagr_5y >= 10:
-            score += 6
-            flags.append("Div growth strong")
-        elif div_cagr_5y >= 5:
-            score += 3
-            flags.append("Div growth ok")
-
-    # ---- yield sanity ----
-    if yield_pct is not None:
-        if yield_pct > 20:
-            conf -= 20
-            score -= 10
-            flags.append("Yield outlier")
-        elif yield_pct > 10:
-            conf -= 10
-            score += 3
-            flags.append("High yield")
-        elif 2 <= yield_pct <= 6:
-            score += 8
-        elif yield_pct < 1:
-            score -= 2
-
-    # ---- payout sanity (sector aware) ----
-    reit_like = sector_is_reit_like(sector, industry)
-    if payout_pct is not None:
-        if payout_pct > 140 and not reit_like:
-            score -= 18
-            conf -= 15
-            flags.append("Payout very high")
-        elif payout_pct > 100 and not reit_like:
-            score -= 10
-            conf -= 10
-            flags.append("Payout high")
-        elif payout_pct > 120 and reit_like:
-            score -= 6
-            conf -= 6
-            flags.append("Payout high (REIT)")
-        elif payout_pct < 80:
-            score += 8
-
-    # ---- valuation via upside ----
-    if upside_pct is None:
-        conf -= 10
-        flags.append("No upside calc")
-    else:
-        if upside_pct >= 20:
-            score += 18
-            flags.append("Undervalued")
+    # Value component (upside)
+    if upside_pct is not None:
+        if upside_pct >= 50:
+            score += 20
+        elif upside_pct >= 20:
+            score += 15
         elif upside_pct >= 10:
-            score += 12
-            flags.append("Good upside")
-        elif upside_pct >= 5:
-            score += 6
-        elif upside_pct <= -15:
-            score -= 12
-            flags.append("Overvalued")
-        elif upside_pct <= -5:
-            score -= 6
-
-    # ---- PE sanity ----
-    if pe is not None:
-        if pe > 40:
-            score -= 6
-            flags.append("PE very high")
-        elif pe < 6:
-            score -= 4
-            flags.append("PE very low")
-
-    score = int(max(0, min(100, score)))
-
-    # ---- Confidence thresholds (keep as before to avoid breaking your view) ----
-    # If you want more spread later, change to 90/70 thresholds.
-    if conf >= 80:
-        confidence = "High"
-    elif conf >= 60:
-        confidence = "Med"
-    else:
-        confidence = "Low"
-
-    # ---- Signal ----
-    if confidence == "Low":
-        signal = "WATCH"
-    else:
-        has_div_growth = (years_growing is not None and years_growing >= 5) or (div_cagr_5y is not None and div_cagr_5y >= 5)
-
-        if score >= 88 and (upside_pct is not None and upside_pct >= 12) and ("Payout very high" not in flags) and has_div_growth:
-            signal = "GOLD"
-        elif score >= 75 and (upside_pct is not None and upside_pct >= 5):
-            signal = "BUY"
-        elif score >= 60:
-            signal = "HOLD"
+            score += 10
+        elif upside_pct >= 0:
+            score += 4
         else:
-            signal = "WATCH"
+            score -= 8
 
-    # ---- Why: keep short (1 warning + 1 positive) ----
-    why_parts: List[str] = []
+    # Yield component (prefer 1-6 for quality names, allow higher but flag)
+    if yield_pct is not None:
+        if 1.0 <= yield_pct <= 6.0:
+            score += 10
+        elif 0.5 <= yield_pct < 1.0:
+            score += 4
+        elif 6.0 < yield_pct <= 10.0:
+            score += 6
+        elif yield_pct > 10.0:
+            score -= 8  # likely special situation
+    else:
+        score -= 4
 
-    for p in ("Yield outlier", "Payout very high", "Payout high", "Overvalued", "Missing EPS", "No upside calc"):
-        if p in flags:
-            why_parts.append(p)
-            break
+    # Payout component
+    if payout_pct is not None:
+        if 0 <= payout_pct <= 70:
+            score += 10
+        elif 70 < payout_pct <= 90:
+            score += 4
+        elif payout_pct > 90:
+            score -= 8
+    else:
+        score -= 2
 
-    # Prefer "King/Aristocrat/Contender" as the positive if present
-    for p in ("Dividend King", "Dividend Aristocrat", "Dividend Contender", "Undervalued", "Good upside", "Div growth strong", "Div growth ok"):
-        if p in flags and p not in why_parts:
-            why_parts.append(p)
-            break
+    # Dividend growth component
+    if div_cagr_5y is not None:
+        if div_cagr_5y >= 12:
+            score += 10
+        elif div_cagr_5y >= 7:
+            score += 7
+        elif div_cagr_5y >= 3:
+            score += 4
+        elif div_cagr_5y < 0:
+            score -= 6
 
-    why = " / ".join(why_parts) if why_parts else ""
+    if years_growing is not None:
+        if years_growing >= 25:
+            score += 6
+        elif years_growing >= 10:
+            score += 4
+        elif years_growing >= 5:
+            score += 2
 
-    return score, signal, confidence, why
+    # Dividend class tiny boost
+    if div_class == "King":
+        score += 4
+    elif div_class == "Aristocrat":
+        score += 3
+    elif div_class == "Contender":
+        score += 2
+
+    # Flag penalties
+    if "Yield invalid" in flags:
+        score -= 25
+    if "Yield outlier" in flags:
+        score -= 12
+    if "Payout extreme" in flags:
+        score -= 20
+    if "Payout high" in flags:
+        score -= 8
+
+    score = int(clamp(score, 0, 100))
+
+    # Confidence
+    # High requires: no big flags + at least price + yield + upside available
+    big_flags = any(f in flags for f in ["Yield invalid", "Payout extreme"])
+    mid_flags = any(f in flags for f in ["Yield outlier", "Payout high"])
+
+    if big_flags:
+        conf = "Low"
+    else:
+        if yield_pct is not None and upside_pct is not None and not mid_flags:
+            conf = "High"
+        elif yield_pct is not None or upside_pct is not None:
+            conf = "Medium"
+        else:
+            conf = "Low"
+
+    # Signal
+    # GOLD = best candidates (score + upside) and not low confidence
+    if conf != "Low" and score >= 90 and (upside_pct or 0) >= 10:
+        signal = "GOLD"
+    elif conf != "Low" and score >= 80 and (upside_pct or 0) >= 5:
+        signal = "BUY"
+    elif score >= 60:
+        signal = "HOLD"
+    else:
+        signal = "WATCH"
+
+    # Why (short)
+    why_parts = []
+    if div_class:
+        why_parts.append(f"Dividend {div_class}")
+    if upside_pct is not None:
+        if upside_pct >= 10:
+            why_parts.append("Undervalued")
+        elif upside_pct < 0:
+            why_parts.append("Overvalued")
+        else:
+            why_parts.append("Fair value")
+    if div_cagr_5y is not None and div_cagr_5y >= 7:
+        why_parts.append("Div growth strong")
+    elif div_cagr_5y is not None and div_cagr_5y >= 3:
+        why_parts.append("Div growth ok")
+    if "Payout high" in flags:
+        why_parts.append("Payout high")
+    if "Yield outlier" in flags:
+        why_parts.append("Yield outlier")
+
+    why = " / ".join(why_parts) if why_parts else "—"
+
+    return score, signal, conf, why
 
 
-def to_row(ticker: str, info: Dict[str, Any], divs: Optional[pd.Series]) -> Dict[str, Any]:
-    generated = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-def infer_country_from_ticker(ticker: str) -> str:
-    t = ticker.upper()
-    if t.endswith(".CO"):
-        return "Denmark"
-    if t.endswith(".ST"):
-        return "Sweden"
-    if t.endswith(".TO"):
-        return "Canada"
-    return "United States"
+# ----------------------------
+# Core fetch logic
+# ----------------------------
+def read_tickers(path: Path) -> List[str]:
+    if not path.exists():
+        raise FileNotFoundError(f"Missing {path}")
+    tickers: List[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        # allow inline comment: TICKER # comment
+        if "#" in s:
+            s = s.split("#", 1)[0].strip()
+        if s:
+            tickers.append(s)
 
-    name = info.get("shortName") or info.get("longName") or ""
-    country = info.get("country") or ""
-    currency = info.get("currency") or ""
-    exchange = info.get("exchange") or info.get("fullExchangeName") or ""
-    sector = info.get("sector") or ""
-    industry = info.get("industry") or ""
+    # de-dupe preserve order
+    seen = set()
+    out = []
+    for t in tickers:
+        if t not in seen:
+            out.append(t)
+            seen.add(t)
+    return out
 
-    price = pick_price(info)
-    pe = pick_pe(info)
-    eps = pick_eps(info)
 
-    # robust yield calculation
-    div_yield_pct = pick_dividend_yield_percent(info, price, divs)
-    payout_pct = pick_payout_ratio_percent(info)
+def get_info_safe(t: yf.Ticker) -> Dict[str, Any]:
+    # yfinance sometimes errors on .info; keep it safe
+    try:
+        inf = t.info or {}
+        if isinstance(inf, dict):
+            return inf
+        return {}
+    except Exception:
+        return {}
 
-    years_paying, years_growing, div_cagr_5y, last_div_date = compute_dividend_stats(divs)
-    div_class = dividend_class(years_growing)
 
-    fair_pe = compute_fair_pe(pe, sector)
-    fair_value, upside_pct = compute_upside(price, eps, fair_pe)
+def get_fast_price_safe(t: yf.Ticker) -> Optional[float]:
+    try:
+        fi = getattr(t, "fast_info", None)
+        if fi:
+            # yfinance fast_info keys vary by version
+            for k in ["last_price", "lastPrice", "regularMarketPrice"]:
+                v = safe_float(fi.get(k)) if hasattr(fi, "get") else None
+                if v is not None and v > 0:
+                    return v
+            v = safe_float(fi.get("previous_close")) if hasattr(fi, "get") else None
+            if v is not None and v > 0:
+                return v
+    except Exception:
+        pass
+    return None
 
-    score, signal, confidence, why = compute_score_signal_confidence(
-        sector=sector,
-        industry=industry,
-        yield_pct=div_yield_pct,
-        payout_pct=payout_pct,
-        pe=pe,
-        upside_pct=upside_pct,
-        eps=eps,
-        price=price,
-        years_growing=years_growing,
-        div_cagr_5y=div_cagr_5y,
-    )
 
-    row: Dict[str, Any] = {
-        "GeneratedUTC": generated,
-        "Ticker": ticker,
-        "Name": name,
-        "Country": country,
-        "Currency": currency,
-        "Exchange": exchange,
-        "Sector": sector,
-        "Industry": industry,
+def get_history_price_fallback(t: yf.Ticker) -> Optional[float]:
+    try:
+        hist = t.history(period="5d", auto_adjust=False)
+        if hist is None or hist.empty:
+            return None
+        v = safe_float(hist["Close"].dropna().iloc[-1])
+        if v is not None and v > 0:
+            return v
+    except Exception:
+        return None
+    return None
 
-        "Price": safe_round(price, 2),
-        "DividendYield_%": safe_round(div_yield_pct, 2),
-        "PayoutRatio_%": safe_round(payout_pct, 1),
-        "PE": safe_round(pe, 1),
 
-        "YearsPaying": years_paying if years_paying is not None else "",
-        "YearsGrowing": years_growing if years_growing is not None else "",
-        "DividendClass": div_class,
+def build_row(ticker: str, generated_utc: str) -> Dict[str, Any]:
+    country = infer_country_from_ticker(ticker)
+    currency_guess = infer_currency_from_ticker(ticker)
 
-        "DivCAGR_5Y_%": safe_round(div_cagr_5y, 1),
-        "LastDivDate": last_div_date,
+    try:
+        tk = yf.Ticker(ticker)
 
-        "FairPE": safe_round(fair_pe, 1),
-        "FairValue": safe_round(fair_value, 2),
-        "Upside_%": safe_round(upside_pct, 1),
+        info = get_info_safe(tk)
+        name = (info.get("shortName") or info.get("longName") or "").strip()
+        exchange = (info.get("exchange") or info.get("fullExchangeName") or "").strip()
+        sector = (info.get("sector") or "").strip()
+        industry = (info.get("industry") or "").strip()
+        currency = (info.get("currency") or currency_guess or "").strip()
 
-        "Score": score,
-        "Signal": signal,
-        "Confidence": confidence,
-        "Why": why,
-    }
+        price = get_fast_price_safe(tk)
+        if price is None:
+            price = get_history_price_fallback(tk)
 
-    # ensure all columns exist
-    for c in COLUMNS:
-        row.setdefault(c, "")
-    return row
+        # dividends
+        dividends = None
+        try:
+            dividends = tk.dividends
+        except Exception:
+            dividends = None
+
+        # Yield: prefer info dividendYield if sane, else LTM from dividends
+        y_info = normalize_percent(safe_float(info.get("dividendYield")))
+        y_ltm = compute_ltm_dividend_yield(dividends, price) if dividends is not None else None
+        yield_pct = y_info if (y_info is not None and y_info <= 40) else y_ltm
+        yield_pct, y_flags = sanity_yield(yield_pct)
+
+        # EPS & PE
+        eps = safe_float(info.get("trailingEps"))
+        pe = safe_float(info.get("trailingPE"))
+
+        # payout ratio: prefer info payoutRatio; normalize to percent
+        payout = normalize_percent(safe_float(info.get("payoutRatio")))
+        # fallback: compute from annual dividend (ltm) / eps
+        if payout is None and eps is not None and eps != 0 and dividends is not None and price is not None:
+            ltm_div = None
+            try:
+                end = dividends.index.max()
+                start = end - pd.Timedelta(days=365)
+                ltm_div = float(dividends.loc[dividends.index > start].sum())
+            except Exception:
+                ltm_div = None
+            if ltm_div is not None:
+                payout = (ltm_div / eps) * 100.0
+
+        payout, p_flags = sanity_payout(payout, sector)
+
+        # dividend growth info
+        years_growing = compute_years_growing(dividends) if dividends is not None else None
+        div_cagr_5y = compute_div_cagr(dividends, years=5) if dividends is not None else None
+        div_class = dividend_class(years_growing)
+
+        # fair value: simple, stable approach
+        # - if pe and eps are present -> fairPE = clamp(pe, 10..28) unless pe absurd
+        # - else default fairPE by sector
+        sector_defaults = {
+            "Technology": 22,
+            "Consumer Defensive": 20,
+            "Consumer Cyclical": 18,
+            "Healthcare": 20,
+            "Industrials": 18,
+            "Financial Services": 12,
+            "Energy": 12,
+            "Utilities": 16,
+            "Real Estate": 16,
+            "Communication Services": 18,
+            "Basic Materials": 14,
+        }
+        fair_pe = None
+        if pe is not None and pe > 0 and pe < 80:
+            fair_pe = clamp(pe, 10, 28)
+        else:
+            fair_pe = float(sector_defaults.get(sector, 18))
+
+        fair_value = None
+        if eps is not None and fair_pe is not None:
+            fair_value = eps * fair_pe
+
+        upside = None
+        if price is not None and price > 0 and fair_value is not None:
+            upside = (fair_value / price - 1.0) * 100.0
+
+        flags = []
+        flags.extend(y_flags)
+        flags.extend(p_flags)
+
+        score, signal, conf, why = score_signal_conf(
+            yield_pct=yield_pct,
+            payout_pct=payout,
+            upside_pct=upside,
+            div_cagr_5y=div_cagr_5y,
+            years_growing=years_growing,
+            div_class=div_class,
+            flags=flags,
+            has_price=(price is not None and price > 0),
+            has_name=(name != ""),
+        )
+
+        row = {
+            "GeneratedUTC": generated_utc,
+            "Ticker": ticker,
+            "Name": name,
+            "Country": country,
+            "Currency": currency,
+            "Exchange": exchange,
+            "Sector": sector,
+            "Industry": industry,
+            "Price": price,
+            "DividendYield_%": yield_pct,
+            "PayoutRatio_%": payout,
+            "PE": pe,
+            "EPS": eps,
+            "FairPE": fair_pe,
+            "FairValue": fair_value,
+            "Upside_%": upside,
+            "DivCAGR_5Y_%": div_cagr_5y,
+            "YearsGrowing": years_growing,
+            "DividendClass": div_class,
+            "Score": score,
+            "Signal": signal,
+            "Confidence": conf,
+            "Why": why,
+            "Flags": " | ".join(flags) if flags else "",
+        }
+
+        return row
+
+    except Exception as e:
+        # hard fail for one ticker should never kill the run
+        return {
+            "GeneratedUTC": generated_utc,
+            "Ticker": ticker,
+            "Name": "",
+            "Country": country,
+            "Currency": currency_guess or "",
+            "Exchange": "",
+            "Sector": "",
+            "Industry": "",
+            "Price": "",
+            "DividendYield_%": "",
+            "PayoutRatio_%": "",
+            "PE": "",
+            "EPS": "",
+            "FairPE": "",
+            "FairValue": "",
+            "Upside_%": "",
+            "DivCAGR_5Y_%": "",
+            "YearsGrowing": "",
+            "DividendClass": "",
+            "Score": 0,
+            "Signal": "ERROR",
+            "Confidence": "Low",
+            "Why": f"Data error: {type(e).__name__}",
+            "Flags": "Fetch failed",
+        }
+
+
+def format_number(v: Any, decimals: int = 2) -> str:
+    f = safe_float(v)
+    if f is None:
+        return ""
+    return f"{f:.{decimals}f}"
 
 
 def main() -> None:
     tickers = read_tickers(TICKERS_FILE)
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    generated_utc = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
     rows: List[Dict[str, Any]] = []
-    for t in tickers:
-        try:
-            info, divs = fetch_info_and_dividends(t)
-            rows.append(to_row(t, info, divs))
-        except Exception as e:
-            rows.append({c: "" for c in COLUMNS} | {
-                "GeneratedUTC": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-                "Ticker": t,
-                "Signal": "WATCH",
-                "Confidence": "Low",
-                "Score": 0,
-                "Why": f"Error: {type(e).__name__}",
-            })
+    for i, t in enumerate(tickers, 1):
+        r = build_row(t, generated_utc)
+        # never append None
+        if r is not None:
+            rows.append(r)
+        time.sleep(0.35)
 
-        # be nice to Yahoo
-        time.sleep(0.4)
+    # Normalize output strictly to COLUMNS and format fields (keep numeric as plain, UI can format)
+    out_rows: List[Dict[str, Any]] = []
+    for r in rows:
+        rr = {}
+        for c in COLUMNS:
+            rr[c] = (r or {}).get(c, "")
+        out_rows.append(rr)
 
+    # Write CSV
     with OUT_CSV.open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=COLUMNS)
         w.writeheader()
-        for r in rows:
-            out = {c: r.get(c, "") for c in COLUMNS}
-            w.writerow(out)
+        for r in out_rows:
+            w.writerow(r)
 
-    print(f"Wrote {len(rows)} rows to {OUT_CSV}")
-def infer_country_from_ticker(ticker: str) -> str:
-    t = ticker.upper()
-    if t.endswith(".CO"):
-        return "Denmark"
-    if t.endswith(".ST"):
-        return "Sweden"
-    if t.endswith(".TO"):
-        return "Canada"
-    return "United States"
-def infer_country_from_ticker(ticker: str) -> str:
-    t = ticker.upper()
-    if t.endswith(".CO"):
-        return "Denmark"
-    if t.endswith(".ST"):
-        return "Sweden"
-    if t.endswith(".TO"):
-        return "Canada"
-    return "United States"
+    # Copy to docs
+    DOCS_CSV.write_text(OUT_CSV.read_text(encoding="utf-8"), encoding="utf-8")
+
+    print(f"Generated {len(out_rows)} rows -> {OUT_CSV} and {DOCS_CSV}")
 
 
 if __name__ == "__main__":

@@ -507,6 +507,15 @@ def compute_score_signal_confidence(
 
 def to_row(ticker: str, info: Dict[str, Any], divs: Optional[pd.Series]) -> Dict[str, Any]:
     generated = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+def infer_country_from_ticker(ticker: str) -> str:
+    t = ticker.upper()
+    if t.endswith(".CO"):
+        return "Denmark"
+    if t.endswith(".ST"):
+        return "Sweden"
+    if t.endswith(".TO"):
+        return "Canada"
+    return "United States"
 
     name = info.get("shortName") or info.get("longName") or ""
     country = info.get("country") or ""

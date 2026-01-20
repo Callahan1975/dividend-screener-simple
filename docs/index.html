@@ -7,5 +7,109 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
 <style>
-body { font-family: system-ui; margin: 20px; }
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+  margin: 20px;
+}
 h1 { margin-bottom: 6px; }
+.filters { margin-bottom: 12px; }
+select { margin-right: 8px; }
+table.dataTable thead th { white-space: nowrap; }
+</style>
+</head>
+
+<body>
+
+<h1>Dividend Screener – Decision View</h1>
+<div>Live data from <code>data/screener_results/screener_decision.csv</code></div>
+
+<div class="filters">
+  Country:
+  <select id="countryFilter"><option value="">All</option></select>
+
+  Sector:
+  <select id="sectorFilter"><option value="">All</option></select>
+</div>
+
+<table id="screener" class="display" style="width:100%">
+  <thead>
+    <tr>
+      <th>Ticker</th>
+      <th>Name</th>
+      <th>Country</th>
+      <th>Sector</th>
+      <th>Currency</th>
+      <th>Price</th>
+      <th>Dividend Yield %</th>
+      <th>Payout Ratio %</th>
+      <th>PE</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<script>
+fetch("data/screener_results/screener_decision.csv")
+  .then(r => {
+    if (!r.ok) throw new Error("CSV not found");
+    return r.text();
+  })
+  .then(text => {
+    const lines = text.trim().split("\n");
+    if (lines.length < 2) return;
+
+    const headers = lines[0].split(",").map(h => h.trim());
+
+    const rows = lines.slice(1).map(line => {
+      const values = line.split(",");
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = values[i] ?? "");
+      return obj;
+    });
+
+    const table = $("#screener").DataTable({
+      data: rows,
+      deferRender: true,
+      pageLength: 50,
+      columns: [
+        { data: "Ticker" },
+        { data: "Name" },
+        { data: "Country" },
+        { data: "Sector" },
+        { data: "Currency" },
+        { data: "Price" },
+        { data: "Dividend Yield %" },
+        { data: "Payout Ratio %" },
+        { data: "PE" }
+      ]
+    });
+
+    // Populate filters
+    function unique(col) {
+      return [...new Set(rows.map(r => r[col]).filter(Boolean))].sort();
+    }
+
+    unique("Country").forEach(v =>
+      $("#countryFilter").append(`<option value="${v}">${v}</option>`)
+    );
+    unique("Sector").forEach(v =>
+      $("#sectorFilter").append(`<option value="${v}">${v}</option>`)
+    );
+
+    $("#countryFilter").on("change", function () {
+      table.column(2).search(this.value).draw();
+    });
+    $("#sectorFilter").on("change", function () {
+      table.column(3).search(this.value).draw();
+    });
+  })
+  .catch(err => {
+    document.body.innerHTML += `<pre style="color:red">${err}</pre>`;
+  });
+</script>
+
+</body>
+</html>

@@ -1,25 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <title>Dividend Screener – Decision View</title>
 
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
 <style>
 body { font-family: system-ui; padding: 20px; }
-.badge { padding: 3px 8px; border-radius: 6px; font-size: 12px; }
-.GOLD { background:#f5c542; }
-.BUY { background:#8fd19e; }
-.HOLD { background:#ffe08a; }
-.WATCH { background:#e2e2e2; }
+.badge { padding: 4px 8px; border-radius: 8px; font-size: 12px; }
+.GOLD { background:#ffd700; }
+.BUY { background:#8fd3f4; }
+.HOLD { background:#ddd; }
+.WATCH { background:#f3b0b0; }
+.High { color: green; font-weight: bold; }
+.Medium { color: orange; }
+.Low { color: red; }
 </style>
 </head>
 
 <body>
-<h2>Dividend Screener – Decision View</h2>
+<h1>Dividend Screener – Decision View</h1>
 <p>Live data from <code>data/screener_results/screener_results.csv</code></p>
 
 <table id="screener" class="display" style="width:100%">
@@ -32,7 +35,8 @@ body { font-family: system-ui; padding: 20px; }
 <th>Currency</th>
 <th>Price</th>
 <th>Yield %</th>
-<th>DivCAGR(5Y)</th>
+<th>Payout %</th>
+<th>PE</th>
 <th>Score</th>
 <th>Signal</th>
 <th>Conf</th>
@@ -51,9 +55,10 @@ $(document).ready(function () {
         const lines = csv.split('\n');
         const headers = lines[0].split(',');
         return lines.slice(1).map(l => {
-          const obj = {};
-          l.split(',').forEach((v,i)=>obj[headers[i]]=v);
-          return obj;
+          const c = l.split(',');
+          let o = {};
+          headers.forEach((h,i)=>o[h]=c[i]);
+          return o;
         });
       }
     },
@@ -65,14 +70,18 @@ $(document).ready(function () {
       { data: 'Currency' },
       { data: 'Price' },
       { data: 'Yield %' },
-      { data: 'DivCAGR(5Y)' },
+      { data: 'Payout Ratio %' },
+      { data: 'PE' },
       { data: 'Score' },
       { data: 'Signal',
         render: d => `<span class="badge ${d}">${d}</span>`
       },
-      { data: 'Conf' },
+      { data: 'Conf',
+        render: d => `<span class="${d}">${d}</span>`
+      },
       { data: 'Why' }
     ],
+    order: [[9, 'desc']],
     pageLength: 25
   });
 });

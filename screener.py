@@ -1,12 +1,13 @@
 # screener.py
-# MASTER VERSION – SINGLE SOURCE OF TRUTH: data/ticker_alias.csv
-# All legacy inputs (tickers.txt, input.csv, index_map.csv) REMOVED
+# MASTER VERSION v2 – robust dividend + price handling
+# SINGLE SOURCE OF TRUTH: data/ticker_alias.csv
 
 import pandas as pd
 import yfinance as yf
 from pathlib import Path
 from datetime import datetime, timezone
 import numpy as np
+import time
 
 # =====================
 # PATHS
@@ -22,24 +23,13 @@ OUTPUT_FILE = RESULTS_DIR / "screener_results.csv"
 # =====================
 # LOAD TICKER UNIVERSE
 # =====================
-if not ALIAS_FILE.exists():
-    raise FileNotFoundError("ticker_alias.csv not found – this file is mandatory")
-
 alias_df = pd.read_csv(ALIAS_FILE, comment="#")
-
-required_cols = {"Ticker", "Country", "Exchange"}
-missing = required_cols - set(alias_df.columns)
-if missing:
-    raise ValueError(f"ticker_alias.csv missing columns: {missing}")
-
-# NORMALISE
 alias_df["Ticker"] = alias_df["Ticker"].str.upper().str.strip()
 
-# 🔥 SINGLE SOURCE OF TRUTH
 TICKERS = alias_df["Ticker"].dropna().unique().tolist()
-print(f"🔥 Universe size: {len(TICKERS)} tickers loaded from ticker_alias.csv")
-
 ALIAS_MAP = alias_df.set_index("Ticker").to_dict(orient="index")
+
+print(f"🔥 Universe size: {len(TICKERS)} tickers loaded")
 
 # =====================
 # HELPERS
@@ -54,22 +44,14 @@ def safe(v):
         return None
 
 
-def classify_conf(score):
-    if score >= 80:
-        return "High"
-    if score >= 60:
-        return "Medium"
-    return "Low"
-
-
-def classify_signal(score, upside):
-    if score >= 85 and upside and upside > 5:
-        return "GOLD"
-    if score >= 80 and upside and upside > 0:
-        return "BUY"
-    if score >= 60:
-        return "HOLD"
-    return "WATCH"
+def dividend_cagr_5y(div_series):
+    if div_series is None or len(div_series) < 6:
+        return None
+    start = div_series.iloc[-6]
+    end = div_series.iloc[-1]
+    if start <= 0 or end <= 0:
+        return None
+    return ((end / start) ** (1 / 5) - 1) * 100
 
 
 # =====================
@@ -82,74 +64,58 @@ for ticker in TICKERS:
     meta = ALIAS_MAP.get(ticker, {})
 
     try:
-        yf_ticker = yf.Ticker(ticker)
-        info = yf_ticker.info or {}
+        t = yf.Ticker(ticker)
+        info = t.fast_info
+        hist = t.history(period="6y", auto_adjust=False)
+        divs = hist["Dividends"] if "Dividends" in hist else None
     except Exception:
-        info = {}
+        continue
 
-    name = info.get("longName") or info.get("shortName") or ticker
-    price = safe(info.get("currentPrice"))
-    dividend = safe(info.get("dividendRate"))
-    yield_pct = safe(info.get("dividendYield"))
-    pe = safe(info.get("trailingPE"))
-    eps = safe(info.get("trailingEps"))
-    payout = safe(info.get("payoutRatio"))
+    price = safe(info.get("last_price"))
+    currency = info.get("currency")
 
-    if yield_pct:
-        yield_pct = yield_pct * 100
+    # Dividend (TTM)
+    ttm_div = None
+    div_yield = None
 
-    # FAIR VALUE (simple)
-    fair_pe = pe
-    fair_value = price
-    upside = 0
+    if divs is not None and not divs.empty:
+        ttm_div = divs.last("365D").sum()
+        if price and ttm_div:
+            div_yield = (ttm_div / price) * 100
 
-    if pe and price and eps:
-        fair_value = eps * pe
-        upside = (fair_value / price - 1) * 100
+    cagr_5y = dividend_cagr_5y(divs.resample("Y").sum()) if divs is not None else None
 
-    # SCORE (simple but stable)
+    # Score (basic but realistic)
     score = 50
-    if yield_pct:
-        score += min(yield_pct * 3, 20)
-    if upside:
-        score += min(max(upside, 0), 20)
-
+    if div_yield:
+        score += min(div_yield * 2, 20)
+    if cagr_5y:
+        score += min(cagr_5y, 20)
     score = int(min(score, 100))
-
-    signal = classify_signal(score, upside)
-    confidence = classify_conf(score)
 
     rows.append({
         "Ticker": ticker,
-        "Name": name,
+        "Name": t.get("longName", ticker),
         "Country": meta.get("Country"),
-        "Exchange": meta.get("Exchange"),
-        "Sector": info.get("sector"),
-        "Industry": info.get("industry"),
-        "Currency": info.get("currency"),
+        "Sector": t.get("sector"),
+        "Currency": currency,
         "Price": round(price, 2) if price else None,
-        "DividendYield_%": round(yield_pct, 2) if yield_pct else None,
-        "DivCAGR_5Y_%": None,
-        "Upside_%": round(upside, 1) if upside else 0,
+        "DividendYield_%": round(div_yield, 2) if div_yield else None,
+        "DivCAGR_5Y_%": round(cagr_5y, 2) if cagr_5y else None,
+        "Upside_%": None,
         "Score": score,
-        "Signal": signal,
-        "Confidence": confidence,
-        "PE": pe,
-        "EPS": eps,
-        "FairPE": fair_pe,
-        "FairValue": round(fair_value, 2) if fair_value else None,
-        "PayoutRatio_%": round(payout * 100, 1) if payout else None,
-        "YearsGrowing": None,
-        "DividendClass": None,
-        "Flags": None,
+        "Signal": None,
+        "Confidence": None,
         "Why": None,
         "GeneratedUTC": now_utc,
     })
+
+    time.sleep(0.2)  # rate limit safety
 
 # =====================
 # OUTPUT
 # =====================
 df = pd.DataFrame(rows)
-
 df.to_csv(OUTPUT_FILE, index=False)
-print(f"✅ Screener complete: {len(df)} rows written to {OUTPUT_FILE}")
+
+print(f"✅ Screener complete: {len(df)} rows written")

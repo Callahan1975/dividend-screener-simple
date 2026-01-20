@@ -10,9 +10,9 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 import yfinance as yf
 
-# ----------------------------
-# Paths
-# ----------------------------
+# ============================================================
+# PATHS
+# ============================================================
 TICKERS_FILE = Path("data/tickers.txt")
 
 OUT_DIR = Path("data/screener_results")
@@ -23,22 +23,29 @@ DOCS_DATA_DIR = Path("docs/data/screener_results")
 DOCS_DATA_DIR.mkdir(parents=True, exist_ok=True)
 DOCS_CSV = DOCS_DATA_DIR / "screener_results.csv"
 
-# ----------------------------
+# ============================================================
 # ALIAS (SINGLE SOURCE OF TRUTH)
-# ----------------------------
+# ============================================================
 ALIAS_FILE = Path("data/ticker_alias.csv")
 if not ALIAS_FILE.exists():
-    raise FileNotFoundError("ticker_alias.csv is REQUIRED")
+    raise FileNotFoundError("❌ ticker_alias.csv is REQUIRED")
 
 alias_df = pd.read_csv(ALIAS_FILE)
-alias_df["Ticker"] = alias_df["Ticker"].str.strip()
+alias_df["Ticker"] = alias_df["Ticker"].astype(str).str.strip()
+
+# 🔒 HARD FAIL ON DUPLICATES (CORRECT BY DESIGN)
+dupes = alias_df[alias_df.duplicated(subset=["Ticker"], keep=False)]
+if not dupes.empty:
+    print("\n❌ DUPLICATE TICKERS FOUND IN ticker_alias.csv")
+    print(dupes.sort_values("Ticker").to_string(index=False))
+    raise ValueError("Duplicate Ticker entries found in ticker_alias.csv")
+
 ALIAS: Dict[str, Dict[str, str]] = alias_df.set_index("Ticker").to_dict("index")
+print(f"✅ Loaded {len(ALIAS)} unique ticker aliases")
 
-print(f"Loaded {len(ALIAS)} ticker aliases")
-
-# ----------------------------
-# Columns
-# ----------------------------
+# ============================================================
+# CSV / UI COLUMNS  (UÆNDRET)
+# ============================================================
 COLUMNS = [
     "GeneratedUTC",
     "Ticker",
@@ -66,9 +73,9 @@ COLUMNS = [
     "Flags",
 ]
 
-# ----------------------------
-# Helpers (uændret)
-# ----------------------------
+# ============================================================
+# HELPERS  (UÆNDRET)
+# ============================================================
 def safe_float(x: Any) -> Optional[float]:
     try:
         if x is None:
@@ -111,18 +118,10 @@ def dividend_class(years: Optional[int]) -> str:
         return "Contender"
     return ""
 
-
-# ----------------------------
-# META RESOLUTION (NYT)
-# ----------------------------
+# ============================================================
+# META RESOLUTION (ALIAS FIRST)
+# ============================================================
 def resolve_meta(ticker: str, info: Dict[str, Any]) -> Tuple[str, str, str]:
-    """
-    Resolve Country, Exchange, Currency
-    Priority:
-    1) ticker_alias.csv
-    2) yfinance info
-    """
-    # ALIAS: primary source
     if ticker in ALIAS:
         a = ALIAS[ticker]
         return (
@@ -131,17 +130,16 @@ def resolve_meta(ticker: str, info: Dict[str, Any]) -> Tuple[str, str, str]:
             a.get("Currency", ""),
         )
 
-    # fallback (burde ikke ske)
+    # Fallback (burde aldrig ske)
     return (
         info.get("country", "") or "",
         info.get("exchange", "") or "",
         info.get("currency", "") or "",
     )
 
-
-# ----------------------------
-# Core build_row (samme logik)
-# ----------------------------
+# ============================================================
+# CORE BUILD (UÆNDRET LOGIK)
+# ============================================================
 def build_row(ticker: str, generated_utc: str) -> Dict[str, Any]:
     tk = yf.Ticker(ticker)
     info = tk.info or {}
@@ -150,7 +148,6 @@ def build_row(ticker: str, generated_utc: str) -> Dict[str, Any]:
     sector = info.get("sector") or ""
     industry = info.get("industry") or ""
 
-    # ALIAS: resolve meta centrally
     country, exchange, currency = resolve_meta(ticker, info)
 
     price = safe_float(info.get("currentPrice") or info.get("regularMarketPrice"))
@@ -223,7 +220,12 @@ def build_row(ticker: str, generated_utc: str) -> Dict[str, Any]:
     score = int(clamp(score, 0, 100))
 
     confidence = "High" if score >= 80 and not flags else "Medium"
-    signal = "GOLD" if score >= 90 else "BUY" if score >= 80 else "HOLD" if score >= 60 else "WATCH"
+    signal = (
+        "GOLD" if score >= 90 else
+        "BUY" if score >= 80 else
+        "HOLD" if score >= 60 else
+        "WATCH"
+    )
 
     return {
         "GeneratedUTC": generated_utc,
@@ -252,10 +254,9 @@ def build_row(ticker: str, generated_utc: str) -> Dict[str, Any]:
         "Flags": " | ".join(flags),
     }
 
-
-# ----------------------------
-# Main
-# ----------------------------
+# ============================================================
+# MAIN
+# ============================================================
 def main() -> None:
     tickers = [t.strip() for t in TICKERS_FILE.read_text().splitlines() if t.strip()]
     ts = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
@@ -276,7 +277,7 @@ def main() -> None:
             w.writerow({c: r.get(c, "") for c in COLUMNS})
 
     DOCS_CSV.write_text(OUT_CSV.read_text(encoding="utf-8"), encoding="utf-8")
-    print(f"Generated {len(rows)} rows")
+    print(f"✅ Generated {len(rows)} rows")
 
 
 if __name__ == "__main__":

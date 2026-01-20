@@ -1,5 +1,5 @@
 # screener.py
-# MASTER VERSION v2 – robust dividend + price handling
+# MASTER VERSION v2.1 – FIXED yfinance object handling
 # SINGLE SOURCE OF TRUTH: data/ticker_alias.csv
 
 import pandas as pd
@@ -64,28 +64,43 @@ for ticker in TICKERS:
     meta = ALIAS_MAP.get(ticker, {})
 
     try:
-        t = yf.Ticker(ticker)
-        info = t.fast_info
-        hist = t.history(period="6y", auto_adjust=False)
+        yt = yf.Ticker(ticker)
+        info = yt.info or {}
+        hist = yt.history(period="6y", auto_adjust=False)
         divs = hist["Dividends"] if "Dividends" in hist else None
     except Exception:
         continue
 
-    price = safe(info.get("last_price"))
+    # ---------------------
+    # PRICE / META
+    # ---------------------
+    price = safe(info.get("currentPrice"))
     currency = info.get("currency")
+    name = info.get("longName") or info.get("shortName") or ticker
+    sector = info.get("sector")
 
-    # Dividend (TTM)
+    # ---------------------
+    # DIVIDEND (TTM)
+    # ---------------------
     ttm_div = None
     div_yield = None
 
     if divs is not None and not divs.empty:
-        ttm_div = divs.last("365D").sum()
+        ttm_div = divs.loc[divs.index >= divs.index.max() - pd.Timedelta(days=365)].sum()
         if price and ttm_div:
             div_yield = (ttm_div / price) * 100
 
-    cagr_5y = dividend_cagr_5y(divs.resample("Y").sum()) if divs is not None else None
+    # ---------------------
+    # DIV CAGR 5Y
+    # ---------------------
+    cagr_5y = None
+    if divs is not None and not divs.empty:
+        yearly = divs.resample("YE").sum()
+        cagr_5y = dividend_cagr_5y(yearly)
 
-    # Score (basic but realistic)
+    # ---------------------
+    # SCORE (simple & sane)
+    # ---------------------
     score = 50
     if div_yield:
         score += min(div_yield * 2, 20)
@@ -95,9 +110,9 @@ for ticker in TICKERS:
 
     rows.append({
         "Ticker": ticker,
-        "Name": t.get("longName", ticker),
+        "Name": name,
         "Country": meta.get("Country"),
-        "Sector": t.get("sector"),
+        "Sector": sector,
         "Currency": currency,
         "Price": round(price, 2) if price else None,
         "DividendYield_%": round(div_yield, 2) if div_yield else None,
@@ -110,7 +125,7 @@ for ticker in TICKERS:
         "GeneratedUTC": now_utc,
     })
 
-    time.sleep(0.2)  # rate limit safety
+    time.sleep(0.25)  # rate limit safety
 
 # =====================
 # OUTPUT

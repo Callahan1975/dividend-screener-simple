@@ -11,7 +11,6 @@ DANSKE.CO
 TRYG.CO
 TOP.CO           
 NDA-DK.CO        # Nordea DK listing (kan variere – fjern hvis den fejler)
-SYDB.CO
 AFL
 AOS
 APD
@@ -159,3 +158,8 @@ KPN.AS
 ABN.AS     
 SLIGR.AS   
 ASML.AS
+AL-SYDB.CO
+DANSKE.CO
+TRYG.CO
+ORSTED.CO
+COLO-B.CO

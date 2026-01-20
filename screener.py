@@ -14,7 +14,6 @@ import yfinance as yf
 # PATHS
 # ======================================================
 ROOT = Path(".")
-TICKERS_FILE = ROOT / "tickers.txt"
 ALIAS_FILE = ROOT / "data" / "ticker_alias.csv"
 
 OUT_DIR = ROOT / "data" / "screener_results"
@@ -26,30 +25,28 @@ DOCS_DIR.mkdir(parents=True, exist_ok=True)
 DOCS_CSV = DOCS_DIR / "screener_results.csv"
 
 # ======================================================
-# LOAD TICKER ALIAS (AUTHORITATIVE SOURCE)
+# LOAD TICKER ALIAS  (MASTER UNIVERSE)
 # ======================================================
 if not ALIAS_FILE.exists():
-    raise FileNotFoundError("data/ticker_alias.csv not found")
+    raise FileNotFoundError("❌ data/ticker_alias.csv not found")
 
-alias_df = pd.read_csv(
-    ALIAS_FILE,
-    comment="#",
-    skip_blank_lines=True
-).dropna(how="all")
+alias_df = pd.read_csv(ALIAS_FILE, comment="#", skip_blank_lines=True).dropna(how="all")
 
-required_cols = {"Ticker", "PrimaryTicker", "Country", "Exchange"}
-missing = required_cols - set(alias_df.columns)
+required = {"Ticker", "PrimaryTicker", "Country", "Exchange"}
+missing = required - set(alias_df.columns)
 if missing:
-    raise ValueError(f"Missing columns in ticker_alias.csv: {missing}")
+    raise ValueError(f"❌ Missing columns in ticker_alias.csv: {missing}")
 
 alias_df["Ticker"] = alias_df["Ticker"].str.upper().str.strip()
 alias_df["PrimaryTicker"] = alias_df["PrimaryTicker"].str.upper().str.strip()
 
 if alias_df["Ticker"].duplicated().any():
-    raise ValueError("Duplicate Ticker values in ticker_alias.csv")
+    raise ValueError("❌ Duplicate Ticker values in ticker_alias.csv")
 
 ALIAS: Dict[str, Dict[str, str]] = alias_df.set_index("Ticker").to_dict("index")
-print(f"✅ Loaded {len(ALIAS)} ticker aliases")
+TICKERS = list(ALIAS.keys())
+
+print(f"✅ Loaded {len(TICKERS)} tickers from ticker_alias.csv")
 
 # ======================================================
 # CSV OUTPUT COLUMNS
@@ -88,7 +85,7 @@ def annual_divs(divs: pd.Series) -> pd.Series:
     divs.index = pd.to_datetime(divs.index)
     return divs.resample("Y").sum()
 
-def div_class(years: Optional[int]) -> str:
+def dividend_class(years: Optional[int]) -> str:
     if not years:
         return ""
     if years >= 50: return "King"
@@ -100,9 +97,6 @@ def div_class(years: Optional[int]) -> str:
 # CORE ROW BUILDER
 # ======================================================
 def build_row(ticker: str, ts: str) -> Dict[str, Any]:
-    if ticker not in ALIAS:
-        raise ValueError(f"{ticker} missing in ticker_alias.csv")
-
     meta = ALIAS[ticker]
     yahoo = meta["PrimaryTicker"]
 
@@ -185,7 +179,7 @@ def build_row(ticker: str, ts: str) -> Dict[str, Any]:
         "Upside_%": upside,
         "DivCAGR_5Y_%": cagr,
         "YearsGrowing": years,
-        "DividendClass": div_class(years),
+        "DividendClass": dividend_class(years),
         "Score": score,
         "Signal": signal,
         "Confidence": confidence,
@@ -197,11 +191,10 @@ def build_row(ticker: str, ts: str) -> Dict[str, Any]:
 # MAIN
 # ======================================================
 def main() -> None:
-    tickers = [t.strip().upper() for t in TICKERS_FILE.read_text().splitlines() if t.strip()]
     ts = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
-
     rows: List[Dict[str, Any]] = []
-    for t in tickers:
+
+    for t in TICKERS:
         try:
             rows.append(build_row(t, ts))
         except Exception as e:

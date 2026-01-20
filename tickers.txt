@@ -157,3 +157,14 @@ AKTIA.HE
 ENENTO.HE
 FSKRS.HE
 ELISA.HE
+ECMPA.AS   (Eurocommercial Properties)
+KENDR.AS   (Kendrion)
+LIGHT.AS   (Signify)
+BRNL.AS    (Brunel International)
+RAND.AS    (Randstad)
+NN.AS      (NN Group)
+ASRNL.AS   (ASR Nederland)
+KPN.AS     (KPN)
+ABN.AS     (ABN AMRO Bank)
+SLIGR.AS   (Sligro Food)
+ASML.AS

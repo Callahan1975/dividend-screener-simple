@@ -1,243 +1,155 @@
-from __future__ import annotations
-
-import csv
-import datetime as dt
-import math
-import time
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+# screener.py
+# MASTER VERSION – SINGLE SOURCE OF TRUTH: data/ticker_alias.csv
+# All legacy inputs (tickers.txt, input.csv, index_map.csv) REMOVED
 
 import pandas as pd
 import yfinance as yf
+from pathlib import Path
+from datetime import datetime, timezone
+import numpy as np
 
-# ======================================================
+# =====================
 # PATHS
-# ======================================================
-ROOT = Path(".")
-ALIAS_FILE = ROOT / "data" / "ticker_alias.csv"
+# =====================
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+RESULTS_DIR = DATA_DIR / "screener_results"
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-OUT_DIR = ROOT / "data" / "screener_results"
-OUT_DIR.mkdir(parents=True, exist_ok=True)
-OUT_CSV = OUT_DIR / "screener_results.csv"
+ALIAS_FILE = DATA_DIR / "ticker_alias.csv"
+OUTPUT_FILE = RESULTS_DIR / "screener_results.csv"
 
-DOCS_DIR = ROOT / "docs" / "data" / "screener_results"
-DOCS_DIR.mkdir(parents=True, exist_ok=True)
-DOCS_CSV = DOCS_DIR / "screener_results.csv"
-
-# ======================================================
-# LOAD TICKER ALIAS  (MASTER UNIVERSE)
-# ======================================================
+# =====================
+# LOAD TICKER UNIVERSE
+# =====================
 if not ALIAS_FILE.exists():
-    raise FileNotFoundError("❌ data/ticker_alias.csv not found")
+    raise FileNotFoundError("ticker_alias.csv not found – this file is mandatory")
 
-alias_df = pd.read_csv(
-    ALIAS_FILE,
-    comment="#",
-    skip_blank_lines=True
-).dropna(how="all")
+alias_df = pd.read_csv(ALIAS_FILE, comment="#")
 
-required = {"Ticker", "PrimaryTicker", "Country", "Exchange"}
-missing = required - set(alias_df.columns)
+required_cols = {"Ticker", "Country", "Exchange"}
+missing = required_cols - set(alias_df.columns)
 if missing:
-    raise ValueError(f"❌ Missing columns in ticker_alias.csv: {missing}")
+    raise ValueError(f"ticker_alias.csv missing columns: {missing}")
 
-alias_df["Ticker"] = alias_df["Ticker"].astype(str).str.upper().str.strip()
-alias_df["PrimaryTicker"] = alias_df["PrimaryTicker"].astype(str).str.upper().str.strip()
+# NORMALISE
+alias_df["Ticker"] = alias_df["Ticker"].str.upper().str.strip()
 
-if alias_df["Ticker"].duplicated().any():
-    raise ValueError("❌ Duplicate Ticker values in ticker_alias.csv")
+# 🔥 SINGLE SOURCE OF TRUTH
+TICKERS = alias_df["Ticker"].dropna().unique().tolist()
+print(f"🔥 Universe size: {len(TICKERS)} tickers loaded from ticker_alias.csv")
 
-ALIAS: Dict[str, Dict[str, str]] = alias_df.set_index("Ticker").to_dict("index")
-TICKERS = list(ALIAS.keys())
+ALIAS_MAP = alias_df.set_index("Ticker").to_dict(orient="index")
 
-print(f"✅ Loaded {len(TICKERS)} tickers from ticker_alias.csv")
-
-# ======================================================
-# CSV OUTPUT COLUMNS
-# ======================================================
-COLUMNS = [
-    "GeneratedUTC","Ticker","Name","Country","Currency","Exchange",
-    "Sector","Industry","Price","DividendYield_%","PayoutRatio_%",
-    "PE","EPS","FairPE","FairValue","Upside_%","DivCAGR_5Y_%",
-    "YearsGrowing","DividendClass","Score","Signal","Confidence",
-    "Why","Flags"
-]
-
-# ======================================================
+# =====================
 # HELPERS
-# ======================================================
-def safe_float(x: Any) -> Optional[float]:
+# =====================
+
+def safe(v):
     try:
-        v = float(x)
-        if math.isnan(v) or math.isinf(v):
+        if v is None or (isinstance(v, float) and np.isnan(v)):
             return None
-        return v
+        return float(v)
     except Exception:
         return None
 
-def clamp(v: float, lo: float, hi: float) -> float:
-    return max(lo, min(hi, v))
 
-def normalize_pct(x: Optional[float]) -> Optional[float]:
-    if x is None:
-        return None
-    return x * 100 if x <= 1.5 else x
+def classify_conf(score):
+    if score >= 80:
+        return "High"
+    if score >= 60:
+        return "Medium"
+    return "Low"
 
-def annual_divs(divs: pd.Series) -> pd.Series:
-    if divs is None or divs.empty:
-        return pd.Series(dtype=float)
-    divs.index = pd.to_datetime(divs.index)
-    return divs.resample("Y").sum()
 
-def dividend_class(years: Optional[int]) -> str:
-    if not years:
-        return ""
-    if years >= 50: return "King"
-    if years >= 25: return "Aristocrat"
-    if years >= 10: return "Contender"
-    return ""
+def classify_signal(score, upside):
+    if score >= 85 and upside and upside > 5:
+        return "GOLD"
+    if score >= 80 and upside and upside > 0:
+        return "BUY"
+    if score >= 60:
+        return "HOLD"
+    return "WATCH"
 
-# ======================================================
-# CORE ROW BUILDER
-# ======================================================
-def build_row(ticker: str, ts: str) -> Dict[str, Any]:
-    meta = ALIAS[ticker]
-    yahoo = meta["PrimaryTicker"]
 
-    tk = yf.Ticker(yahoo)
-    info = tk.info or {}
+# =====================
+# MAIN LOOP
+# =====================
+rows = []
+now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
-    price = safe_float(info.get("currentPrice") or info.get("regularMarketPrice"))
-    eps = safe_float(info.get("trailingEps"))
-    pe = safe_float(info.get("trailingPE"))
-    payout = normalize_pct(safe_float(info.get("payoutRatio")))
+for ticker in TICKERS:
+    meta = ALIAS_MAP.get(ticker, {})
 
     try:
-        dividends = tk.dividends
+        yf_ticker = yf.Ticker(ticker)
+        info = yf_ticker.info or {}
     except Exception:
-        dividends = None
+        info = {}
 
-    yield_pct = normalize_pct(safe_float(info.get("dividendYield")))
-    if (yield_pct is None or yield_pct > 40) and dividends is not None and price:
-        ltm = dividends.last("365D").sum()
-        if ltm > 0:
-            yield_pct = (ltm / price) * 100
-
-    years = None
-    cagr = None
-    if dividends is not None:
-        ann = annual_divs(dividends)
-        ann.index = ann.index.year
-        ann = ann.iloc[:-1] if len(ann) > 2 else ann
-        if len(ann) >= 3:
-            years = sum(ann.iloc[i] > ann.iloc[i-1] for i in range(len(ann)-1,0,-1))
-        if len(ann) >= 6 and ann.iloc[-6] > 0:
-            cagr = ((ann.iloc[-1]/ann.iloc[-6])**(1/5)-1)*100
-
-    fair_pe = clamp(pe,10,28) if pe and pe < 80 else 18
-    fair_val = eps * fair_pe if eps else None
-    upside = ((fair_val/price)-1)*100 if price and fair_val else None
-
-    score = 50
-    flags = []
+    name = info.get("longName") or info.get("shortName") or ticker
+    price = safe(info.get("currentPrice"))
+    dividend = safe(info.get("dividendRate"))
+    yield_pct = safe(info.get("dividendYield"))
+    pe = safe(info.get("trailingPE"))
+    eps = safe(info.get("trailingEps"))
+    payout = safe(info.get("payoutRatio"))
 
     if yield_pct:
-        if yield_pct > 30:
-            flags.append("Yield outlier")
-            score -= 10
-        elif 1 <= yield_pct <= 6:
-            score += 10
+        yield_pct = yield_pct * 100
 
-    if payout:
-        if payout > 110:
-            flags.append("Payout high")
-            score -= 10
-        elif payout <= 70:
-            score += 8
+    # FAIR VALUE (simple)
+    fair_pe = pe
+    fair_value = price
+    upside = 0
 
-    if upside and upside > 10:
-        score += 10
-    if cagr and cagr > 7:
-        score += 8
+    if pe and price and eps:
+        fair_value = eps * pe
+        upside = (fair_value / price - 1) * 100
 
-    score = int(clamp(score,0,100))
-    confidence = "High" if score >= 80 and not flags else "Medium"
-    signal = "GOLD" if score >= 90 else "BUY" if score >= 80 else "HOLD" if score >= 60 else "WATCH"
+    # SCORE (simple but stable)
+    score = 50
+    if yield_pct:
+        score += min(yield_pct * 3, 20)
+    if upside:
+        score += min(max(upside, 0), 20)
 
-    return {
-        "GeneratedUTC": ts,
+    score = int(min(score, 100))
+
+    signal = classify_signal(score, upside)
+    confidence = classify_conf(score)
+
+    rows.append({
         "Ticker": ticker,
-        "Name": info.get("shortName") or info.get("longName") or "",
-        "Country": meta["Country"],
-        "Currency": info.get("currency",""),
-        "Exchange": meta["Exchange"],
-        "Sector": info.get("sector",""),
-        "Industry": info.get("industry",""),
-        "Price": price,
-        "DividendYield_%": yield_pct,
-        "PayoutRatio_%": payout,
-        "PE": pe,
-        "EPS": eps,
-        "FairPE": fair_pe,
-        "FairValue": fair_val,
-        "Upside_%": upside,
-        "DivCAGR_5Y_%": cagr,
-        "YearsGrowing": years,
-        "DividendClass": dividend_class(years),
+        "Name": name,
+        "Country": meta.get("Country"),
+        "Exchange": meta.get("Exchange"),
+        "Sector": info.get("sector"),
+        "Industry": info.get("industry"),
+        "Currency": info.get("currency"),
+        "Price": round(price, 2) if price else None,
+        "DividendYield_%": round(yield_pct, 2) if yield_pct else None,
+        "DivCAGR_5Y_%": None,
+        "Upside_%": round(upside, 1) if upside else 0,
         "Score": score,
         "Signal": signal,
         "Confidence": confidence,
-        "Why": " / ".join(flags) if flags else "—",
-        "Flags": " | ".join(flags),
-    }
+        "PE": pe,
+        "EPS": eps,
+        "FairPE": fair_pe,
+        "FairValue": round(fair_value, 2) if fair_value else None,
+        "PayoutRatio_%": round(payout * 100, 1) if payout else None,
+        "YearsGrowing": None,
+        "DividendClass": None,
+        "Flags": None,
+        "Why": None,
+        "GeneratedUTC": now_utc,
+    })
 
-# ======================================================
-# MAIN – INCLUDE ERROR ROWS
-# ======================================================
-def main() -> None:
-    ts = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
-    rows: List[Dict[str, Any]] = []
+# =====================
+# OUTPUT
+# =====================
+df = pd.DataFrame(rows)
 
-    for t in TICKERS:
-        try:
-            rows.append(build_row(t, ts))
-        except Exception as e:
-            rows.append({
-                "GeneratedUTC": ts,
-                "Ticker": t,
-                "Name": "",
-                "Country": ALIAS[t]["Country"],
-                "Currency": "",
-                "Exchange": ALIAS[t]["Exchange"],
-                "Sector": "",
-                "Industry": "",
-                "Price": "",
-                "DividendYield_%": "",
-                "PayoutRatio_%": "",
-                "PE": "",
-                "EPS": "",
-                "FairPE": "",
-                "FairValue": "",
-                "Upside_%": "",
-                "DivCAGR_5Y_%": "",
-                "YearsGrowing": "",
-                "DividendClass": "",
-                "Score": 0,
-                "Signal": "ERROR",
-                "Confidence": "Low",
-                "Why": "Yahoo data missing / invalid",
-                "Flags": "Fetch failed",
-            })
-        time.sleep(0.35)
-
-    with OUT_CSV.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=COLUMNS)
-        w.writeheader()
-        for r in rows:
-            w.writerow({c: r.get(c,"") for c in COLUMNS})
-
-    DOCS_CSV.write_text(OUT_CSV.read_text(encoding="utf-8"), encoding="utf-8")
-    print(f"✅ Generated {len(rows)} rows")
-
-if __name__ == "__main__":
-    main()
+df.to_csv(OUTPUT_FILE, index=False)
+print(f"✅ Screener complete: {len(df)} rows written to {OUTPUT_FILE}")

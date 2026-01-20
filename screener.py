@@ -11,9 +11,9 @@ import pandas as pd
 import yfinance as yf
 
 # ============================================================
-# PATHS
+# PATHS  (VIGTIGT)
 # ============================================================
-TICKERS_FILE = Path("data/tickers.txt")
+TICKERS_FILE = Path("tickers.txt")   # <-- LIGGER I ROOT
 
 OUT_DIR = Path("data/screener_results")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -28,7 +28,7 @@ DOCS_CSV = DOCS_DATA_DIR / "screener_results.csv"
 # ============================================================
 ALIAS_FILE = Path("data/ticker_alias.csv")
 if not ALIAS_FILE.exists():
-    raise FileNotFoundError("❌ ticker_alias.csv is REQUIRED")
+    raise FileNotFoundError("❌ data/ticker_alias.csv is REQUIRED")
 
 alias_df = pd.read_csv(
     ALIAS_FILE,
@@ -36,20 +36,17 @@ alias_df = pd.read_csv(
     skip_blank_lines=True
 )
 
-# Drop fully empty rows (Excel artefacts)
+# Drop empty rows (Excel artefacts)
 alias_df = alias_df.dropna(how="all")
 
-# Normalize ticker column
 if "Ticker" not in alias_df.columns:
     raise ValueError("ticker_alias.csv must contain a 'Ticker' column")
 
 alias_df["Ticker"] = alias_df["Ticker"].astype(str).str.strip()
-
-# Drop empty / NaN tickers
 alias_df = alias_df[alias_df["Ticker"].notna()]
 alias_df = alias_df[alias_df["Ticker"] != ""]
 
-# HARD FAIL on REAL duplicates only
+# HARD FAIL on REAL duplicates
 dupes = alias_df[alias_df.duplicated(subset=["Ticker"], keep=False)]
 if not dupes.empty:
     print("\n❌ DUPLICATE TICKERS FOUND IN ticker_alias.csv")
@@ -60,7 +57,7 @@ ALIAS: Dict[str, Dict[str, str]] = alias_df.set_index("Ticker").to_dict("index")
 print(f"✅ Loaded {len(ALIAS)} unique ticker aliases")
 
 # ============================================================
-# CSV / UI COLUMNS (UÆNDRET)
+# CSV / UI COLUMNS  (UÆNDRET)
 # ============================================================
 COLUMNS = [
     "GeneratedUTC",
@@ -90,7 +87,7 @@ COLUMNS = [
 ]
 
 # ============================================================
-# HELPERS (UÆNDRET)
+# HELPERS
 # ============================================================
 def safe_float(x: Any) -> Optional[float]:
     try:
@@ -145,8 +142,7 @@ def resolve_meta(ticker: str, info: Dict[str, Any]) -> Tuple[str, str, str]:
             a.get("Exchange", ""),
             a.get("Currency", ""),
         )
-
-    # Fallback (should never happen if alias is maintained)
+    # fallback (burde ikke ske)
     return (
         info.get("country", "") or "",
         info.get("exchange", "") or "",
@@ -154,7 +150,7 @@ def resolve_meta(ticker: str, info: Dict[str, Any]) -> Tuple[str, str, str]:
     )
 
 # ============================================================
-# CORE BUILD (SAMME FUNKTIONALITET)
+# CORE BUILD
 # ============================================================
 def build_row(ticker: str, generated_utc: str) -> Dict[str, Any]:
     tk = yf.Ticker(ticker)
@@ -274,6 +270,9 @@ def build_row(ticker: str, generated_utc: str) -> Dict[str, Any]:
 # MAIN
 # ============================================================
 def main() -> None:
+    if not TICKERS_FILE.exists():
+        raise FileNotFoundError("❌ tickers.txt must be in REPO ROOT")
+
     tickers = [t.strip() for t in TICKERS_FILE.read_text().splitlines() if t.strip()]
     ts = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
 

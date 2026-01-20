@@ -2,299 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Dividend Screener - Decision View</title>
 
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" />
-
-  <style>
-    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin: 18px; color:#111; }
-    h1 { font-size: 22px; margin: 0 0 6px; }
-    .sub { color:#444; font-size: 13px; margin: 0 0 14px; }
-    .bar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin: 12px 0 10px; }
-    .pill { padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid #ddd; background:#f7f7f7; }
-    .pill.gold { border-color:#f1d66a; background:#fff4cc; font-weight:600; }
-    .pill.buy { border-color:#b6d4ff; background:#eaf3ff; font-weight:600; }
-    .pill.hold { border-color:#ddd; background:#f2f2f2; }
-    .pill.watch { border-color:#ddd; background:#fafafa; }
-    .pill.high { border-color:#bfe5c8; background:#eaffef; font-weight:600; }
-    .pill.medium { border-color:#ffe3a3; background:#fff6df; font-weight:600; }
-    .pill.low { border-color:#f2b3b3; background:#ffecec; font-weight:600; }
-    .pill.class { border-color:#ddd; background:#f7f7f7; font-weight:600; }
-
-    label { font-size: 12px; color:#333; }
-    select { font-size: 12px; padding: 4px 6px; }
-    button { font-size: 12px; padding: 5px 10px; cursor: pointer; }
-
-    .meta { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    .chip { font-size: 12px; color:#444; background:#f2f2f2; border:1px solid #e5e5e5; padding: 4px 8px; border-radius:999px; }
-
-    td.details-control { cursor:pointer; width:28px; }
-    .details { padding: 10px 12px; background:#fafafa; border:1px solid #eee; border-radius: 10px; }
-    .details-grid { display:grid; grid-template-columns: 170px 1fr; gap:6px 12px; font-size:12px; }
-    .muted { color:#666; }
-
-    table.dataTable tbody tr:hover { background:#fbfbfb; }
-  </style>
-</head>
-
-<body>
-  <h1>Dividend Screener - Decision View</h1>
-  <p class="sub">Sort: Signal -> Score -> Upside. Use dropdowns to filter. Click the arrow for full details.</p>
-
-  <div class="meta">
-    <span class="chip" id="metaRows">Rows: -</span>
-    <span class="chip">CSV: <span class="muted">data/screener_results/screener_results.csv</span></span>
-    <span class="chip">Tip: filter GOLD/BUY for "roverkob" and sort Upside/Score</span>
-  </div>
-
-  <div class="bar">
-    <div>
-      <label>Signal:</label>
-      <select id="fSignal"><option value="All">All</option></select>
-    </div>
-    <div>
-      <label>Confidence:</label>
-      <select id="fConf"><option value="All">All</option></select>
-    </div>
-    <div>
-      <label>Country:</label>
-      <select id="fCountry"><option value="All">All</option></select>
-    </div>
-    <div>
-      <label>Sector:</label>
-      <select id="fSector"><option value="All">All</option></select>
-    </div>
-    <div>
-      <label>Dividend Class:</label>
-      <select id="fClass">
-        <option value="All">All</option>
-        <option value="King">King</option>
-        <option value="Aristocrat">Aristocrat</option>
-        <option value="Contender">Contender</option>
-      </select>
-    </div>
-    <div>
-      <label>Min DivCAGR (5Y):</label>
-      <select id="fCagr">
-        <option value="All">All</option>
-        <option value="0">0%</option>
-        <option value="3">3%</option>
-        <option value="7">7%</option>
-        <option value="12">12%</option>
-      </select>
-    </div>
-    <button id="btnReset">Reset</button>
-  </div>
-
-  <table id="tbl" class="display" style="width:100%">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Name</th>
-        <th>Country</th>
-        <th>Sector</th>
-        <th>Currency</th>
-        <th>Price</th>
-        <th>Yield</th>
-        <th>DivCAGR(5Y)</th>
-        <th>Upside</th>
-        <th>Score</th>
-        <th>Signal</th>
-        <th>Conf</th>
-        <th>Why</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-  <script>
-    const CSV_URL = "data/screener_results/screener_results.csv";
+  <style>
+    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial; margin:18px; }
+    table.dataTable tbody tr:hover { background:#fafafa; }
+  </style>
+</head>
 
-    function fmtNum(v, d=2) {
-      const n = Number(v);
-      if (!Number.isFinite(n)) return "";
-      return n.toFixed(d);
-    }
-    function fmtPct(v, d=1) {
-      const n = Number(v);
-      if (!Number.isFinite(n)) return "";
-      return n.toFixed(d) + "%";
-    }
-    function pillSignal(s) {
-      if (!s) return "";
-      const cls = (s === "GOLD") ? "gold" : (s === "BUY") ? "buy" : (s === "HOLD") ? "hold" : (s === "WATCH") ? "watch" : "watch";
-      return `<span class="pill ${cls}">${s}</span>`;
-    }
-    function pillConf(s) {
-      if (!s) return "";
-      const cls = (s === "High") ? "high" : (s === "Medium") ? "medium" : "low";
-      return `<span class="pill ${cls}">${s}</span>`;
-    }
-    function pillClass(s) {
-      if (!s) return "";
-      return `<span class="pill class">${s}</span>`;
-    }
+<body>
+<h1>Dividend Screener – Decision View</h1>
 
-    function buildDetails(row) {
-      const fields = [
-        ["Ticker", row.Ticker],
-        ["Exchange", row.Exchange],
-        ["Industry", row.Industry],
-        ["PE", fmtNum(row.PE, 1)],
-        ["EPS", fmtNum(row.EPS, 2)],
-        ["FairPE", fmtNum(row.FairPE, 1)],
-        ["FairValue", fmtNum(row.FairValue, 2)],
-        ["PayoutRatio_%", fmtPct(row["PayoutRatio_%"], 1)],
-        ["YearsGrowing", row.YearsGrowing],
-        ["DividendClass", row.DividendClass ? row.DividendClass : ""],
-        ["Flags", row.Flags],
-        ["GeneratedUTC", row.GeneratedUTC]
-      ];
+<table id="tbl" class="display" style="width:100%">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Country</th>
+      <th>Sector</th>
+      <th>Currency</th>
+      <th>Price</th>
+      <th>Yield</th>
+      <th>DivCAGR(5Y)</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
 
-      let html = `<div class="details"><div class="details-grid">`;
-      for (const [k,v] of fields) {
-        html += `<div class="muted">${k}</div><div>${(v ?? "")}</div>`;
-      }
-      html += `</div></div>`;
-      return html;
-    }
+<script>
+const CSV_URL = "data/screener_results/screener_results.csv";
 
-    let table;
-    let rowsData = [];
-
-    function populateDropdown(id, values) {
-      const sel = document.getElementById(id);
-      const current = sel.value;
-      sel.innerHTML = `<option value="All">All</option>` + [...values].sort().map(v => `<option value="${v}">${v}</option>`).join("");
-      if ([...sel.options].some(o => o.value === current)) sel.value = current;
-    }
-
-    function initFiltersFromData(data) {
-      const signals = new Set();
-      const confs = new Set();
-      const countries = new Set();
-      const sectors = new Set();
-
-      data.forEach(r => {
-        if (r.Signal) signals.add(r.Signal);
-        if (r.Confidence) confs.add(r.Confidence);
-        if (r.Country) countries.add(r.Country);
-        if (r.Sector) sectors.add(r.Sector);
-      });
-
-      populateDropdown("fSignal", signals);
-      populateDropdown("fConf", confs);
-      populateDropdown("fCountry", countries);
-      populateDropdown("fSector", sectors);
-    }
-
-    function applyFilters() {
-      table.draw();
-    }
-
-    $(async function() {
-      Papa.parse(CSV_URL, {
-        download: true,
-        header: true,
-        dynamicTyping: false,
-        skipEmptyLines: true,
-        complete: function(res) {
-          rowsData = res.data || [];
-          document.getElementById("metaRows").innerText = `Rows: ${rowsData.length}`;
-
-          initFiltersFromData(rowsData);
-
-          // Custom filter function
-          $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
-            const row = rowsData[dataIndex];
-            if (!row) return false;
-
-            const fSignal = $("#fSignal").val() || "All";
-            const fConf = $("#fConf").val() || "All";
-            const fCountry = $("#fCountry").val() || "All";
-            const fSector = $("#fSector").val() || "All";
-            const fClass = $("#fClass").val() || "All";
-            const fCagr = $("#fCagr").val() || "All";
-
-            if (fSignal !== "All" && row.Signal !== fSignal) return false;
-            if (fConf !== "All" && row.Confidence !== fConf) return false;
-            if (fCountry !== "All" && row.Country !== fCountry) return false;
-            if (fSector !== "All" && row.Sector !== fSector) return false;
-            if (fClass !== "All" && row.DividendClass !== fClass) return false;
-
-            if (fCagr !== "All") {
-              const min = Number(fCagr);
-              const cagr = Number(row["DivCAGR_5Y_%"]);
-              if (!Number.isFinite(cagr)) return false;
-              if (cagr < min) return false;
-            }
-            return true;
-          });
-
-          table = $("#tbl").DataTable({
-            data: rowsData,
-            pageLength: 50,
-            order: [[10, "asc"], [9, "desc"], [8, "desc"]], // Signal -> Score -> Upside
-            columns: [
-              {
-                className: "details-control",
-                orderable: false,
-                data: null,
-                defaultContent: "▶"
-              },
-              { data: "Name", defaultContent: "" },
-              { data: "Country", defaultContent: "" },
-              { data: "Sector", defaultContent: "" },
-              { data: "Currency", defaultContent: "" },
-              { data: "Price", render: (d) => fmtNum(d, 2) },
-              { data: "DividendYield_%", render: (d) => fmtPct(d, 2) },
-              { data: "DivCAGR_5Y_%", render: (d) => fmtPct(d, 1) },
-              { data: "Upside_%", render: (d) => fmtPct(d, 1) },
-              { data: "Score", render: (d) => fmtNum(d, 0) },
-              { data: "Signal", render: (d) => pillSignal(d) },
-              { data: "Confidence", render: (d) => pillConf(d) },
-              { data: "Why", render: function(d, type, row) {
-                  const extra = row.DividendClass ? " " + pillClass(row.DividendClass) : "";
-                  return (d || "—") + extra;
-                }
-              },
-            ]
-          });
-
-          // Row details toggle
-          $("#tbl tbody").on("click", "td.details-control", function() {
-            const tr = $(this).closest("tr");
-            const row = table.row(tr);
-            const idx = row.index();
-            if (row.child.isShown()) {
-              row.child.hide();
-              tr.find("td.details-control").text("▶");
-            } else {
-              row.child(buildDetails(rowsData[idx])).show();
-              tr.find("td.details-control").text("▼");
-            }
-          });
-
-          // Filter hooks
-          $("#fSignal, #fConf, #fCountry, #fSector, #fClass, #fCagr").on("change", applyFilters);
-
-          $("#btnReset").on("click", function() {
-            $("#fSignal").val("All");
-            $("#fConf").val("All");
-            $("#fCountry").val("All");
-            $("#fSector").val("All");
-            $("#fClass").val("All");
-            $("#fCagr").val("All");
-            applyFilters();
-          });
-        }
-      });
+Papa.parse(CSV_URL, {
+  download: true,
+  header: true,
+  skipEmptyLines: true,
+  complete: function(res) {
+    $('#tbl').DataTable({
+      data: res.data,
+      pageLength: 50,
+      columns: [
+        { data: "Name" },
+        { data: "Country" },
+        { data: "Sector" },
+        { data: "Currency" },
+        { data: "Price" },
+        { data: "Yield", render: d => d ? d.toFixed(2) + "%" : "" },
+        { data: "DivCAGR(5Y)", render: d => d ? d.toFixed(1) + "%" : "" }
+      ]
     });
-  </script>
+  }
+});
+</script>
+
 </body>
 </html>

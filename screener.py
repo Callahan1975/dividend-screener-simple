@@ -1,29 +1,28 @@
 # screener.py
-# MASTER STABLE VERSION – single source of truth = docs/data/screener_results
-# Writes directly to GitHub Pages path
+# STABIL BASELINE VERSION – Yahoo Finance only
+# Purpose: Generate a clean, complete screener_results.csv for UI
+# Single source of truth: data/ticker_alias.csv
 
 import pandas as pd
 import yfinance as yf
 from pathlib import Path
-from datetime import datetime, timezone
 import numpy as np
-import time
+from datetime import datetime
 
-# ======================
+# ==============================
 # PATHS
-# ======================
+# ==============================
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
+RESULTS_DIR = DATA_DIR / "screener_results"
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
 ALIAS_FILE = DATA_DIR / "ticker_alias.csv"
+OUTPUT_FILE = RESULTS_DIR / "screener_results.csv"
 
-DOCS_RESULTS_DIR = BASE_DIR / "docs" / "data" / "screener_results"
-DOCS_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-
-OUTPUT_FILE = DOCS_RESULTS_DIR / "screener_results.csv"
-
-# ======================
+# ==============================
 # LOAD TICKERS
-# ======================
+# ==============================
 alias_df = pd.read_csv(ALIAS_FILE, comment="#")
 alias_df["Ticker"] = alias_df["Ticker"].str.upper().str.strip()
 
@@ -32,9 +31,9 @@ ALIAS_MAP = alias_df.set_index("Ticker").to_dict(orient="index")
 
 print(f"🔥 Universe size: {len(TICKERS)} tickers loaded")
 
-# ======================
+# ==============================
 # HELPERS
-# ======================
+# ==============================
 def safe(v):
     try:
         if v is None or (isinstance(v, float) and np.isnan(v)):
@@ -43,68 +42,68 @@ def safe(v):
     except Exception:
         return None
 
-def dividend_cagr_5y(divs):
-    if divs is None or len(divs) < 6:
-        return None
-    start = divs.iloc[-6]
-    end = divs.iloc[-1]
-    if start <= 0 or end <= 0:
-        return None
-    return ((end / start) ** (1 / 5) - 1) * 100
-
-# ======================
+# ==============================
 # MAIN LOOP
-# ======================
+# ==============================
 rows = []
-now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+run_ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
 
 for ticker in TICKERS:
+    meta = ALIAS_MAP.get(ticker, {})
+
     try:
         yf_ticker = yf.Ticker(ticker)
-        info = yf_ticker.info
-
-        price = safe(info.get("currentPrice"))
-        currency = info.get("currency")
-        sector = info.get("sector")
-
-        # Dividend yield
-        div_yield = safe(info.get("dividendYield"))
-        if div_yield is not None:
-            div_yield *= 100
-
-        # Dividend CAGR
-        divs = yf_ticker.dividends
-        div_cagr = dividend_cagr_5y(divs)
-
-        meta = ALIAS_MAP.get(ticker, {})
-
-        rows.append({
-            "Name": info.get("longName") or info.get("shortName") or ticker,
-            "Ticker": ticker,
-            "Country": meta.get("Country"),
-            "Sector": sector,
-            "Currency": currency,
-            "Price": price,
-            "Yield": div_yield,
-            "DivCAGR(5Y)": div_cagr,
-            "Upside": None,
-            "Score": None,
-            "Signal": None,
-            "Conf": None,
-            "Why": None,
-            "GeneratedUTC": now_utc,
-        })
-
-        time.sleep(0.3)
-
+        info = yf_ticker.info or {}
     except Exception as e:
-        print(f"⚠️ Error on {ticker}: {e}")
+        print(f"❌ {ticker}: yfinance error: {e}")
+        info = {}
 
-# ======================
+    price = safe(info.get("regularMarketPrice"))
+    dividend_yield = safe(info.get("dividendYield"))
+    payout_ratio = safe(info.get("payoutRatio"))
+    pe = safe(info.get("trailingPE"))
+
+    # Convert yield + payout to %
+    dividend_yield_pct = dividend_yield * 100 if dividend_yield is not None else None
+    payout_ratio_pct = payout_ratio * 100 if payout_ratio is not None else None
+
+    rows.append({
+        "Ticker": ticker,
+        "Name": info.get("longName") or meta.get("Name") or ticker,
+        "Country": meta.get("Country") or info.get("country"),
+        "Currency": info.get("currency") or meta.get("Currency"),
+        "Exchange": info.get("exchange") or meta.get("Exchange"),
+        "Sector": info.get("sector") or meta.get("Sector"),
+        "Industry": info.get("industry"),
+        "Price": price,
+        "DividendYield_%": dividend_yield_pct,
+        "PayoutRatio_%": payout_ratio_pct,
+        "PE": pe,
+        "RunTimestamp": run_ts,
+    })
+
+# ==============================
 # SAVE CSV
-# ======================
+# ==============================
 df = pd.DataFrame(rows)
-df.to_csv(OUTPUT_FILE, index=False)
 
-print(f"✅ CSV written to {OUTPUT_FILE}")
-print(f"📊 Final rows: {len(df)}")
+# Enforce column order expected by UI
+cols = [
+    "Ticker",
+    "Name",
+    "Country",
+    "Sector",
+    "Industry",
+    "Currency",
+    "Exchange",
+    "Price",
+    "DividendYield_%",
+    "PayoutRatio_%",
+    "PE",
+    "RunTimestamp",
+]
+
+df = df.reindex(columns=cols)
+
+df.to_csv(OUTPUT_FILE, index=False)
+print(f"✅ Saved {len(df)} rows to {OUTPUT_FILE}")

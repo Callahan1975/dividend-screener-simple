@@ -1,137 +1,196 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
+<meta charset="UTF-8" />
 <title>Dividend Screener – Decision View</title>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
 
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css"/>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css"/>
 
 <style>
-body { font-family: system-ui, -apple-system, Segoe UI, Roboto; margin:18px; }
-h1 { font-size:22px; margin-bottom:6px; }
-.sub { font-size:13px; color:#555; margin-bottom:10px; }
-
-.filters select {
-  margin-right:10px;
-  padding:4px 6px;
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont;
+    margin: 20px;
 }
+
+h1 {
+    margin-bottom: 6px;
+}
+
+.filters {
+    margin: 12px 0 16px 0;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+select {
+    padding: 4px 6px;
+}
+
+.badge {
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.GOLD { background: gold; }
+.BUY { background: #8fd18f; }
+.HOLD { background: #ddd; }
+.WATCH { background: #f3bcbc; }
+
+.High { background: #9be59b; }
+.Medium { background: #ffd36e; }
+.Low { background: #ff9b9b; }
 
 .details {
-  background:#fafafa;
-  border:1px solid #eee;
-  border-radius:8px;
-  padding:10px;
-  font-size:12px;
+    padding: 10px;
+    font-size: 13px;
 }
-.details-grid {
-  display:grid;
-  grid-template-columns:140px 1fr;
-  gap:6px 12px;
-}
-.muted { color:#666; }
-td.details-control { cursor:pointer; text-align:center; width:28px; }
 </style>
 </head>
 
 <body>
 
 <h1>Dividend Screener – Decision View</h1>
-<p class="sub">Live data from <code>data/screener_results/screener_results.csv</code></p>
-
-<div class="filters">
-  Country:
-  <select id="filterCountry"><option value="">All</option></select>
-
-  Sector:
-  <select id="filterSector"><option value="">All</option></select>
+<div style="font-size:13px;color:#666">
+Live data from <code>data/screener_results/screener_decision.csv</code>
 </div>
 
-<br/>
+<div class="filters">
+    <label>Signal:
+        <select id="signalFilter">
+            <option value="">All</option>
+        </select>
+    </label>
 
-<table id="tbl" class="display" style="width:100%">
+    <label>Confidence:
+        <select id="confFilter">
+            <option value="">All</option>
+        </select>
+    </label>
+
+    <label>Country:
+        <select id="countryFilter">
+            <option value="">All</option>
+        </select>
+    </label>
+
+    <label>Sector:
+        <select id="sectorFilter">
+            <option value="">All</option>
+        </select>
+    </label>
+</div>
+
+<table id="screener" class="display" style="width:100%">
 <thead>
 <tr>
-  <th></th>
-  <th>Name</th>
-  <th>Country</th>
-  <th>Sector</th>
-  <th>Currency</th>
-  <th>Price</th>
-  <th>Dividend Yield %</th>
-  <th>Payout Ratio %</th>
-  <th>PE</th>
+    <th></th>
+    <th>Name</th>
+    <th>Country</th>
+    <th>Sector</th>
+    <th>Currency</th>
+    <th>Price</th>
+    <th>Yield %</th>
+    <th>DivCAGR(5Y)</th>
+    <th>Score</th>
+    <th>Signal</th>
+    <th>Conf</th>
+    <th>Why</th>
 </tr>
 </thead>
-<tbody></tbody>
 </table>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
 <script>
-const CSV = "data/screener_results/screener_results.csv";
+const DATA_URL = "data/screener_results/screener_decision.csv";
 
-function num(v,d=2){const n=Number(v);return Number.isFinite(n)?n.toFixed(d):"";}
-function pct(v,d=2){const n=Number(v);return Number.isFinite(n)?n.toFixed(d)+"%":"";}
-
-function details(r){
-  const f = [
-    ["Ticker",r.Ticker],
-    ["Industry",r.Industry],
-    ["Exchange",r.Exchange],
-    ["Price",num(r.Price)],
-    ["Dividend Yield",pct(r["DividendYield_%"])],
-    ["Payout Ratio",pct(r["PayoutRatio_%"])],
-    ["PE",num(r.PE,1)]
-  ];
-  let h=`<div class="details"><div class="details-grid">`;
-  f.forEach(x=>h+=`<div class="muted">${x[0]}</div><div>${x[1]??""}</div>`);
-  return h+"</div></div>";
+function format(d) {
+    return `
+        <div class="details">
+            <b>Ticker:</b> ${d.Ticker}<br>
+            <b>Industry:</b> ${d.Industry || "-"}<br>
+            <b>Payout:</b> ${d["PayoutRatio_%"] || "-"}%<br>
+            <b>PE:</b> ${d.PE || "-"}<br>
+        </div>
+    `;
 }
 
-Papa.parse(CSV,{
-  download:true, header:true, skipEmptyLines:true,
-  complete:r=>{
-    const data=r.data;
+$(async function () {
 
-    const countries=[...new Set(data.map(x=>x.Country).filter(Boolean))].sort();
-    const sectors=[...new Set(data.map(x=>x.Sector).filter(Boolean))].sort();
+const res = await fetch(DATA_URL);
+const text = await res.text();
+const rows = text.trim().split("\n").slice(1).map(r => r.split(","));
 
-    countries.forEach(c=>$("#filterCountry").append(`<option>${c}</option>`));
-    sectors.forEach(s=>$("#filterSector").append(`<option>${s}</option>`));
+const headers = text.split("\n")[0].split(",");
+const data = rows.map(r => Object.fromEntries(headers.map((h,i)=>[h,r[i]])));
 
-    const table=$("#tbl").DataTable({
-      data:data,
-      pageLength:50,
-      columns:[
-        {className:"details-control",orderable:false,data:null,defaultContent:"▶"},
-        {data:"Name"},
-        {data:"Country"},
-        {data:"Sector"},
-        {data:"Currency"},
-        {data:"Price",render:d=>num(d)},
-        {data:"DividendYield_%",render:d=>pct(d)},
-        {data:"PayoutRatio_%",render:d=>pct(d,1)},
-        {data:"PE",render:d=>num(d,1)}
-      ]
-    });
+const table = $('#screener').DataTable({
+    data,
+    pageLength: 50,
+    columns: [
+        { className: 'dt-control', orderable: false, data: null, defaultContent: '▶' },
+        { data: "Name" },
+        { data: "Country" },
+        { data: "Sector" },
+        { data: "Currency" },
+        { data: "Price" },
+        { data: "DividendYield_%" },
+        { data: "DivCAGR_5Y" },
+        { data: "Score" },
+        {
+            data: "Signal",
+            render: d => `<span class="badge ${d}">${d}</span>`
+        },
+        {
+            data: "Confidence",
+            render: d => `<span class="badge ${d}">${d}</span>`
+        },
+        { data: "Why" }
+    ]
+});
 
-    $("#tbl tbody").on("click","td.details-control",function(){
-      const tr=$(this).closest("tr");
-      const row=table.row(tr);
-      const i=row.index();
-      if(row.child.isShown()){
-        row.child.hide(); $(this).text("▶");
-      } else {
-        row.child(details(data[i])).show(); $(this).text("▼");
-      }
-    });
+// Row expand
+$('#screener tbody').on('click', 'td.dt-control', function () {
+    let tr = $(this).closest('tr');
+    let row = table.row(tr);
 
-    $("#filterCountry").on("change",()=>table.column(2).search($("#filterCountry").val()).draw());
-    $("#filterSector").on("change",()=>table.column(3).search($("#filterSector").val()).draw());
-  }
+    if (row.child.isShown()) {
+        row.child.hide();
+        tr.find('td:first').text('▶');
+    } else {
+        row.child(format(row.data())).show();
+        tr.find('td:first').text('▼');
+    }
+});
+
+// Populate filters
+function populateFilter(id, field) {
+    const values = [...new Set(data.map(d => d[field]).filter(Boolean))].sort();
+    values.forEach(v => $(`#${id}`).append(`<option value="${v}">${v}</option>`));
+}
+
+populateFilter("signalFilter", "Signal");
+populateFilter("confFilter", "Confidence");
+populateFilter("countryFilter", "Country");
+populateFilter("sectorFilter", "Sector");
+
+// Apply filters
+function applyFilters() {
+    table
+        .column(9).search($('#signalFilter').val())
+        .column(10).search($('#confFilter').val())
+        .column(2).search($('#countryFilter').val())
+        .column(3).search($('#sectorFilter').val())
+        .draw();
+}
+
+$('select').on('change', applyFilters);
+
 });
 </script>
 

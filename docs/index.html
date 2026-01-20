@@ -5,84 +5,93 @@
 <title>Dividend Screener – Decision View</title>
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
-<!-- CSV parser -->
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
 <style>
-body { font-family: system-ui; padding: 20px; }
-.badge { padding: 4px 8px; border-radius: 8px; font-size: 12px; }
-.GOLD { background:#ffd700; }
-.BUY { background:#8fd3f4; }
-.HOLD { background:#ddd; }
-.WATCH { background:#f3b0b0; }
-.High { color: green; font-weight: bold; }
-.Medium { color: orange; }
-.Low { color: red; }
+body { font-family: Arial, sans-serif; margin: 20px; }
+h1 { margin-bottom: 5px; }
+.small { color: #666; margin-bottom: 15px; }
+.badge-buy { color: #0a7a0a; font-weight: bold; }
+.badge-hold { color: #b8860b; font-weight: bold; }
+.badge-watch { color: #888; font-weight: bold; }
 </style>
 </head>
 
 <body>
+
 <h1>Dividend Screener – Decision View</h1>
-<p>Live data from <code>data/screener_results/screener_results.csv</code></p>
+<div class="small">Live data from data/screener_results/screener_results.csv</div>
 
 <table id="screener" class="display" style="width:100%">
 <thead>
 <tr>
-<th>Ticker</th>
-<th>Name</th>
-<th>Country</th>
-<th>Sector</th>
-<th>Currency</th>
-<th>Price</th>
-<th>Yield %</th>
-<th>Payout Ratio %</th>
-<th>PE</th>
-<th>Score</th>
-<th>Signal</th>
-<th>Conf</th>
-<th>Why</th>
+  <th>Ticker</th>
+  <th>Name</th>
+  <th>Country</th>
+  <th>Sector</th>
+  <th>Currency</th>
+  <th>Price</th>
+  <th>Yield %</th>
+  <th>Payout %</th>
+  <th>PE</th>
+  <th>Score</th>
+  <th>Signal</th>
+  <th>Conf</th>
+  <th>Why</th>
 </tr>
 </thead>
 </table>
 
 <script>
-Papa.parse('data/screener_results/screener_results.csv', {
-  download: true,
-  header: true,
-  dynamicTyping: true,
-  skipEmptyLines: true,
-  complete: function(results) {
-
-    $('#screener').DataTable({
-      data: results.data,
-      columns: [
-        { data: 'Ticker' },
-        { data: 'Name' },
-        { data: 'Country' },
-        { data: 'Sector' },
-        { data: 'Currency' },
-        { data: 'Price' },
-        { data: 'Yield %' },
-        { data: 'Payout Ratio %' },
-        { data: 'PE' },
-        { data: 'Score' },
-        {
-          data: 'Signal',
-          render: d => d ? `<span class="badge ${d}">${d}</span>` : ''
-        },
-        {
-          data: 'Conf',
-          render: d => d ? `<span class="${d}">${d}</span>` : ''
-        },
-        { data: 'Why' }
-      ],
-      order: [[9, 'desc']],
-      pageLength: 25
-    });
-  }
+$(document).ready(function () {
+  $('#screener').DataTable({
+    ajax: {
+      url: '../data/screener_results/screener_results.csv',
+      dataType: 'text',
+      dataSrc: function (csv) {
+        const lines = csv.split('\n');
+        const headers = lines[0].split(',');
+        return lines.slice(1).map(line => {
+          const values = line.split(',');
+          let row = {};
+          headers.forEach((h, i) => row[h] = values[i]);
+          return row;
+        });
+      }
+    },
+    columns: [
+      { data: "Ticker" },
+      { data: "Name" },
+      { data: "Country" },
+      { data: "Sector" },
+      { data: "Currency" },
+      { data: "Price" },
+      {
+        data: "DividendYield",
+        render: d => d ? `${Number(d).toFixed(2)}%` : ""
+      },
+      {
+        data: "PayoutRatio",
+        render: d => d ? `${Number(d).toFixed(0)}%` : ""
+      },
+      { data: "PE" },
+      { data: "Score" },
+      {
+        data: "Signal",
+        render: function (d) {
+          if (d === "BUY") return `<span class="badge-buy">${d}</span>`;
+          if (d === "HOLD") return `<span class="badge-hold">${d}</span>`;
+          return `<span class="badge-watch">${d}</span>`;
+        }
+      },
+      { data: "Confidence" },
+      { data: "Why" }
+    ],
+    pageLength: 25,
+    order: [[11, "desc"]]
+  });
 });
 </script>
 

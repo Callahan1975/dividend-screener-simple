@@ -2,59 +2,158 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Dividend Screener - Decision View</title>
+  <title>Dividend Screener – Decision View</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" />
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <style>
-    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial; margin:18px; }
-    table.dataTable tbody tr:hover { background:#fafafa; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      margin: 18px;
+      color: #111;
+    }
+    h1 { font-size: 22px; margin-bottom: 6px; }
+    .sub { font-size: 13px; color:#555; margin-bottom: 12px; }
+
+    table.dataTable tbody tr:hover {
+      background: #f7f7f7;
+    }
+
+    td.details-control {
+      cursor: pointer;
+      width: 28px;
+      text-align: center;
+    }
+
+    .details {
+      padding: 10px 14px;
+      background: #fafafa;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 6px 12px;
+    }
+
+    .muted { color:#666; }
   </style>
 </head>
 
 <body>
+
 <h1>Dividend Screener – Decision View</h1>
+<p class="sub">
+  Live data from <code>data/screener_results/screener_results.csv</code>
+</p>
 
 <table id="tbl" class="display" style="width:100%">
   <thead>
     <tr>
+      <th></th>
       <th>Name</th>
       <th>Country</th>
       <th>Sector</th>
       <th>Currency</th>
       <th>Price</th>
-      <th>Yield</th>
-      <th>DivCAGR(5Y)</th>
+      <th>Dividend Yield</th>
+      <th>Payout Ratio</th>
+      <th>PE</th>
     </tr>
   </thead>
   <tbody></tbody>
 </table>
 
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
 <script>
 const CSV_URL = "data/screener_results/screener_results.csv";
 
-Papa.parse(CSV_URL, {
-  download: true,
-  header: true,
-  skipEmptyLines: true,
-  complete: function(res) {
-    $('#tbl').DataTable({
-      data: res.data,
-      pageLength: 50,
-      columns: [
-        { data: "Name" },
-        { data: "Country" },
-        { data: "Sector" },
-        { data: "Currency" },
-        { data: "Price" },
-        { data: "Yield", render: d => d ? d.toFixed(2) + "%" : "" },
-        { data: "DivCAGR(5Y)", render: d => d ? d.toFixed(1) + "%" : "" }
-      ]
-    });
+function fmtNum(v, d = 2) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "";
+  return n.toFixed(d);
+}
+
+function fmtPct(v, d = 2) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "";
+  return n.toFixed(d) + "%";
+}
+
+function buildDetails(row) {
+  const fields = [
+    ["Ticker", row.Ticker],
+    ["Exchange", row.Exchange],
+    ["Industry", row.Industry],
+    ["Sector", row.Sector],
+    ["Country", row.Country],
+    ["Price", fmtNum(row.Price)],
+    ["Dividend Yield %", fmtPct(row["DividendYield_%"])],
+    ["Payout Ratio %", fmtPct(row["PayoutRatio_%"])],
+    ["PE", fmtNum(row.PE, 1)]
+  ];
+
+  let html = `<div class="details"><div class="details-grid">`;
+  for (const [k, v] of fields) {
+    html += `<div class="muted">${k}</div><div>${v ?? ""}</div>`;
   }
+  html += `</div></div>`;
+  return html;
+}
+
+$(function () {
+  Papa.parse(CSV_URL, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    complete: function (res) {
+
+      const rows = res.data;
+
+      const table = $("#tbl").DataTable({
+        data: rows,
+        pageLength: 50,
+        order: [[1, "asc"]],
+        columns: [
+          {
+            className: "details-control",
+            orderable: false,
+            data: null,
+            defaultContent: "▶"
+          },
+          { data: "Name", defaultContent: "" },
+          { data: "Country", defaultContent: "" },
+          { data: "Sector", defaultContent: "" },
+          { data: "Currency", defaultContent: "" },
+          { data: "Price", render: d => fmtNum(d, 2) },
+          { data: "DividendYield_%", render: d => fmtPct(d, 2) },
+          { data: "PayoutRatio_%", render: d => fmtPct(d, 1) },
+          { data: "PE", render: d => fmtNum(d, 1) }
+        ]
+      });
+
+      $("#tbl tbody").on("click", "td.details-control", function () {
+        const tr = $(this).closest("tr");
+        const row = table.row(tr);
+        const idx = row.index();
+
+        if (row.child.isShown()) {
+          row.child.hide();
+          $(this).text("▶");
+        } else {
+          row.child(buildDetails(rows[idx])).show();
+          $(this).text("▼");
+        }
+      });
+    }
+  });
 });
 </script>
 

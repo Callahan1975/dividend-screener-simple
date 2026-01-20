@@ -1,119 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Dividend Screener – Decision View</title>
+  <meta charset="UTF-8">
+  <title>Dividend Screener – Decision View</title>
 
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-
-<style>
-body { font-family: Arial, sans-serif; margin: 20px; }
-select { margin-right: 10px; }
-.badge { padding: 3px 8px; border-radius: 6px; font-size: 12px; }
-.GOLD { background:#d4af37; color:#000; }
-.BUY { background:#4caf50; color:#fff; }
-.HOLD { background:#9e9e9e; color:#fff; }
-.WATCH { background:#ff9800; color:#000; }
-.low { color:#d32f2f; font-weight:bold; }
-.med { color:#f57c00; font-weight:bold; }
-.high { color:#388e3c; font-weight:bold; }
-</style>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont; margin: 30px; }
+    h1 { margin-bottom: 5px; }
+    .filters { margin: 10px 0 15px 0; }
+    select { margin-right: 10px; }
+    .badge { padding: 3px 7px; border-radius: 6px; font-size: 12px; }
+    .GOLD { background:#f5c542; }
+    .BUY { background:#a5d6a7; }
+    .HOLD { background:#ffe082; }
+    .WATCH { background:#ef9a9a; }
+  </style>
 </head>
 
 <body>
 
 <h1>Dividend Screener – Decision View</h1>
-<p>Live data from <code>data/screener_results/screener_results.csv</code></p>
+<div>Live data from <code>data/screener_results/screener_results.csv</code></div>
 
-<label>Signal:</label><select id="signalFilter"><option value="">All</option></select>
-<label>Confidence:</label><select id="confFilter"><option value="">All</option></select>
-<label>Country:</label><select id="countryFilter"><option value="">All</option></select>
-<label>Sector:</label><select id="sectorFilter"><option value="">All</option></select>
+<div class="filters">
+  Signal:
+  <select id="signalFilter"><option value="">All</option></select>
 
-<table id="screener" class="display" style="width:100%; margin-top:15px">
-<thead>
-<tr>
-<th>Ticker</th>
-<th>Name</th>
-<th>Country</th>
-<th>Sector</th>
-<th>Currency</th>
-<th>Price</th>
-<th>Yield %</th>
-<th>DivCAGR(5Y)</th>
-<th>Score</th>
-<th>Signal</th>
-<th>Conf</th>
-<th>Why</th>
-</tr>
-</thead>
+  Confidence:
+  <select id="confFilter"><option value="">All</option></select>
+
+  Country:
+  <select id="countryFilter"><option value="">All</option></select>
+
+  Sector:
+  <select id="sectorFilter"><option value="">All</option></select>
+</div>
+
+<table id="screener" class="display" style="width:100%">
+  <thead>
+    <tr>
+      <th>Ticker</th>
+      <th>Name</th>
+      <th>Country</th>
+      <th>Sector</th>
+      <th>Currency</th>
+      <th>Price</th>
+      <th>Yield %</th>
+      <th>DivCAGR(5Y)</th>
+      <th>Score</th>
+      <th>Signal</th>
+      <th>Conf</th>
+      <th>Why</th>
+    </tr>
+  </thead>
 </table>
 
 <script>
-$(async function () {
-  const url = "data/screener_results/screener_results.csv";
-  const res = await fetch(url);
-  if (!res.ok) {
-    document.body.insertAdjacentHTML("beforeend", "<p style='color:red'>CSV not found</p>");
-    return;
-  }
+$(document).ready(function () {
 
-  const text = await res.text();
-  const lines = text.trim().split("\n");
-  const headers = lines.shift().split(",");
-
-  const rows = lines.map(l => {
-    const o = {};
-    l.split(",").forEach((v,i)=>o[headers[i]] = v);
-    return o;
-  });
-
-  function fillSelect(id, field) {
-    [...new Set(rows.map(r => r[field]).filter(Boolean))]
-      .sort()
-      .forEach(v => $(id).append(`<option>${v}</option>`));
-  }
-
-  fillSelect("#signalFilter","Signal");
-  fillSelect("#confFilter","Conf");
-  fillSelect("#countryFilter","Country");
-  fillSelect("#sectorFilter","Sector");
-
-  const table = $("#screener").DataTable({
-    data: rows,
+  const table = $('#screener').DataTable({
+    ajax: {
+      url: 'data/screener_results/screener_results.csv',
+      dataType: 'text',
+      dataSrc: function (csv) {
+        const lines = csv.split('\n');
+        const headers = lines[0].split(',');
+        return lines.slice(1).map(l => {
+          const obj = {};
+          l.split(',').forEach((v, i) => obj[headers[i]] = v);
+          return obj;
+        });
+      }
+    },
     columns: [
-      {data:"Ticker"},
-      {data:"Name"},
-      {data:"Country"},
-      {data:"Sector"},
-      {data:"Currency"},
-      {data:"Price"},
-      {data:"DividendYield_%"},
-      {data:"DivCAGR_5Y"},
-      {data:"Score"},
-      {
-        data:"Signal",
-        render:d=>`<span class="badge ${d}">${d}</span>`
+      { data: 'Ticker' },
+      { data: 'Name' },
+      { data: 'Country' },
+      { data: 'Sector' },
+      { data: 'Currency' },
+      { data: 'Price' },
+      { data: 'DividendYield_%' },
+      { data: 'DivCAGR_5Y' },
+      { data: 'Score' },
+      { data: 'Signal',
+        render: d => `<span class="badge ${d}">${d}</span>`
       },
-      {
-        data:"Conf",
-        render:d=>`<span class="${d}">${d}</span>`
-      },
-      {data:"Why"}
-    ]
+      { data: 'Conf' },
+      { data: 'Why' }
+    ],
+    order: [[8,'desc']]
   });
 
-  function filter(col, val) {
-    table.column(col).search(val).draw();
+  function buildFilter(col, el) {
+    table.column(col).data().unique().sort().each(v => {
+      if (v) el.append(`<option value="${v}">${v}</option>`);
+    });
+    el.on('change', () => table.column(col).search(el.val()).draw());
   }
 
-  $("#signalFilter").on("change",e=>filter(9,e.target.value));
-  $("#confFilter").on("change",e=>filter(10,e.target.value));
-  $("#countryFilter").on("change",e=>filter(2,e.target.value));
-  $("#sectorFilter").on("change",e=>filter(3,e.target.value));
+  table.on('init', function () {
+    buildFilter(9, $('#signalFilter'));
+    buildFilter(10, $('#confFilter'));
+    buildFilter(2, $('#countryFilter'));
+    buildFilter(3, $('#sectorFilter'));
+  });
+
 });
 </script>
 

@@ -30,15 +30,19 @@ DOCS_CSV = DOCS_DIR / "screener_results.csv"
 if not ALIAS_FILE.exists():
     raise FileNotFoundError("❌ data/ticker_alias.csv not found")
 
-alias_df = pd.read_csv(ALIAS_FILE, comment="#", skip_blank_lines=True).dropna(how="all")
+alias_df = pd.read_csv(
+    ALIAS_FILE,
+    comment="#",
+    skip_blank_lines=True
+).dropna(how="all")
 
 required = {"Ticker", "PrimaryTicker", "Country", "Exchange"}
 missing = required - set(alias_df.columns)
 if missing:
     raise ValueError(f"❌ Missing columns in ticker_alias.csv: {missing}")
 
-alias_df["Ticker"] = alias_df["Ticker"].str.upper().str.strip()
-alias_df["PrimaryTicker"] = alias_df["PrimaryTicker"].str.upper().str.strip()
+alias_df["Ticker"] = alias_df["Ticker"].astype(str).str.upper().str.strip()
+alias_df["PrimaryTicker"] = alias_df["PrimaryTicker"].astype(str).str.upper().str.strip()
 
 if alias_df["Ticker"].duplicated().any():
     raise ValueError("❌ Duplicate Ticker values in ticker_alias.csv")
@@ -188,7 +192,7 @@ def build_row(ticker: str, ts: str) -> Dict[str, Any]:
     }
 
 # ======================================================
-# MAIN
+# MAIN – INCLUDE ERROR ROWS
 # ======================================================
 def main() -> None:
     ts = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
@@ -198,7 +202,32 @@ def main() -> None:
         try:
             rows.append(build_row(t, ts))
         except Exception as e:
-            print(f"❌ {t}: {e}")
+            rows.append({
+                "GeneratedUTC": ts,
+                "Ticker": t,
+                "Name": "",
+                "Country": ALIAS[t]["Country"],
+                "Currency": "",
+                "Exchange": ALIAS[t]["Exchange"],
+                "Sector": "",
+                "Industry": "",
+                "Price": "",
+                "DividendYield_%": "",
+                "PayoutRatio_%": "",
+                "PE": "",
+                "EPS": "",
+                "FairPE": "",
+                "FairValue": "",
+                "Upside_%": "",
+                "DivCAGR_5Y_%": "",
+                "YearsGrowing": "",
+                "DividendClass": "",
+                "Score": 0,
+                "Signal": "ERROR",
+                "Confidence": "Low",
+                "Why": "Yahoo data missing / invalid",
+                "Flags": "Fetch failed",
+            })
         time.sleep(0.35)
 
     with OUT_CSV.open("w", newline="", encoding="utf-8") as f:

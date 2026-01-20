@@ -3,20 +3,12 @@ name: Dividend Screener (DK + US)
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */4 * * *"   # every 4 hours
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+    - cron: "0 */4 * * *"   # kør hver 4. time
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -25,7 +17,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -33,15 +24,12 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run screener
-        env:
-          PYTHONUNBUFFERED: "1"
         run: |
           python screener.py
 
-      - name: Ensure docs path exists + copy results
+      - name: Ensure docs path exists
         run: |
           mkdir -p docs/data/screener_results
-          cp -f data/screener_results/screener_results.csv docs/data/screener_results/screener_results.csv
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -51,8 +39,15 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+
     environment:
       name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4

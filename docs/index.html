@@ -1,68 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Dividend Screener – Decision View</title>
+<meta charset="utf-8">
+<title>Dividend Screener – Decision View</title>
 
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
-  <style>
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont; margin: 30px; }
-    h1 { margin-bottom: 5px; }
-    .filters { margin: 10px 0 15px 0; }
-    select { margin-right: 10px; }
-    .badge { padding: 3px 7px; border-radius: 6px; font-size: 12px; }
-    .GOLD { background:#f5c542; }
-    .BUY { background:#a5d6a7; }
-    .HOLD { background:#ffe082; }
-    .WATCH { background:#ef9a9a; }
-  </style>
+<style>
+body { font-family: system-ui; padding: 20px; }
+.badge { padding: 3px 8px; border-radius: 6px; font-size: 12px; }
+.GOLD { background:#f5c542; }
+.BUY { background:#8fd19e; }
+.HOLD { background:#ffe08a; }
+.WATCH { background:#e2e2e2; }
+</style>
 </head>
 
 <body>
-
-<h1>Dividend Screener – Decision View</h1>
-<div>Live data from <code>data/screener_results/screener_results.csv</code></div>
-
-<div class="filters">
-  Signal:
-  <select id="signalFilter"><option value="">All</option></select>
-
-  Confidence:
-  <select id="confFilter"><option value="">All</option></select>
-
-  Country:
-  <select id="countryFilter"><option value="">All</option></select>
-
-  Sector:
-  <select id="sectorFilter"><option value="">All</option></select>
-</div>
+<h2>Dividend Screener – Decision View</h2>
+<p>Live data from <code>data/screener_results/screener_results.csv</code></p>
 
 <table id="screener" class="display" style="width:100%">
-  <thead>
-    <tr>
-      <th>Ticker</th>
-      <th>Name</th>
-      <th>Country</th>
-      <th>Sector</th>
-      <th>Currency</th>
-      <th>Price</th>
-      <th>Yield %</th>
-      <th>DivCAGR(5Y)</th>
-      <th>Score</th>
-      <th>Signal</th>
-      <th>Conf</th>
-      <th>Why</th>
-    </tr>
-  </thead>
+<thead>
+<tr>
+<th>Ticker</th>
+<th>Name</th>
+<th>Country</th>
+<th>Sector</th>
+<th>Currency</th>
+<th>Price</th>
+<th>Yield %</th>
+<th>DivCAGR(5Y)</th>
+<th>Score</th>
+<th>Signal</th>
+<th>Conf</th>
+<th>Why</th>
+</tr>
+</thead>
 </table>
 
 <script>
 $(document).ready(function () {
-
-  const table = $('#screener').DataTable({
+  $('#screener').DataTable({
     ajax: {
       url: 'data/screener_results/screener_results.csv',
       dataType: 'text',
@@ -71,7 +52,7 @@ $(document).ready(function () {
         const headers = lines[0].split(',');
         return lines.slice(1).map(l => {
           const obj = {};
-          l.split(',').forEach((v, i) => obj[headers[i]] = v);
+          l.split(',').forEach((v,i)=>obj[headers[i]]=v);
           return obj;
         });
       }
@@ -83,8 +64,8 @@ $(document).ready(function () {
       { data: 'Sector' },
       { data: 'Currency' },
       { data: 'Price' },
-      { data: 'DividendYield_%' },
-      { data: 'DivCAGR_5Y' },
+      { data: 'Yield %' },
+      { data: 'DivCAGR(5Y)' },
       { data: 'Score' },
       { data: 'Signal',
         render: d => `<span class="badge ${d}">${d}</span>`
@@ -92,23 +73,8 @@ $(document).ready(function () {
       { data: 'Conf' },
       { data: 'Why' }
     ],
-    order: [[8,'desc']]
+    pageLength: 25
   });
-
-  function buildFilter(col, el) {
-    table.column(col).data().unique().sort().each(v => {
-      if (v) el.append(`<option value="${v}">${v}</option>`);
-    });
-    el.on('change', () => table.column(col).search(el.val()).draw());
-  }
-
-  table.on('init', function () {
-    buildFilter(9, $('#signalFilter'));
-    buildFilter(10, $('#confFilter'));
-    buildFilter(2, $('#countryFilter'));
-    buildFilter(3, $('#sectorFilter'));
-  });
-
 });
 </script>
 

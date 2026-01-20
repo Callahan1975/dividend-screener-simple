@@ -1,16 +1,18 @@
-# screener.py
-# MASTER STABLE VERSION – Pages-safe, single source of truth
-# Writes CSV to BOTH data/ and docs/ so UI always updates
+# ============================================================
+# Dividend Screener – CLEAN MASTER VERSION (RESET)
+# Author: Callahan1975 + ChatGPT
+# Purpose: Stable baseline – correct data, no heuristics yet
+# ============================================================
 
 import pandas as pd
-import numpy as np
 import yfinance as yf
 from pathlib import Path
 from datetime import datetime, timezone
+import numpy as np
 
-# =====================
+# ======================
 # PATHS
-# =====================
+# ======================
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 RESULTS_DIR = DATA_DIR / "screener_results"
@@ -20,24 +22,25 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 DOCS_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 ALIAS_FILE = DATA_DIR / "ticker_alias.csv"
-CSV_OUT = RESULTS_DIR / "screener_results.csv"
-CSV_OUT_DOCS = DOCS_RESULTS_DIR / "screener_results.csv"
+OUTPUT_FILE = RESULTS_DIR / "screener_results.csv"
+DOCS_OUTPUT_FILE = DOCS_RESULTS_DIR / "screener_results.csv"
 
-# =====================
+# ======================
 # LOAD TICKERS
-# =====================
+# ======================
 alias_df = pd.read_csv(ALIAS_FILE, comment="#")
-alias_df["Ticker"] = alias_df["Ticker"].str.upper().str.strip()
 
-TICKERS = alias_df["Ticker"].dropna().unique().tolist()
-META = alias_df.set_index("Ticker").to_dict("index")
+alias_df["Ticker"] = alias_df["Ticker"].astype(str).str.strip().str.upper()
+TICKERS = sorted(alias_df["Ticker"].dropna().unique().tolist())
+
+META_MAP = alias_df.set_index("Ticker").to_dict(orient="index")
 
 print(f"🔥 Universe size: {len(TICKERS)} tickers loaded")
 
-# =====================
+# ======================
 # HELPERS
-# =====================
-def safe(v):
+# ======================
+def safe_float(v):
     try:
         if v is None or (isinstance(v, float) and np.isnan(v)):
             return None
@@ -45,40 +48,58 @@ def safe(v):
     except Exception:
         return None
 
-
-def dividend_cagr_5y(divs):
-    if divs is None or len(divs) < 6:
-        return None
-    start = divs.iloc[-6]
-    end = divs.iloc[-1]
-    if start <= 0 or end <= 0:
-        return None
-    return round(((end / start) ** (1 / 5) - 1) * 100, 2)
-
-# =====================
+# ======================
 # MAIN LOOP
-# =====================
+# ======================
 rows = []
 now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
 for ticker in TICKERS:
-    meta = META.get(ticker, {})
+    print(f"⏳ Processing {ticker}")
+    meta = META_MAP.get(ticker, {})
 
     try:
-        yf_ticker = yf.Ticker(ticker)
-        info = yf_ticker.info or {}
-        hist = yf_ticker.history(period="5y")
-        divs = yf_ticker.dividends
+        t = yf.Ticker(ticker)
+        info = t.info or {}
+        price = safe_float(info.get("currentPrice"))
 
-        price = safe(info.get("currentPrice") or info.get("regularMarketPrice"))
-        dividend_rate = safe(info.get("dividendRate"))
-        yield_pct = round((dividend_rate / price) * 100, 2) if price and dividend_rate else None
-
-        div_cagr = dividend_cagr_5y(divs)
+        dividend_rate = safe_float(info.get("dividendRate"))
+        yield_pct = None
+        if dividend_rate and price and price > 0:
+            yield_pct = (dividend_rate / price) * 100
 
         rows.append({
             "Name": info.get("longName") or info.get("shortName") or ticker,
             "Ticker": ticker,
             "Country": meta.get("Country"),
             "Sector": info.get("sector"),
-            "Currency": info.get("currenc
+            "Currency": info.get("currency"),
+            "Price": price,
+            "DividendYield_%": safe_float(yield_pct),
+            "DivCAGR_5Y_%": None,
+            "Upside_%": None,
+            "Score": None,
+            "Signal": None,
+            "Confidence": None,
+            "Why": None,
+            "Exchange": meta.get("Exchange"),
+            "Region": meta.get("Region"),
+            "GeneratedUTC": now_utc,
+        })
+
+    except Exception as e:
+        print(f"⚠️ Failed {ticker}: {e}")
+
+# ======================
+# OUTPUT
+# ======================
+df = pd.DataFrame(rows)
+
+df.sort_values(["Country", "Ticker"], inplace=True, na_position="last")
+
+df.to_csv(OUTPUT_FILE, index=False)
+df.to_csv(DOCS_OUTPUT_FILE, index=False)
+
+print(f"✅ CSV written: {OUTPUT_FILE}")
+print(f"📄 CSV copied to: {DOCS_OUTPUT_FILE}")
+print(f"📊 Final rows: {len(df)}")

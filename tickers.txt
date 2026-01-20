@@ -7,19 +7,11 @@ MAERSK-B.CO
 CARL-B.CO
 PNDORA.CO
 COLO-B.CO
-DANSKE.CO
-JYSK?            # (fjern - findes ikke som børsnoteret ticker)
+DANSKE.CO            
 TRYG.CO
-TOP.CO           # TORM (hvis du vil have shipping)
-SPNO.CO          # Spar Nord (hvis den findes på Yahoo som SPNO.CO)
+TOP.CO           
 NDA-DK.CO        # Nordea DK listing (kan variere – fjern hvis den fejler)
 SYDB.CO
-
-
-# ---------------------------
-# US Dividend “quality core”
-# (mix af Aristocrats/Kings + defensive kvalitetsnavne)
-# ---------------------------
 AFL
 AOS
 APD
@@ -135,7 +127,6 @@ ATCO-A.ST
 ATCO-B.ST
 CIBUS.ST
 BETS-B.ST
-
 # --- Canada (dividend focus) ---
 ENB.TO
 TRP.TO
@@ -157,14 +148,14 @@ AKTIA.HE
 ENENTO.HE
 FSKRS.HE
 ELISA.HE
-ECMPA.AS   (Eurocommercial Properties)
-KENDR.AS   (Kendrion)
-LIGHT.AS   (Signify)
-BRNL.AS    (Brunel International)
-RAND.AS    (Randstad)
-NN.AS      (NN Group)
-ASRNL.AS   (ASR Nederland)
-KPN.AS     (KPN)
-ABN.AS     (ABN AMRO Bank)
-SLIGR.AS   (Sligro Food)
+ECMPA.AS   
+KENDR.AS   
+LIGHT.AS   
+BRNL.AS    
+RAND.AS    
+NN.AS      
+ASRNL.AS   
+KPN.AS     
+ABN.AS     
+SLIGR.AS   
 ASML.AS

@@ -24,16 +24,32 @@ DOCS_DATA_DIR.mkdir(parents=True, exist_ok=True)
 DOCS_CSV = DOCS_DATA_DIR / "screener_results.csv"
 
 # ============================================================
-# ALIAS (SINGLE SOURCE OF TRUTH)
+# ALIAS (ROBUST, SINGLE SOURCE OF TRUTH)
 # ============================================================
 ALIAS_FILE = Path("data/ticker_alias.csv")
 if not ALIAS_FILE.exists():
     raise FileNotFoundError("❌ ticker_alias.csv is REQUIRED")
 
-alias_df = pd.read_csv(ALIAS_FILE)
+alias_df = pd.read_csv(
+    ALIAS_FILE,
+    comment="#",
+    skip_blank_lines=True
+)
+
+# Drop fully empty rows (Excel artefacts)
+alias_df = alias_df.dropna(how="all")
+
+# Normalize ticker column
+if "Ticker" not in alias_df.columns:
+    raise ValueError("ticker_alias.csv must contain a 'Ticker' column")
+
 alias_df["Ticker"] = alias_df["Ticker"].astype(str).str.strip()
 
-# 🔒 HARD FAIL ON DUPLICATES (CORRECT BY DESIGN)
+# Drop empty / NaN tickers
+alias_df = alias_df[alias_df["Ticker"].notna()]
+alias_df = alias_df[alias_df["Ticker"] != ""]
+
+# HARD FAIL on REAL duplicates only
 dupes = alias_df[alias_df.duplicated(subset=["Ticker"], keep=False)]
 if not dupes.empty:
     print("\n❌ DUPLICATE TICKERS FOUND IN ticker_alias.csv")
@@ -44,7 +60,7 @@ ALIAS: Dict[str, Dict[str, str]] = alias_df.set_index("Ticker").to_dict("index")
 print(f"✅ Loaded {len(ALIAS)} unique ticker aliases")
 
 # ============================================================
-# CSV / UI COLUMNS  (UÆNDRET)
+# CSV / UI COLUMNS (UÆNDRET)
 # ============================================================
 COLUMNS = [
     "GeneratedUTC",
@@ -74,7 +90,7 @@ COLUMNS = [
 ]
 
 # ============================================================
-# HELPERS  (UÆNDRET)
+# HELPERS (UÆNDRET)
 # ============================================================
 def safe_float(x: Any) -> Optional[float]:
     try:
@@ -130,7 +146,7 @@ def resolve_meta(ticker: str, info: Dict[str, Any]) -> Tuple[str, str, str]:
             a.get("Currency", ""),
         )
 
-    # Fallback (burde aldrig ske)
+    # Fallback (should never happen if alias is maintained)
     return (
         info.get("country", "") or "",
         info.get("exchange", "") or "",
@@ -138,7 +154,7 @@ def resolve_meta(ticker: str, info: Dict[str, Any]) -> Tuple[str, str, str]:
     )
 
 # ============================================================
-# CORE BUILD (UÆNDRET LOGIK)
+# CORE BUILD (SAMME FUNKTIONALITET)
 # ============================================================
 def build_row(ticker: str, generated_utc: str) -> Dict[str, Any]:
     tk = yf.Ticker(ticker)

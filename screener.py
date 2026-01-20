@@ -11,9 +11,9 @@ import pandas as pd
 import yfinance as yf
 
 # ============================================================
-# PATHS  (VIGTIGT)
+# PATHS (ROOT)
 # ============================================================
-TICKERS_FILE = Path("tickers.txt")   # <-- LIGGER I ROOT
+TICKERS_FILE = Path("tickers.txt")  # <-- ligger i repo root
 
 OUT_DIR = Path("data/screener_results")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -36,17 +36,17 @@ alias_df = pd.read_csv(
     skip_blank_lines=True
 )
 
-# Drop empty rows (Excel artefacts)
+# Drop Excel artefacts
 alias_df = alias_df.dropna(how="all")
 
 if "Ticker" not in alias_df.columns:
     raise ValueError("ticker_alias.csv must contain a 'Ticker' column")
 
-alias_df["Ticker"] = alias_df["Ticker"].astype(str).str.strip()
-alias_df = alias_df[alias_df["Ticker"].notna()]
-alias_df = alias_df[alias_df["Ticker"] != ""]
+# Normalize
+alias_df["Ticker"] = alias_df["Ticker"].astype(str).str.strip().str.upper()
+alias_df = alias_df[alias_df["Ticker"].notna() & (alias_df["Ticker"] != "")]
 
-# HARD FAIL on REAL duplicates
+# Hard fail on REAL duplicates
 dupes = alias_df[alias_df.duplicated(subset=["Ticker"], keep=False)]
 if not dupes.empty:
     print("\n❌ DUPLICATE TICKERS FOUND IN ticker_alias.csv")
@@ -57,7 +57,7 @@ ALIAS: Dict[str, Dict[str, str]] = alias_df.set_index("Ticker").to_dict("index")
 print(f"✅ Loaded {len(ALIAS)} unique ticker aliases")
 
 # ============================================================
-# CSV / UI COLUMNS  (UÆNDRET)
+# CSV / UI COLUMNS (UÆNDRET)
 # ============================================================
 COLUMNS = [
     "GeneratedUTC",
@@ -132,17 +132,29 @@ def dividend_class(years: Optional[int]) -> str:
     return ""
 
 # ============================================================
-# META RESOLUTION (ALIAS FIRST)
+# META RESOLUTION (FIX: full ticker + base ticker)
 # ============================================================
 def resolve_meta(ticker: str, info: Dict[str, Any]) -> Tuple[str, str, str]:
-    if ticker in ALIAS:
-        a = ALIAS[ticker]
-        return (
-            a.get("Country", ""),
-            a.get("Exchange", ""),
-            a.get("Currency", ""),
-        )
-    # fallback (burde ikke ske)
+    """
+    Resolve Country / Exchange / Currency using:
+    1) Exact ticker (e.g. ASML.AS)
+    2) Base ticker (e.g. ASML)
+    3) Yahoo fallback (last resort)
+    """
+    t = ticker.strip().upper()
+
+    # 1) Exact
+    if t in ALIAS:
+        a = ALIAS[t]
+        return a.get("Country", ""), a.get("Exchange", ""), a.get("Currency", "")
+
+    # 2) Base
+    base = t.split(".")[0]
+    if base in ALIAS:
+        a = ALIAS[base]
+        return a.get("Country", ""), a.get("Exchange", ""), a.get("Currency", "")
+
+    # 3) Fallback
     return (
         info.get("country", "") or "",
         info.get("exchange", "") or "",
@@ -206,7 +218,7 @@ def build_row(ticker: str, generated_utc: str) -> Dict[str, Any]:
     fair_value = eps * fair_pe if eps else None
     upside = ((fair_value / price) - 1) * 100 if price and fair_value else None
 
-    flags = []
+    flags: List[str] = []
     score = 50
 
     if yield_pct:

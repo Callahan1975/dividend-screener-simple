@@ -1,87 +1,57 @@
-Ticker,PrimaryTicker,Country,Exchange,Region
+Ticker,Country,Exchange,Region
 # ======================
-# NETHERLANDS (NL)
+# DENMARK
 # ======================
-ASML.AS,ASML.AS,Netherlands,Euronext Amsterdam,Europe
-NN.AS,NN.AS,Netherlands,Euronext Amsterdam,Europe
-ASRNL.AS,ASRNL.AS,Netherlands,Euronext Amsterdam,Europe
-KPN.AS,KPN.AS,Netherlands,Euronext Amsterdam,Europe
-ABN.AS,ABN.AS,Netherlands,Euronext Amsterdam,Europe
-ECMPA.AS,ECMPA.AS,Netherlands,Euronext Amsterdam,Europe
-RAND.AS,RAND.AS,Netherlands,Euronext Amsterdam,Europe
-LIGHT.AS,LIGHT.AS,Netherlands,Euronext Amsterdam,Europe
-BRNL.AS,BRNL.AS,Netherlands,Euronext Amsterdam,Europe
-SLIGR.AS,SLIGR.AS,Netherlands,Euronext Amsterdam,Europe
+NOVO-B.CO,Denmark,Nasdaq Copenhagen,Europe
+DSV.CO,Denmark,Nasdaq Copenhagen,Europe
+MAERSK-B.CO,Denmark,Nasdaq Copenhagen,Europe
+CARL-B.CO,Denmark,Nasdaq Copenhagen,Europe
+PNDORA.CO,Denmark,Nasdaq Copenhagen,Europe
+COLO-B.CO,Denmark,Nasdaq Copenhagen,Europe
+DANSKE.CO,Denmark,Nasdaq Copenhagen,Europe
+AL-SYDB.CO,Denmark,Nasdaq Copenhagen,Europe
+TRYG.CO,Denmark,Nasdaq Copenhagen,Europe
 
 # ======================
-# FINLAND (FI)
+# NETHERLANDS
 # ======================
-ELISA.HE,ELISA.HE,Finland,Nasdaq Helsinki,Europe
-FORTUM.HE,FORTUM.HE,Finland,Nasdaq Helsinki,Europe
-TIETO.HE,TIETO.HE,Finland,Nasdaq Helsinki,Europe
-MANTA.HE,MANTA.HE,Finland,Nasdaq Helsinki,Europe
-AKTIA.HE,AKTIA.HE,Finland,Nasdaq Helsinki,Europe
-ENENTO.HE,ENENTO.HE,Finland,Nasdaq Helsinki,Europe
-FSKRS.HE,FSKRS.HE,Finland,Nasdaq Helsinki,Europe
-TNOM.HE,TNOM.HE,Finland,Nasdaq Helsinki,Europe
-TITAN.HE,TITAN.HE,Finland,Nasdaq Helsinki,Europe
-OKDBV.HE,OKDBV.HE,Finland,Nasdaq Helsinki,Europe
+ASML.AS,Netherlands,Euronext Amsterdam,Europe
+NN.AS,Netherlands,Euronext Amsterdam,Europe
+ASRNL.AS,Netherlands,Euronext Amsterdam,Europe
+KPN.AS,Netherlands,Euronext Amsterdam,Europe
+ABN.AS,Netherlands,Euronext Amsterdam,Europe
+LIGHT.AS,Netherlands,Euronext Amsterdam,Europe
+SIGNIFY.AS,Netherlands,Euronext Amsterdam,Europe
 
 # ======================
-# SWEDEN (SE)
+# SWEDEN
 # ======================
-SHB-A.ST,SHB-A.ST,Sweden,Nasdaq Stockholm,Europe
-SWED-A.ST,SWED-A.ST,Sweden,Nasdaq Stockholm,Europe
-SEB-A.ST,SEB-A.ST,Sweden,Nasdaq Stockholm,Europe
-NDA-SE.ST,NDA-SE.ST,Sweden,Nasdaq Stockholm,Europe
-VOLV-B.ST,VOLV-B.ST,Sweden,Nasdaq Stockholm,Europe
-ATCO-A.ST,ATCO-A.ST,Sweden,Nasdaq Stockholm,Europe
-ATCO-B.ST,ATCO-B.ST,Sweden,Nasdaq Stockholm,Europe
-TEL2-B.ST,TEL2-B.ST,Sweden,Nasdaq Stockholm,Europe
-CIBUS.ST,CIBUS.ST,Sweden,Nasdaq Stockholm,Europe
+SHB-A.ST,Sweden,Nasdaq Stockholm,Europe
+SEB-A.ST,Sweden,Nasdaq Stockholm,Europe
+VOLV-B.ST,Sweden,Nasdaq Stockholm,Europe
+ATCO-A.ST,Sweden,Nasdaq Stockholm,Europe
+ATCO-B.ST,Sweden,Nasdaq Stockholm,Europe
 
 # ======================
-# DENMARK (DK)
+# FINLAND
 # ======================
-NOVO-B.CO,NOVO-B.CO,Denmark,Nasdaq Copenhagen,Europe
-DSV.CO,DSV.CO,Denmark,Nasdaq Copenhagen,Europe
-MAERSK-B.CO,MAERSK-B.CO,Denmark,Nasdaq Copenhagen,Europe
-CARL-B.CO,CARL-B.CO,Denmark,Nasdaq Copenhagen,Europe
-ORSTED.CO,ORSTED.CO,Denmark,Nasdaq Copenhagen,Europe
-PNDORA.CO,PNDORA.CO,Denmark,Nasdaq Copenhagen,Europe
-AL-SYDB.CO,AL-SYDB.CO,Denmark,Nasdaq Copenhagen,Europe
+NDA-FI.HE,Finland,Nasdaq Helsinki,Europe
+ELISA.HE,Finland,Nasdaq Helsinki,Europe
+FORTUM.HE,Finland,Nasdaq Helsinki,Europe
 
 # ======================
-# NORWAY (NO)
+# CANADA
 # ======================
-EQNR.OL,EQNR.OL,Norway,Oslo Bors,Europe
-DNB.OL,DNB.OL,Norway,Oslo Bors,Europe
-TEL.OL,TEL.OL,Norway,Oslo Bors,Europe
-MOWI.OL,MOWI.OL,Norway,Oslo Bors,Europe
+ENB.TO,Canada,TSX,North America
+TD.TO,Canada,TSX,North America
+BMO.TO,Canada,TSX,North America
+RY.TO,Canada,TSX,North America
 
 # ======================
-# CANADA (CA)
+# UNITED STATES
 # ======================
-ENB.TO,ENB.TO,Canada,TSX,North America
-TD.TO,TD.TO,Canada,TSX,North America
-BMO.TO,BMO.TO,Canada,TSX,North America
-RY.TO,RY.TO,Canada,TSX,North America
-TRP.TO,TRP.TO,Canada,TSX,North America
-FTS.TO,FTS.TO,Canada,TSX,North America
-
-# ======================
-# UNITED KINGDOM (UK)
-# ======================
-ULVR.L,ULVR.L,United Kingdom,LSE,Europe
-BATS.L,BATS.L,United Kingdom,LSE,Europe
-HSBA.L,HSBA.L,United Kingdom,LSE,Europe
-SHEL.L,SHEL.L,United Kingdom,LSE,Europe
-
-# ======================
-# UNITED STATES (US)
-# ======================
-AAPL,AAPL,United States,NASDAQ,North America
-MSFT,MSFT,United States,NASDAQ,North America
-JNJ,JNJ,United States,NYSE,North America
-PG,PG,United States,NYSE,North America
-V,V,United States,NYSE,North America
+AAPL,United States,NASDAQ,North America
+MSFT,United States,NASDAQ,North America
+JNJ,United States,NYSE,North America
+PG,United States,NYSE,North America
+V,United States,NYSE,North America

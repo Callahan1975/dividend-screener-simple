@@ -1,128 +1,96 @@
-# screener.py
-# STABLE MASTER VERSION v3.0
-# - Robust ticker handling
-# - Safe dividend metrics
-# - Dividend Kings / Aristocrats
-# - Score + Signal + Confidence
-# - Single output CSV for DataTables
-
-import pandas as pd
 import yfinance as yf
-from pathlib import Path
-import numpy as np
+import pandas as pd
+from datetime import datetime
 
-# ---------------- PATHS ----------------
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
-RESULTS_DIR = DATA_DIR / "screener_results"
-RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-
-ALIAS_FILE = DATA_DIR / "ticker_alias.csv"
-OUTPUT_FILE = RESULTS_DIR / "screener_results.csv"
-
-# ---------------- LOAD TICKERS ----------------
-alias_df = pd.read_csv(ALIAS_FILE, comment="#")
-alias_df["Ticker"] = alias_df["Ticker"].astype(str).str.upper().str.strip()
-
-# 🔒 IMPORTANT: remove duplicates safely
-alias_df = alias_df.drop_duplicates(subset=["Ticker"], keep="first")
-
-TICKERS = alias_df["Ticker"].tolist()
-ALIAS_MAP = alias_df.set_index("Ticker").to_dict("index")
-
-print(f"Loaded {len(TICKERS)} tickers")
-
-# ---------------- HELPERS ----------------
-def safe(v):
+# --------------------
+# Helpers
+# --------------------
+def safe(val, default=0):
+    if val is None:
+        return default
     try:
-        if v is None or (isinstance(v, float) and np.isnan(v)):
-            return None
-        return float(v)
+        return float(val)
     except Exception:
-        return None
+        return default
 
-def classify_dividend(name):
-    if name is None:
-        return ""
-    name = name.lower()
-    if "king" in name:
-        return "King"
-    if "aristocrat" in name:
-        return "Aristocrat"
-    return ""
+# --------------------
+# Load tickers
+# --------------------
+with open("ticker_live.txt", "r") as f:
+    tickers = [t.strip() for t in f if t.strip()]
 
-def score_stock(yield_pct, payout, pe):
-    score = 0
-    if yield_pct:
-        score += min(yield_pct * 4, 30)
-    if payout and payout < 70:
-        score += 25
-    if payout and payout > 100:
-        score -= 20
-    if pe and pe < 18:
-        score += 20
-    elif pe and pe > 30:
-        score -= 10
-    return round(max(score, 0), 1)
-
-def signal_from_score(score):
-    if score >= 70:
-        return "GOLD"
-    if score >= 55:
-        return "BUY"
-    if score >= 40:
-        return "HOLD"
-    return "WATCH"
-
-def confidence(score):
-    if score >= 70:
-        return "High"
-    if score >= 50:
-        return "Medium"
-    return "Low"
-
-# ---------------- MAIN LOOP ----------------
 rows = []
 
-for ticker in TICKERS:
+for ticker in tickers:
     try:
         t = yf.Ticker(ticker)
         info = t.info
 
         price = safe(info.get("currentPrice"))
-        dividend = safe(info.get("dividendRate"))
-        yield_pct = safe(info.get("dividendYield"))
-        payout = safe(info.get("payoutRatio"))
+        dividend_yield = safe(info.get("dividendYield")) * 100
+        payout_ratio = safe(info.get("payoutRatio")) * 100
         pe = safe(info.get("trailingPE"))
 
-        if yield_pct:
-            yield_pct *= 100
-        if payout:
-            payout *= 100
+        country = info.get("country", "")
+        sector = info.get("sector", "")
+        currency = info.get("currency", "")
 
-        sc = score_stock(yield_pct, payout, pe)
+        # --------------------
+        # Simple scoring (robust)
+        # --------------------
+        score = 0
+
+        if dividend_yield >= 3:
+            score += 30
+        elif dividend_yield >= 1.5:
+            score += 15
+
+        if payout_ratio > 0 and payout_ratio <= 75:
+            score += 25
+        elif payout_ratio <= 100:
+            score += 10
+
+        if pe > 0 and pe <= 18:
+            score += 25
+        elif pe <= 25:
+            score += 10
+
+        confidence = min(score, 100)
+
+        if confidence >= 75:
+            signal = "BUY"
+        elif confidence >= 55:
+            signal = "HOLD"
+        else:
+            signal = "WATCH"
+
+        why = f"Yield {dividend_yield:.1f}%, payout {payout_ratio:.0f}%, PE {pe:.1f}"
 
         rows.append({
             "Ticker": ticker,
-            "Name": info.get("longName"),
-            "Country": info.get("country"),
-            "Sector": info.get("sector"),
-            "Currency": info.get("currency"),
-            "Price": price,
-            "Yield %": round(yield_pct, 2) if yield_pct else None,
-            "Payout Ratio %": round(payout, 1) if payout else None,
-            "PE": round(pe, 1) if pe else None,
-            "Score": sc,
-            "Signal": signal_from_score(sc),
-            "Conf": confidence(sc),
-            "Why": classify_dividend(info.get("longBusinessSummary", "")),
+            "Name": info.get("shortName", ""),
+            "Country": country,
+            "Sector": sector,
+            "Currency": currency,
+            "Price": round(price, 2),
+            "DividendYield": round(dividend_yield, 2),
+            "PayoutRatio": round(payout_ratio, 2),
+            "PE": round(pe, 2),
+            "Score": score,
+            "Signal": signal,
+            "Confidence": confidence,
+            "Why": why
         })
 
     except Exception as e:
-        print(f"Error {ticker}: {e}")
+        print(f"Error on {ticker}: {e}")
 
+# --------------------
+# Save CSV
+# --------------------
 df = pd.DataFrame(rows)
-df = df.sort_values(by=["Score", "Yield %"], ascending=False)
 
-df.to_csv(OUTPUT_FILE, index=False)
-print(f"Saved {len(df)} rows → {OUTPUT_FILE}")
+output_path = "data/screener_results/screener_results.csv"
+df.to_csv(output_path, index=False)
+
+print(f"Saved {len(df)} rows to {output_path}")

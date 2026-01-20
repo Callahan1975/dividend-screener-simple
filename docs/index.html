@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <title>Dividend Screener – Decision View</title>
 
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
-<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css"/>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
 <style>
 body {
@@ -13,9 +12,7 @@ body {
     margin: 20px;
 }
 
-h1 {
-    margin-bottom: 6px;
-}
+h1 { margin-bottom: 6px; }
 
 .filters {
     margin: 12px 0 16px 0;
@@ -24,9 +21,7 @@ h1 {
     flex-wrap: wrap;
 }
 
-select {
-    padding: 4px 6px;
-}
+select { padding: 4px 6px; }
 
 .badge {
     padding: 3px 8px;
@@ -43,11 +38,6 @@ select {
 .High { background: #9be59b; }
 .Medium { background: #ffd36e; }
 .Low { background: #ff9b9b; }
-
-.details {
-    padding: 10px;
-    font-size: 13px;
-}
 </style>
 </head>
 
@@ -60,34 +50,23 @@ Live data from <code>data/screener_results/screener_decision.csv</code>
 
 <div class="filters">
     <label>Signal:
-        <select id="signalFilter">
-            <option value="">All</option>
-        </select>
+        <select id="signalFilter"><option value="">All</option></select>
     </label>
-
     <label>Confidence:
-        <select id="confFilter">
-            <option value="">All</option>
-        </select>
+        <select id="confFilter"><option value="">All</option></select>
     </label>
-
     <label>Country:
-        <select id="countryFilter">
-            <option value="">All</option>
-        </select>
+        <select id="countryFilter"><option value="">All</option></select>
     </label>
-
     <label>Sector:
-        <select id="sectorFilter">
-            <option value="">All</option>
-        </select>
+        <select id="sectorFilter"><option value="">All</option></select>
     </label>
 </div>
 
 <table id="screener" class="display" style="width:100%">
 <thead>
 <tr>
-    <th></th>
+    <th>Ticker</th>
     <th>Name</th>
     <th>Country</th>
     <th>Sector</th>
@@ -109,90 +88,21 @@ Live data from <code>data/screener_results/screener_decision.csv</code>
 <script>
 const DATA_URL = "data/screener_results/screener_decision.csv";
 
-function format(d) {
-    return `
-        <div class="details">
-            <b>Ticker:</b> ${d.Ticker}<br>
-            <b>Industry:</b> ${d.Industry || "-"}<br>
-            <b>Payout:</b> ${d["PayoutRatio_%"] || "-"}%<br>
-            <b>PE:</b> ${d.PE || "-"}<br>
-        </div>
-    `;
-}
-
 $(async function () {
 
 const res = await fetch(DATA_URL);
 const text = await res.text();
-const rows = text.trim().split("\n").slice(1).map(r => r.split(","));
+const lines = text.trim().split("\n");
+const headers = lines[0].split(",");
 
-const headers = text.split("\n")[0].split(",");
-const data = rows.map(r => Object.fromEntries(headers.map((h,i)=>[h,r[i]])));
+const rows = lines.slice(1).map(r => {
+    const vals = r.split(",");
+    return Object.fromEntries(headers.map((h,i)=>[h, vals[i] ?? ""]));
+});
 
 const table = $('#screener').DataTable({
-    data,
+    data: rows,
     pageLength: 50,
     columns: [
-        { className: 'dt-control', orderable: false, data: null, defaultContent: '▶' },
-        { data: "Name" },
-        { data: "Country" },
-        { data: "Sector" },
-        { data: "Currency" },
-        { data: "Price" },
-        { data: "DividendYield_%" },
-        { data: "DivCAGR_5Y" },
-        { data: "Score" },
-        {
-            data: "Signal",
-            render: d => `<span class="badge ${d}">${d}</span>`
-        },
-        {
-            data: "Confidence",
-            render: d => `<span class="badge ${d}">${d}</span>`
-        },
-        { data: "Why" }
-    ]
-});
-
-// Row expand
-$('#screener tbody').on('click', 'td.dt-control', function () {
-    let tr = $(this).closest('tr');
-    let row = table.row(tr);
-
-    if (row.child.isShown()) {
-        row.child.hide();
-        tr.find('td:first').text('▶');
-    } else {
-        row.child(format(row.data())).show();
-        tr.find('td:first').text('▼');
-    }
-});
-
-// Populate filters
-function populateFilter(id, field) {
-    const values = [...new Set(data.map(d => d[field]).filter(Boolean))].sort();
-    values.forEach(v => $(`#${id}`).append(`<option value="${v}">${v}</option>`));
-}
-
-populateFilter("signalFilter", "Signal");
-populateFilter("confFilter", "Confidence");
-populateFilter("countryFilter", "Country");
-populateFilter("sectorFilter", "Sector");
-
-// Apply filters
-function applyFilters() {
-    table
-        .column(9).search($('#signalFilter').val())
-        .column(10).search($('#confFilter').val())
-        .column(2).search($('#countryFilter').val())
-        .column(3).search($('#sectorFilter').val())
-        .draw();
-}
-
-$('select').on('change', applyFilters);
-
-});
-</script>
-
-</body>
-</html>
+        { data: "Ticker" },
+        { data: d => d.Name || d.Company || d

@@ -1,72 +1,7 @@
 # =========================
-# DENMARK (DK) – Top 10 Dividend
+# DIVIDEND SCREENER TICKERS
+# Gold Standard – Jan 2026
 # =========================
-CARL-B.CO
-NOVO-B.CO
-DSV.CO
-PNDORA.CO
-TRYG.CO
-COLO-B.CO
-DANSKE.CO
-SYDB.CO
-NDA-DK.CO
-SPNO.CO
-
-# =========================
-# SWEDEN (SE) – Top 10 Dividend
-# =========================
-SHB-A.ST
-SWED-A.ST
-SEB-A.ST
-NDA-SE.ST
-TEL2-B.ST
-VOLV-B.ST
-ATCO-A.ST
-ATCO-B.ST
-CIBUS.ST
-BETS-B.ST
-
-# =========================
-# FINLAND (FI) – Top Dividend
-# =========================
-NDA-FI.HE
-SAMPO.HE
-ELISA.HE
-FORTUM.HE
-KESKOA.HE
-UPM.HE
-STERV.HE
-METSO.HE
-KNEBV.HE
-OUT1V.HE
-
-# =========================
-# NETHERLANDS (NL) – Top Dividend
-# =========================
-ASML.AS
-NN.AS
-INGA.AS
-ABN.AS
-RAND.AS
-HEIA.AS
-ADYEN.AS
-DSM.AS
-UNA.AS
-PHIA.AS
-
-# =========================
-# CANADA (CA) – Top Dividend
-# =========================
-ENB.TO
-TRP.TO
-FTS.TO
-RY.TO
-TD.TO
-BMO.TO
-BNS.TO
-T.TO
-CNQ.TO
-SU.TO
 
 # =========================
 # UNITED STATES (US)
@@ -78,7 +13,6 @@ ABT
 ADP
 AEP
 AFL
-AIG
 AMCR
 AMGN
 AOS
@@ -90,19 +24,96 @@ BDX
 BLK
 CAT
 CB
+CL
 COST
+CSCO
 CVX
 HD
 JNJ
 KO
-LLY
 LOW
 MCD
+MDT
+MMM
 MSFT
 NEE
 O
 PEP
 PG
+T
+TXN
 UNH
 V
+WMT
 WM
+XOM
+
+# =========================
+# CANADA (CA) – Top Dividend Stocks
+# =========================
+BMO.TO
+BNS.TO
+CM.TO
+ENB.TO
+FTS.TO
+RY.TO
+TD.TO
+TRP.TO
+T.TO
+CNQ.TO
+
+# =========================
+# DENMARK (DK) – Top Dividend Stocks
+# =========================
+CARL-B.CO
+DANSKE.CO
+NDA-DK.CO
+NOVO-B.CO
+TRYG.CO
+PNDORA.CO
+ORSTED.CO
+COLO-B.CO
+SYDB.CO
+ROCK-B.CO
+
+# =========================
+# SWEDEN (SE) – Top Dividend Stocks
+# =========================
+ATCO-A.ST
+ATCO-B.ST
+SHB-A.ST
+SWED-A.ST
+SEB-A.ST
+VOLV-B.ST
+TEL2-B.ST
+ESSITY-B.ST
+SKA-B.ST
+CIBUS.ST
+
+# =========================
+# FINLAND (FI) – Top Dividend Stocks
+# =========================
+NDA-FI.HE
+SAMPO.HE
+FORTUM.HE
+ELISA.HE
+KESKOA.HE
+KESKOB.HE
+UPM.HE
+KCR.HE
+METSO.HE
+WRT1V.HE
+
+# =========================
+# NETHERLANDS (NL) – Top Dividend Stocks
+# =========================
+ASML.AS
+NN.AS
+INGA.AS
+AD.AS
+HEIA.AS
+AKZA.AS
+KPN.AS
+PHIA.AS
+RAND.AS
+DSM.AS

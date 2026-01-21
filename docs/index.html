@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Dividend Screener – Baseline</title>
+  <meta charset="UTF-8">
+  <title>Dividend Screener – Baseline</title>
 
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
-<style>
-body { font-family: Arial, sans-serif; margin: 30px; }
-h1 { margin-bottom: 10px; }
-</style>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table.dataTable thead th { font-weight: bold; }
+  </style>
 </head>
 
 <body>
@@ -17,102 +19,49 @@ h1 { margin-bottom: 10px; }
 <h1>Dividend Screener – Baseline</h1>
 
 <table id="screener" class="display" style="width:100%">
-<thead>
-<tr>
-<th>Ticker</th>
-<th>Name</th>
-<th>Country</th>
-<th>Sector</th>
-<th>Price</th>
-<th>Dividend Yield</th>
-<th>Payout Ratio</th>
-<th>PE</th>
-</tr>
-</thead>
+  <thead>
+    <tr>
+      <th>Ticker</th>
+      <th>Name</th>
+      <th>Country</th>
+      <th>Sector</th>
+      <th>Price</th>
+      <th>Dividend Yield</th>
+      <th>Payout Ratio</th>
+      <th>PE</th>
+    </tr>
+  </thead>
+  <tbody>
+  </tbody>
 </table>
 
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
 <script>
-// --- Robust CSV parser (handles commas in quotes) ---
-function parseCSV(text) {
-  const rows = [];
-  let row = [];
-  let current = '';
-  let insideQuotes = false;
-
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    const next = text[i + 1];
-
-    if (char === '"' && insideQuotes && next === '"') {
-      current += '"';
-      i++;
-    } else if (char === '"') {
-      insideQuotes = !insideQuotes;
-    } else if (char === ',' && !insideQuotes) {
-      row.push(current);
-      current = '';
-    } else if (char === '\n' && !insideQuotes) {
-      row.push(current);
-      rows.push(row);
-      row = [];
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-  if (current.length) {
-    row.push(current);
-    rows.push(row);
-  }
-  return rows;
-}
-
 $(document).ready(function () {
 
-  $.get('data/screener_results.csv', function (csvText) {
+  fetch("screener_results.csv")
+    .then(r => r.text())
+    .then(text => {
+      const rows = text.trim().split("\n").slice(1);
 
-    const parsed = parseCSV(csvText);
-    const headers = parsed[0];
-    const data = [];
+      const data = rows.map(r => {
+        const c = r.split(",");
+        return [
+          c[1],                         // Ticker
+          c[2],                         // Name
+          c[3],                         // Country
+          c[6],                         // Sector
+          c[8],                         // Price
+          c[9] ? c[9] + " %" : "–",     // DividendYield_%
+          c[10] ? c[10] + " %" : "–",   // PayoutRatio_%
+          c[11]                         // PE
+        ];
+      });
 
-    for (let i = 1; i < parsed.length; i++) {
-      if (parsed[i].length !== headers.length) continue;
-      const obj = {};
-      headers.forEach((h, j) => obj[h] = parsed[i][j]);
-      data.push(obj);
-    }
-
-    $('#screener').DataTable({
-      data: data,
-      pageLength: 25,
-      columns: [
-        { data: 'Ticker' },
-        { data: 'Name' },
-        { data: 'Country' },
-        { data: 'Sector' },
-        {
-          data: 'Price',
-          render: d => d ? Number(d).toFixed(2) : '–'
-        },
-        {
-          data: 'DividendYield_%',
-          render: d => d ? Number(d).toFixed(2) + ' %' : '–'
-        },
-        {
-          data: 'PayoutRatio_%',
-          render: d => d ? Number(d).toFixed(2) + ' %' : '–'
-        },
-        {
-          data: 'PE',
-          render: d => d ? Number(d).toFixed(2) : '–'
-        }
-      ]
+      $('#screener').DataTable({
+        data: data,
+        pageLength: 25
+      });
     });
-
-  });
 
 });
 </script>

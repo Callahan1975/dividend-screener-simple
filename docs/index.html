@@ -35,20 +35,20 @@
 $(document).ready(function () {
     $('#screener').DataTable({
         ajax: {
-            url: 'data/screener_results.csv',
-            dataType: 'text',
-            dataSrc: function (csv) {
-                const lines = csv.split('\n');
-                const headers = lines[0].split(',');
+    url: 'https://callahan1975.github.io/dividend-screener-simple/data/screener_results.csv',
+    dataType: 'text',
+    dataSrc: function (csv) {
+        const lines = csv.trim().split('\n');
+        const headers = lines[0].split(',');
 
-                return lines.slice(1).map(line => {
-                    const values = line.split(',');
-                    let row = {};
-                    headers.forEach((h, i) => row[h] = values[i]);
-                    return row;
-                });
-            }
-        },
+        return lines.slice(1).map(line => {
+            const values = line.split(',');
+            let row = {};
+            headers.forEach((h, i) => row[h] = values[i] ?? "");
+            return row;
+        });
+    }
+},
         columns: [
             { data: 'Ticker' },
             { data: 'Name' },

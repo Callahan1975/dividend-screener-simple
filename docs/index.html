@@ -9,7 +9,6 @@
 <style>
 body { font-family: Arial, sans-serif; margin: 30px; }
 h1 { margin-bottom: 10px; }
-table.dataTable thead th { font-weight: bold; }
 </style>
 </head>
 
@@ -36,54 +35,83 @@ table.dataTable thead th { font-weight: bold; }
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
 <script>
+// --- Robust CSV parser (handles commas in quotes) ---
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let current = '';
+  let insideQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (char === '"' && insideQuotes && next === '"') {
+      current += '"';
+      i++;
+    } else if (char === '"') {
+      insideQuotes = !insideQuotes;
+    } else if (char === ',' && !insideQuotes) {
+      row.push(current);
+      current = '';
+    } else if (char === '\n' && !insideQuotes) {
+      row.push(current);
+      rows.push(row);
+      row = [];
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  if (current.length) {
+    row.push(current);
+    rows.push(row);
+  }
+  return rows;
+}
+
 $(document).ready(function () {
 
-  $('#screener').DataTable({
-    ajax: {
-      url: '../data/screener_results.csv',
-      dataType: 'text',
-      dataSrc: function (csv) {
-        const lines = csv.split('\n');
-        const headers = lines[0].split(',');
-        const rows = [];
+  $.get('data/screener_results.csv', function (csvText) {
 
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
-          const obj = {};
-          const currentline = lines[i].split(',');
+    const parsed = parseCSV(csvText);
+    const headers = parsed[0];
+    const data = [];
 
-          headers.forEach((h, j) => obj[h] = currentline[j]);
-          rows.push(obj);
+    for (let i = 1; i < parsed.length; i++) {
+      if (parsed[i].length !== headers.length) continue;
+      const obj = {};
+      headers.forEach((h, j) => obj[h] = parsed[i][j]);
+      data.push(obj);
+    }
+
+    $('#screener').DataTable({
+      data: data,
+      pageLength: 25,
+      columns: [
+        { data: 'Ticker' },
+        { data: 'Name' },
+        { data: 'Country' },
+        { data: 'Sector' },
+        {
+          data: 'Price',
+          render: d => d ? Number(d).toFixed(2) : '–'
+        },
+        {
+          data: 'DividendYield_%',
+          render: d => d ? Number(d).toFixed(2) + ' %' : '–'
+        },
+        {
+          data: 'PayoutRatio_%',
+          render: d => d ? Number(d).toFixed(2) + ' %' : '–'
+        },
+        {
+          data: 'PE',
+          render: d => d ? Number(d).toFixed(2) : '–'
         }
-        return rows;
-      }
-    },
+      ]
+    });
 
-    columns: [
-      { data: 'Ticker' },
-      { data: 'Name' },
-      { data: 'Country' },
-      { data: 'Sector' },
-      {
-        data: 'Price',
-        render: d => d ? parseFloat(d).toFixed(2) : '–'
-      },
-      {
-        data: 'DividendYield_%',
-        render: d => d ? parseFloat(d).toFixed(2) + ' %' : '–'
-      },
-      {
-        data: 'PayoutRatio_%',
-        render: d => d ? parseFloat(d).toFixed(2) + ' %' : '–'
-      },
-      {
-        data: 'PE',
-        render: d => d ? parseFloat(d).toFixed(2) : '–'
-      }
-    ],
-
-    order: [[0, 'asc']],
-    pageLength: 25
   });
 
 });

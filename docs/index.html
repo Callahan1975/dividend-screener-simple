@@ -1,78 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Dividend Screener – Decision View</title>
+<meta charset="UTF-8">
+<title>Dividend Screener</title>
 
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<link rel="stylesheet"
+      href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 
-  <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont;
-      margin: 24px;
-    }
-    h2 { margin-bottom: 4px; }
-    p { color: #555; margin-top: 0; }
-  </style>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 </head>
+
 <body>
 
-<h2>Dividend Screener – Decision View</h2>
-<p>Live data from <code>data/screener_results/screener_results.csv</code></p>
+<h2>Dividend Screener – Baseline</h2>
 
-<table id="tbl" class="display" style="width:100%">
-  <thead>
-    <tr>
-      <th>Ticker</th>
-      <th>Name</th>
-      <th>Country</th>
-      <th>Currency</th>
-      <th>Exchange</th>
-      <th>Sector</th>
-      <th>Industry</th>
-      <th>Price</th>
-      <th>Dividend Yield %</th>
-      <th>Payout Ratio %</th>
-      <th>PE</th>
-    </tr>
-  </thead>
+<table id="screener" class="display" style="width:100%">
+    <thead>
+        <tr>
+            <th>Ticker</th>
+            <th>Name</th>
+            <th>Country</th>
+            <th>Sector</th>
+            <th>Price</th>
+            <th>DividendYield</th>
+            <th>PayoutRatio</th>
+            <th>PE</th>
+            <th>MarketCap</th>
+        </tr>
+    </thead>
 </table>
 
 <script>
 $(document).ready(function () {
-  $('#tbl').DataTable({
-    ajax: {
-      url: 'data/screener_results/screener_results.csv',
-      dataType: 'text',
-      dataSrc: function (csv) {
-        const lines = csv.trim().split('\n');
-        const headers = lines[0].split(',');
-        return lines.slice(1).map(line => {
-          const values = line.split(',');
-          let row = {};
-          headers.forEach((h, i) => row[h] = values[i]);
-          return row;
-        });
-      }
-    },
-    columns: [
-      { data: 'Ticker' },
-      { data: 'Name' },
-      { data: 'Country' },
-      { data: 'Currency' },
-      { data: 'Exchange' },
-      { data: 'Sector' },
-      { data: 'Industry' },
-      { data: 'Price' },
-      { data: 'DividendYield_%' },
-      { data: 'PayoutRatio_%' },
-      { data: 'PE' }
-    ],
-    order: [[8, 'desc']],
-    pageLength: 25
-  });
+    $('#screener').DataTable({
+        ajax: {
+            url: 'data/screener_results.csv',
+            dataType: 'text',
+            dataSrc: function (csv) {
+                const lines = csv.split('\n');
+                const headers = lines[0].split(',');
+
+                return lines.slice(1).map(line => {
+                    const values = line.split(',');
+                    let row = {};
+                    headers.forEach((h, i) => row[h] = values[i]);
+                    return row;
+                });
+            }
+        },
+        columns: [
+            { data: 'Ticker' },
+            { data: 'Name' },
+            { data: 'Country' },
+            { data: 'Sector' },
+            { data: 'Price' },
+            { data: 'DividendYield' },
+            { data: 'PayoutRatio' },
+            { data: 'PE' },
+            { data: 'MarketCap' }
+        ],
+        pageLength: 25,
+        order: [[0, 'asc']]
+    });
 });
 </script>
 

@@ -1,113 +1,93 @@
 import pandas as pd
 from pathlib import Path
 
-# =========================
-# PATHS
-# =========================
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data" / "screener_results"
-INPUT_FILE = DATA_DIR / "screener_results.csv"
-CLASS_FILE = BASE_DIR / "data" / "dividend_classes.csv"
-OUTPUT_FILE = DATA_DIR / "screener_decision.csv"
 
-# =========================
-# LOAD DATA
-# =========================
+INPUT_FILE = DATA_DIR / "screener_results.csv"
+OUTPUT_FILE = DATA_DIR / "screener_decision.csv"
+DIV_CLASS_FILE = BASE_DIR / "data" / "dividend_classes.csv"
+
 df = pd.read_csv(INPUT_FILE)
 
-classes = {}
-if CLASS_FILE.exists():
-    cls_df = pd.read_csv(CLASS_FILE)
-    classes = dict(zip(cls_df["Ticker"], cls_df["DividendClass"]))
+# -----------------------------
+# Dividend classes
+# -----------------------------
+div_class = {}
+if DIV_CLASS_FILE.exists():
+    cdf = pd.read_csv(DIV_CLASS_FILE)
+    div_class = dict(zip(cdf["Ticker"], cdf["DividendClass"]))
 
-# =========================
-# HELPERS
-# =========================
-def safe(v):
-    try:
-        if pd.isna(v):
-            return None
-        return float(v)
-    except Exception:
-        return None
+df["DividendClass"] = df["Ticker"].map(div_class).fillna("—")
 
+# -----------------------------
+# Score model
+# -----------------------------
 def score_row(r):
-    score = 0
-    reasons = []
+    s = 0
 
-    y = safe(r["DividendYield_%"])
-    p = safe(r["PayoutRatio_%"])
-    pe = safe(r["PE"])
+    y = r.get("DividendYield_%", 0)
+    p = r.get("PayoutRatio_%", 0)
+    pe = r.get("PE", None)
+    dc = r.get("DividendClass", "")
 
-    # Yield
-    if y:
-        if 2 <= y <= 6:
-            score += 15
-            reasons.append("Good yield")
-        elif y > 6:
-            score += 10
-            reasons.append("High yield")
+    if 2 <= y <= 6: s += 15
+    elif y > 6: s += 10
 
-    # Payout
-    if p:
-        if p < 60:
-            score += 20
-            reasons.append("Low payout")
-        elif p <= 90:
-            score += 10
-        else:
-            score -= 20
-            reasons.append("Payout risk")
+    if p < 60: s += 20
+    elif p < 90: s += 10
+    else: s -= 20
 
-    # PE
-    if pe:
-        if pe < 20:
-            score += 15
-        elif pe <= 30:
-            score += 5
+    if pe and pe < 20: s += 15
+    elif pe and pe < 30: s += 5
 
-    # Dividend class
-    cls = r.get("DividendClass")
-    if cls == "King":
-        score += 25
-        reasons.append("Dividend King")
-    elif cls == "Aristocrat":
-        score += 20
-        reasons.append("Aristocrat")
-    elif cls == "Contender":
-        score += 10
+    if dc == "King": s += 25
+    elif dc == "Aristocrat": s += 20
+    elif dc == "Contender": s += 10
 
-    return max(0, min(100, score)), ", ".join(reasons)
+    return max(0, min(100, s))
 
-def signal(score):
-    if score >= 85:
-        return "GOLD"
-    if score >= 70:
-        return "BUY"
-    if score >= 55:
-        return "HOLD"
+df["Score"] = df.apply(score_row, axis=1)
+
+# -----------------------------
+# Signal & Confidence
+# -----------------------------
+def signal(s):
+    if s >= 85: return "GOLD"
+    if s >= 70: return "BUY"
+    if s >= 55: return "HOLD"
     return "WATCH"
 
-def confidence(row):
-    if "Payout risk" in row["Why"]:
-        return "Low"
-    if row["DividendClass"] in ("King", "Aristocrat"):
+df["Signal"] = df["Score"].apply(signal)
+
+def confidence(r):
+    if r["DividendClass"] in ["King", "Aristocrat"] and r["PayoutRatio_%"] < 80:
         return "High"
+    if r["PayoutRatio_%"] >= 90:
+        return "Low"
     return "Medium"
 
-# =========================
-# ENRICH DATA
-# =========================
-df["DividendClass"] = df["Ticker"].map(classes).fillna("")
-scores = df.apply(score_row, axis=1, result_type="expand")
-df["Score"] = scores[0]
-df["Why"] = scores[1]
-df["Signal"] = df["Score"].apply(signal)
-df["Confidence"] = df.apply(confidence, axis=1)
+df["Conf"] = df.apply(confidence, axis=1)
 
-# =========================
-# SAVE
-# =========================
+# -----------------------------
+# Why column
+# -----------------------------
+def why(r):
+    parts = []
+    if r["DividendClass"] != "—":
+        parts.append(r["DividendClass"])
+    if r["PayoutRatio_%"] >= 90:
+        parts.append("Payout high")
+    if r["DividendYield_%"] >= 6:
+        parts.append("High yield")
+    if r["PE"] and r["PE"] < 15:
+        parts.append("Low PE")
+    return ", ".join(parts) if parts else "—"
+
+df["Why"] = df.apply(why, axis=1)
+
+# -----------------------------
+# Save
+# -----------------------------
 df.to_csv(OUTPUT_FILE, index=False)
 print(f"✅ Decision file written: {OUTPUT_FILE}")
-

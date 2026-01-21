@@ -35,7 +35,7 @@
 $(document).ready(function () {
     $('#screener').DataTable({
         ajax: {
-            url: '../data/screener_results.csv',
+            url: 'data/screener_results.csv',
             dataType: 'text',
             dataSrc: function (csv) {
                 const lines = csv.split('\n');

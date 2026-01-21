@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Dividend Screener – Baseline</title>
 
-    <!-- DataTables CSS -->
     <link
         rel="stylesheet"
         href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css"
@@ -42,10 +41,7 @@
     </thead>
 </table>
 
-<!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-<!-- DataTables JS -->
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
 <script>
@@ -80,7 +76,7 @@ $(document).ready(function () {
                 data: 'Price',
                 render: d => {
                     const v = Number(d);
-                    return isNaN(v) ? '' : v.toFixed(2);
+                    return isNaN(v) ? '–' : v.toFixed(2);
                 }
             },
 
@@ -88,9 +84,9 @@ $(document).ready(function () {
                 data: 'DividendYield_%',
                 render: d => {
                     const v = Number(d);
-                    return (!isNaN(v) && v > 0 && v < 20)
+                    return (v > 0 && v < 20)
                         ? v.toFixed(2) + ' %'
-                        : '';
+                        : '–';
                 }
             },
 
@@ -98,9 +94,9 @@ $(document).ready(function () {
                 data: 'PayoutRatio_%',
                 render: d => {
                     const v = Number(d);
-                    return (!isNaN(v) && v >= 0 && v <= 200)
+                    return (v >= 0 && v <= 200)
                         ? v.toFixed(1) + ' %'
-                        : '';
+                        : '–';
                 }
             },
 
@@ -108,7 +104,7 @@ $(document).ready(function () {
                 data: 'PE',
                 render: d => {
                     const v = Number(d);
-                    return isNaN(v) ? '' : v.toFixed(1);
+                    return isNaN(v) ? '–' : v.toFixed(1);
                 }
             }
         ],

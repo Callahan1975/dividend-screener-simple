@@ -1,97 +1,96 @@
 import yfinance as yf
 import pandas as pd
-import time
 from datetime import datetime
+import time
 
+# =========================
+# CONFIG
+# =========================
 TICKER_FILE = "data/tickers.txt"
 OUTPUT_FILE = "data/screener_results.csv"
+SLEEP_BETWEEN_CALLS = 1.2  # rate limit protection
 
-def resolve_country(ticker, info):
-    if info.get("country"):
-        return info.get("country")
+COLUMNS = [
+    "GeneratedUTC",
+    "Ticker",
+    "Name",
+    "Country",
+    "Sector",
+    "Price",
+    "DividendYield_%",
+    "PayoutRatio_%",
+    "PE"
+]
 
-    if ticker.endswith(".CO"):
-        return "Denmark"
-    if ticker.endswith(".TO"):
-        return "Canada"
-    if ticker.endswith(".ST"):
-        return "Sweden"
-    if ticker.endswith(".HE"):
-        return "Finland"
-    if ticker.endswith(".AS"):
-        return "Netherlands"
-    if ticker.endswith(".L"):
-        return "United Kingdom"
+# =========================
+# LOAD TICKERS
+# =========================
+with open(TICKER_FILE, "r") as f:
+    tickers = [
+        line.strip()
+        for line in f
+        if line.strip() and not line.startswith("#")
+    ]
 
-    if info.get("exchange") in ["NYQ", "NMS"]:
-        return "United States"
+rows = []
+now_utc = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
-    return None
-
-def safe_float(value):
-    try:
-        return round(float(value), 2)
-    except:
-        return None
-
-def fetch_ticker(ticker):
+# =========================
+# FETCH DATA
+# =========================
+for ticker in tickers:
     try:
         stock = yf.Ticker(ticker)
-        info = stock.fast_info or {}
+        info = stock.fast_info if hasattr(stock, "fast_info") else {}
         full = stock.info or {}
 
-        price = safe_float(info.get("last_price"))
-        dividend_yield = full.get("dividendYield")
-        payout = full.get("payoutRatio")
+        price = info.get("last_price") or full.get("currentPrice")
 
-        return {
-            "GeneratedUTC": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+        dividend_yield = full.get("dividendYield")
+        if dividend_yield is not None:
+            dividend_yield = round(dividend_yield * 100, 2)
+
+        payout = full.get("payoutRatio")
+        if payout is not None:
+            payout = round(payout * 100, 2)
+
+        pe = full.get("trailingPE")
+        if pe is not None:
+            pe = round(pe, 2)
+
+        row = {
+            "GeneratedUTC": now_utc,
             "Ticker": ticker,
-            "Name": full.get("shortName"),
-            "Country": resolve_country(ticker, full),
+            "Name": full.get("shortName") or full.get("longName"),
+            "Country": full.get("country"),
             "Sector": full.get("sector"),
-            "Industry": full.get("industry"),
-            "Price": price,
-            "DividendYield_%": safe_float(dividend_yield * 100) if dividend_yield else None,
-            "PayoutRatio_%": safe_float(payout * 100) if payout else None,
-            "PE": safe_float(full.get("trailingPE")),
+            "Price": round(price, 2) if price else None,
+            "DividendYield_%": dividend_yield,
+            "PayoutRatio_%": payout,
+            "PE": pe,
         }
+
+        rows.append(row)
+        time.sleep(SLEEP_BETWEEN_CALLS)
 
     except Exception as e:
         print(f"ERROR {ticker}: {e}")
-        return None
+        rows.append({
+            "GeneratedUTC": now_utc,
+            "Ticker": ticker,
+            "Name": None,
+            "Country": None,
+            "Sector": None,
+            "Price": None,
+            "DividendYield_%": None,
+            "PayoutRatio_%": None,
+            "PE": None,
+        })
 
-def main():
-    with open(TICKER_FILE) as f:
-        tickers = [t.strip() for t in f if t.strip()]
+# =========================
+# SAVE CSV
+# =========================
+df = pd.DataFrame(rows, columns=COLUMNS)
+df.to_csv(OUTPUT_FILE, index=False)
 
-    rows = []
-    for t in tickers:
-        print(f"Fetching {t}")
-        row = fetch_ticker(t)
-        if row:
-            rows.append(row)
-        time.sleep(2)  # 🔒 Rate-limit protection
-
-    df = pd.DataFrame(rows)
-
-    df = df[
-        [
-            "GeneratedUTC",
-            "Ticker",
-            "Name",
-            "Country",
-            "Sector",
-            "Industry",
-            "Price",
-            "DividendYield_%",
-            "PayoutRatio_%",
-            "PE",
-        ]
-    ]
-
-    df.to_csv(OUTPUT_FILE, index=False)
-    print(f"Saved {len(df)} rows → {OUTPUT_FILE}")
-
-if __name__ == "__main__":
-    main()
+print(f"✅ Screener completed: {len(df)} tickers written to {OUTPUT_FILE}")

@@ -1,9 +1,9 @@
-GeneratedUTC,Ticker,Name,Country,Currency,Exchange,Sector,Industry,Price,DividendYield_%,PayoutRatio_%,PE
-2026-01-21,AAPL,Apple Inc.,United States,USD,NASDAQ,Technology,Consumer Electronics,261.05,0.52,13.7,34.9
-2026-01-21,ABBV,AbbVie Inc.,United States,USD,NYSE,Healthcare,Drug Manufacturers,220.75,3.13,4.9,167.2
-2026-01-21,ABT,Abbott Laboratories,United States,USD,NYSE,Healthcare,Medical Devices,124.30,2.03,29.1,15.6
-2026-01-21,ADP,Automatic Data Processing Inc.,United States,USD,NASDAQ,Technology,IT Services,257.07,2.65,60.8,25.4
-2026-01-21,AEP,American Electric Power Company Inc.,United States,USD,NYSE,Utilities,Electric Utilities,116.62,3.26,54.5,17.1
-2026-01-21,AFL,Aflac Incorporated,United States,USD,NYSE,Financial Services,Insurance,107.96,2.26,29.4,14.2
-2026-01-21,AMCR,Amcor plc,Switzerland,USD,NYSE,Consumer Cyclical,Packaging,8.75,5.94,33.9,5.8
-2026-01-21,CARL-B.CO,Carlsberg A/S,Denmark,DKK,OMX,Consumer Defensive,Beverages,850.40,3.23,53.6,16.9
+GeneratedUTC,Ticker,Name,Country,Currency,Exchange,Sector,Industry,Price,DividendYield_%,PayoutRatio_%,PE,Confidence,Signal
+2026-01-21,AAPL,Apple Inc.,United States,USD,NASDAQ,Technology,Consumer Electronics,261.05,0.52,13.7,34.9,48,WATCH
+2026-01-21,ABBV,AbbVie Inc.,United States,USD,NYSE,Healthcare,Drug Manufacturers,220.75,3.13,4.9,167.2,71,HOLD
+2026-01-21,ABT,Abbott Laboratories,United States,USD,NYSE,Healthcare,Medical Devices,124.30,2.03,29.1,15.6,74,HOLD
+2026-01-21,ADP,Automatic Data Processing Inc.,United States,USD,NASDAQ,Technology,IT Services,257.07,2.65,60.8,25.4,68,HOLD
+2026-01-21,AEP,American Electric Power Company Inc.,United States,USD,NYSE,Utilities,Electric Utilities,116.62,3.26,54.5,17.1,82,BUY
+2026-01-21,AFL,Aflac Incorporated,United States,USD,NYSE,Financial Services,Insurance,107.96,2.26,29.4,14.2,76,BUY
+2026-01-21,AMCR,Amcor plc,Switzerland,USD,NYSE,Consumer Cyclical,Packaging,8.75,5.94,33.9,5.8,73,HOLD
+2026-01-21,CARL-B.CO,Carlsberg A/S,Denmark,DKK,OMX,Consumer Defensive,Beverages,850.40,3.23,53.6,16.9,78,BUY

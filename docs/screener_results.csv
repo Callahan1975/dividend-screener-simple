@@ -1,20 +1,12 @@
 GeneratedUTC,Ticker,Name,Country,Currency,Exchange,Sector,Industry,Price,DividendYield_%,PayoutRatio_%,PE,Confidence,Signal
-2026-01-21,AAPL,Apple Inc.,United States,USD,NASDAQ,Technology,"Consumer Electronics",261.05,0.52,13.7,34.9,48,WATCH
-2026-01-21,ABBV,AbbVie Inc.,United States,USD,NYSE,Healthcare,"Drug Manufacturers - General",220.75,3.13,4.9,167.2,71,HOLD
-2026-01-21,ABT,Abbott Laboratories,United States,USD,NYSE,Healthcare,"Medical Devices",124.30,2.03,29.1,15.6,74,HOLD
-2026-01-21,ADP,Automatic Data Processing Inc.,United States,USD,NASDAQ,Technology,"IT Services",257.07,2.65,60.8,25.4,68,HOLD
-2026-01-21,AEP,American Electric Power Company Inc.,United States,USD,NYSE,Utilities,"Electric Utilities",116.62,3.26,54.5,17.1,82,BUY
-2026-01-21,AFL,Aflac Incorporated,United States,USD,NYSE,FinancialFinancial Services,"Insurance - Life",107.96,2.26,29.4,14.2,76,BUY
-2026-01-21,AMCR,Amcor plc,Switzerland,USD,NYSE,Consumer Cyclical,"Packaging",8.75,5.94,33.9,5.8,73,HOLD
-2026-01-21,CARL-B.CO,Carlsberg A/S,Denmark,DKK,CPH,Consumer Defensive,"Beverages - Brewers",850.40,3.23,53.6,16.9,78,BUY
-2026-01-21,DANSKE.CO,Danske Bank A/S,Denmark,DKK,CPH,Financial Services,"Banks - Regional",314.00,6.10,34.3,11.5,72,HOLD
-2026-01-21,MAERSK-B.CO,A.P. Moller - Maersk B A/S,Denmark,DKK,CPH,Industrials,"Marine Shipping",14845.00,9.80,51.9,7.4,75,BUY
-2026-01-21,PNDORA.CO,Pandora A/S,Denmark,DKK,CPH,Consumer Cyclical,"Luxury Goods",517.40,6.40,30.1,7.8,74,BUY
-2026-01-21,NOVO-B.CO,Novo Nordisk B A/S,Denmark,DKK,CPH,Healthcare,"Drug Manufacturers - General",373.85,2.10,49.9,16.0,75,BUY
-2026-01-21,VOLV-B.ST,Volvo AB ser. B,Sweden,SEK,STO,Industrials,"Farm and Heavy Construction Machinery",311.50,4.20,45.7,17.8,75,BUY
-2026-01-21,SHB-A.ST,Svenska Handelsbanken ser. A,Sweden,SEK,STO,Financial Services,"Banks - Diversified",139.55,6.80,59.2,11.0,75,BUY
-2026-01-21,SEB-A.ST,Skandinaviska Enskilda Banken A,Sweden,SEK,STO,Financial Services,"Banks - Regional",199.40,5.90,55.2,12.9,75,BUY
-2026-01-21,DNB.OL,DNB Bank ASA,Norway,NOK,OSL,Financial Services,"Banks - Regional",279.20,6.70,57.8,9.6,75,BUY
-2026-01-21,YAR.OL,Yara International ASA,Norway,NOK,OSL,Basic Materials,"Agricultural Inputs",421.20,3.90,16.9,14.5,72,HOLD
-2026-01-21,STB.OL,Storebrand ASA,Norway,NOK,OSL,Financial Services,"Financial Conglomerates",169.00,4.80,41.9,15.1,73,HOLD
-2026-01-21,SAMPO.HE,Sampo Plc A,Finland,EUR,HEL,Financial Services,"Insurance - Diversified",9.80,5.60,57.0,16.3,75,BUY
+2026-01-21,AAPL,Apple Inc.,United States,USD,NASDAQ,Technology,Consumer Electronics,247.66,0.52,13.7,33.24,70,HOLD
+2026-01-21,ABBV,AbbVie Inc.,United States,USD,NYSE,Healthcare,Drug Manufacturers - General,216.07,3.13,4.9,162.46,60,HOLD
+2026-01-21,ABT,Abbott Laboratories,United States,USD,NYSE,Healthcare,Medical Devices,120.89,2.03,29.1,15.19,70,HOLD
+2026-01-21,ADP,Automatic Data Processing Inc.,United States,USD,NASDAQ,Technology,Software - Application,257.07,2.65,60.8,25.38,70,HOLD
+2026-01-21,AEP,American Electric Power Company Inc.,United States,USD,NYSE,Utilities,Utilities - Regulated Electric,116.62,3.26,54.5,17.42,70,HOLD
+2026-01-21,AFL,Aflac Incorporated,United States,USD,NYSE,Financial Services,Insurance - Life,108.46,2.26,29.4,14.23,70,HOLD
+2026-01-21,AMCR,Amcor plc,Switzerland,USD,NYSE,Consumer Cyclical,Packaging & Containers,42.39,5.94,33.9,28.07,60,HOLD
+2026-01-21,CARL-B.CO,Carlsberg A/S,Denmark,DKK,CPH,Consumer Defensive,Beverages - Brewers,848.00,3.23,53.6,16.82,70,HOLD
+2026-01-21,DANSKE.CO,Danske Bank A/S,Denmark,DKK,CPH,Financial Services,Banks - Regional,314.00,6.10,34.3,11.51,70,HOLD
+2026-01-21,DNB.OL,DNB Bank ASA,Norway,NOK,OSL,Financial Services,Banks - Regional,279.20,6.70,57.8,9.63,70,HOLD
+2026-01-21,MAERSK-B.CO,A.P. Moller - Maersk B A/S,Denmark,DKK,CPH,Industrials,Marine Shipping,14845.00,9.80,51.9,7.39,70,HOLD

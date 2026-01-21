@@ -1,106 +1,28 @@
-# ======================
-# DENMARK (DK)
+# ===== DENMARK =====
 CARL-B.CO
 NOVO-B.CO
-DSV.CO
 MAERSK-B.CO
 PNDORA.CO
-COLO-B.CO
 DANSKE.CO
-SYDB.CO
-TRYG.CO
-TOP.CO
 
-# ======================
-# SWEDEN (SE)
-ATCO-A.ST
-ATCO-B.ST
+# ===== SWEDEN =====
 VOLV-B.ST
 SHB-A.ST
 SEB-A.ST
-NDA-SE.ST
-TEL2-B.ST
-CIBUS.ST
-SBB-B.ST
-SKF-B.ST
 
-# ======================
-# NORWAY (NO)
+# ===== NORWAY =====
 DNB.OL
-ORK.OL
 YAR.OL
-TEL.OL
-MOWI.OL
-AKERBP.OL
-SALM.OL
-EQNR.OL
-GJF.OL
 STB.OL
 
-# ======================
-# FINLAND (FI)
-NDA-FI.HE
-KNEBV.HE
+# ===== FINLAND =====
 SAMPO.HE
-ELISA.HE
-FORTUM.HE
-METSB.HE
-UPM.HE
-WRT1V.HE
-NOKIA.HE
-KESKOA.HE
 
-# ======================
-# NETHERLANDS (NL)
-ASML.AS
-NN.AS
-INGA.AS
-ABN.AS
-RAND.AS
-WKL.AS
-HEIA.AS
-DSM.AS
-AKZA.AS
-IMCD.AS
-
-# ======================
-# CANADA (CA)
-RY.TO
-TD.TO
-BMO.TO
-BNS.TO
-CM.TO
-ENB.TO
-TRP.TO
-FTS.TO
-CNQ.TO
-SU.TO
-
-# ======================
-# UNITED STATES (US)
-AAPL
+# ===== USA (Kings / Aristocrats / Contenders) =====
+AEP
+AFL
 ABBV
 ABT
 ADP
-AEP
-AFL
 AMCR
-AMGN
-AVGO
-BAC
-BDX
-BLK
-CAT
-CB
-CL
-COST
-CVX
-JNJ
-KO
-MSFT
-NEE
-PEP
-PG
-TXN
-V
-WM
+AAPL

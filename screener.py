@@ -1,212 +1,81 @@
-import yfinance as yf
 import pandas as pd
-from datetime import datetime, timezone
+import yfinance as yf
+from datetime import datetime
 import time
 
-# =========================
-# CONFIG (LÅST)
-# =========================
 TICKER_FILE = "data/tickers.txt"
-OUTPUT_FILE = "data/screener_results.csv"
-REQUEST_SLEEP = 1.2  # rate-limit safe
+OUTPUT_FILE = "docs/screener_results.csv"
 
-# =========================
-# LOAD TICKERS
-# =========================
-with open(TICKER_FILE, "r") as f:
-    tickers = [
-        line.strip()
-        for line in f.readlines()
-        if line.strip() and not line.startswith("#")
-    ]
+def load_tickers():
+    with open(TICKER_FILE) as f:
+        return [l.strip() for l in f if l.strip() and not l.startswith("#")]
 
-# =========================
-# HELPERS
-# =========================
-def safe_float(v):
-    try:
-        if v is None or v == "":
-            return ""
-        return round(float(v), 2)
-    except Exception:
-        return ""
+def safe(val):
+    return None if pd.isna(val) else val
 
-def get_country(info, ticker):
-    # Prefer Yahoo country; fallback via suffix/exchange if missing
-    c = info.get("country")
-    if c:
-        return c
-    if ticker.endswith(".CO"):
-        return "Denmark"
-    if ticker.endswith(".TO"):
-        return "Canada"
-    if ticker.endswith(".ST"):
-        return "Sweden"
-    if ticker.endswith(".HE"):
-        return "Finland"
-    if ticker.endswith(".AS"):
-        return "Netherlands"
-    ex = info.get("exchange")
-    if ex in ("NMS", "NYQ"):
-        return "United States"
-    return ""
+def confidence_score(row):
+    score = 50
 
-def get_sector(info):
-    return info.get("sector", "") or ""
+    # Dividend yield
+    if row["DividendYield_%"]:
+        if row["DividendYield_%"] >= 3:
+            score += 10
+        elif row["DividendYield_%"] >= 2:
+            score += 5
 
-# =========================
-# CONFIDENCE MODEL (LÅST)
-# =========================
-def score_dividend(yield_pct):
-    if yield_pct == "":
-        return 0
-    if yield_pct >= 4.0:
-        return 30
-    if yield_pct >= 2.5:
-        return 22
-    if yield_pct >= 1.0:
-        return 14
-    if yield_pct > 0:
-        return 6
-    return 0
+    # Payout ratio
+    if row["PayoutRatio_%"]:
+        if row["PayoutRatio_%"] < 60:
+            score += 10
+        elif row["PayoutRatio_%"] > 90:
+            score -= 15
 
-def score_payout(payout):
-    if payout == "":
-        return 10  # neutral if missing
-    if payout <= 50:
-        return 30
-    if payout <= 70:
-        return 22
-    if payout <= 90:
-        return 10
-    return 0
+    # PE sanity
+    if row["PE"]:
+        if row["PE"] < 20:
+            score += 5
+        elif row["PE"] > 40:
+            score -= 10
 
-def score_pe(pe):
-    if pe == "":
-        return 10
-    if pe <= 15:
-        return 25
-    if pe <= 20:
-        return 20
-    if pe <= 25:
-        return 14
-    if pe <= 30:
-        return 8
-    return 0
+    return max(0, min(100, score))
 
-def score_sector(sector):
-    s = sector.lower()
-    if "utility" in s:
-        return 15
-    if "consumer defensive" in s:
-        return 12
-    if "health" in s:
-        return 10
-    if "financial" in s:
-        return 8
-    if "industrial" in s:
-        return 6
-    if "technology" in s:
-        return 4
-    return 2
-
-def signal_from_confidence(score):
-    if score >= 80:
-        return "STRONG BUY"
-    if score >= 65:
+def signal_from_confidence(c):
+    if c >= 75:
         return "BUY"
-    if score >= 45:
+    if c >= 55:
         return "HOLD"
-    if score >= 25:
-        return "WATCH"
-    return "AVOID"
+    return "WATCH"
 
-# =========================
-# MAIN LOOP
-# =========================
 rows = []
-now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-
-for ticker in tickers:
-    print(f"Processing {ticker}")
+for ticker in load_tickers():
     try:
-        stock = yf.Ticker(ticker)
-        info = stock.info or {}
+        t = yf.Ticker(ticker)
+        i = t.info
 
-        price = info.get("currentPrice")
-        annual_dividend = info.get("dividendRate")  # seneste årlige dividend
-
-        # Dividend Yield = annual dividend / price
-        dividend_yield = ""
-        if price and annual_dividend and price > 0:
-            dividend_yield = round((annual_dividend / price) * 100, 2)
-
-        payout = info.get("payoutRatio")
-        payout = round(payout * 100, 2) if payout is not None else ""
-
-        pe = info.get("trailingPE")
-        pe = round(pe, 2) if pe is not None else ""
-
-        sector = get_sector(info)
-        country = get_country(info, ticker)
-
-        # Confidence
-        confidence = (
-            score_dividend(dividend_yield)
-            + score_payout(payout)
-            + score_pe(pe)
-            + score_sector(sector)
-        )
-
-        row = {
-            "GeneratedUTC": now_utc,
-            "Ticker": ticker,
-            "Name": info.get("shortName", "") or info.get("longName", ""),
-            "Country": country,
-            "Sector": sector,
-            "Price": safe_float(price),
-            "DividendYield": dividend_yield,
-            "PayoutRatio": payout,
-            "PE": pe,
-            "Confidence": confidence,
-            "Signal": signal_from_confidence(confidence),
-        }
-
-        rows.append(row)
-        time.sleep(REQUEST_SLEEP)
-
-    except Exception as e:
-        print(f"ERROR {ticker}: {e}")
         rows.append({
-            "GeneratedUTC": now_utc,
+            "GeneratedUTC": datetime.utcnow().strftime("%Y-%m-%d"),
             "Ticker": ticker,
-            "Name": "",
-            "Country": "",
-            "Sector": "",
-            "Price": "",
-            "DividendYield": "",
-            "PayoutRatio": "",
-            "PE": "",
-            "Confidence": "",
-            "Signal": "AVOID",
+            "Name": i.get("shortName"),
+            "Country": i.get("country"),
+            "Currency": i.get("currency"),
+            "Exchange": i.get("exchange"),
+            "Sector": i.get("sector"),
+            "Industry": i.get("industry"),
+            "Price": safe(i.get("currentPrice")),
+            "DividendYield_%": safe((i.get("dividendYield") or 0) * 100),
+            "PayoutRatio_%": safe((i.get("payoutRatio") or 0) * 100),
+            "PE": safe(i.get("trailingPE")),
         })
 
-# =========================
-# SAVE CSV (KONTRAKT LÅST)
-# =========================
-df = pd.DataFrame(rows, columns=[
-    "GeneratedUTC",
-    "Ticker",
-    "Name",
-    "Country",
-    "Sector",
-    "Price",
-    "DividendYield",
-    "PayoutRatio",
-    "PE",
-    "Confidence",
-    "Signal",
-])
+        time.sleep(1)
+
+    except Exception as e:
+        print("ERROR", ticker, e)
+
+df = pd.DataFrame(rows)
+
+df["Confidence"] = df.apply(confidence_score, axis=1)
+df["Signal"] = df["Confidence"].apply(signal_from_confidence)
 
 df.to_csv(OUTPUT_FILE, index=False)
-print(f"Saved {len(df)} rows to {OUTPUT_FILE}")
+print("✅ screener_results.csv updated")

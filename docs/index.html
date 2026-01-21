@@ -1,139 +1,72 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Dividend Screener – Baseline</title>
-
-<!-- DataTables CSS -->
-<link rel="stylesheet"
-      href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-
-<!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-<!-- DataTables -->
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-
-<!-- PapaParse -->
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
-<style>
-    body {
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-        margin: 20px;
-    }
-    h1 {
-        margin-bottom: 12px;
-    }
-</style>
-</head>
-
-<body>
-
-<h1>Dividend Screener – Baseline</h1>
-
-<table id="screener" class="display" style="width:100%">
-    <thead>
-        <tr>
-            <th>Ticker</th>
-            <th>Name</th>
-            <th>Country</th>
-            <th>Sector</th>
-            <th>Price</th>
-            <th>Dividend Yield</th>
-            <th>Payout Ratio</th>
-            <th>PE</th>
-        </tr>
-    </thead>
-</table>
-
 <script>
-(function () {
+document.addEventListener("DOMContentLoaded", function () {
 
-    // SAFETY CHECKS
-    if (typeof Papa === "undefined") {
-        document.body.insertAdjacentHTML(
-            "beforeend",
-            "<p style='color:red'>PapaParse failed to load</p>"
-        );
-        return;
-    }
+  $('#screener').DataTable({
+    ajax: {
+      url: 'data/screener_results.csv',
+      dataType: 'text',
+      dataSrc: function (csv) {
+        const lines = csv.trim().split('\n');
+        const headers = lines[0].split(',');
 
-    if (!$.fn.DataTable) {
-        document.body.insertAdjacentHTML(
-            "beforeend",
-            "<p style='color:red'>DataTables failed to load</p>"
-        );
-        return;
-    }
-
-    $(document).ready(function () {
-
-        $('#screener').DataTable({
-
-            ajax: function (data, callback) {
-
-                Papa.parse(
-                    'https://callahan1975.github.io/dividend-screener-simple/data/screener_results.csv',
-                    {
-                        download: true,
-                        header: true,
-                        skipEmptyLines: true,
-
-                        complete: function (results) {
-
-                            if (!results || !Array.isArray(results.data)) {
-                                console.error("Invalid CSV data", results);
-                                callback({ data: [] });
-                                return;
-                            }
-
-                            // NORMALISE CSV HEADERS
-                            const normalizedData = results.data.map(row => {
-                                let clean = {};
-                                Object.keys(row).forEach(key => {
-                                    const cleanKey = key
-                                        .replace(/\s+/g, '')   // remove spaces
-                                        .replace('%', '')      // remove %
-                                        .replace(/[^a-zA-Z0-9_]/g, '');
-
-                                    clean[cleanKey] = row[key];
-                                });
-                                return clean;
-                            });
-
-                            callback({ data: normalizedData });
-                        },
-
-                        error: function (err) {
-                            console.error("PapaParse error", err);
-                            callback({ data: [] });
-                        }
-                    }
-                );
-            },
-
-            // ⬇⬇⬇ THIS IS THE CRITICAL PART ⬇⬇⬇
-            columns: [
-                { data: 'Ticker',         defaultContent: '' },
-                { data: 'Name',           defaultContent: '' },
-                { data: 'Country',        defaultContent: '' },
-                { data: 'Sector',         defaultContent: '' },
-                { data: 'Price',          defaultContent: '' },
-                { data: 'DividendYield',  defaultContent: '' },
-                { data: 'PayoutRatio',    defaultContent: '' },
-                { data: 'PE',             defaultContent: '' }
-            ],
-
-            pageLength: 25,
-            order: [[0, 'asc']],
-            deferRender: true
+        return lines.slice(1).map(line => {
+          const values = line.split(',');
+          let row = {};
+          headers.forEach((h, i) => {
+            row[h.trim()] = values[i] !== undefined ? values[i].trim() : null;
+          });
+          return row;
         });
+      }
+    },
 
-    });
+    deferRender: true,
+    pageLength: 25,
+    order: [[0, 'asc']],
 
-})();
+    columns: [
+      { data: 'Ticker', defaultContent: '' },
+      { data: 'Name', defaultContent: '' },
+      { data: 'Country', defaultContent: '' },
+      { data: 'Sector', defaultContent: '' },
+
+      {
+        data: 'Price',
+        defaultContent: '',
+        render: function (d) {
+          const v = parseFloat(d);
+          return isFinite(v) ? v.toFixed(2) : '';
+        }
+      },
+
+      {
+        data: 'DividendYield',
+        defaultContent: '',
+        render: function (d) {
+          const v = parseFloat(d);
+          return isFinite(v) ? v.toFixed(2) + ' %' : '';
+        }
+      },
+
+      {
+        data: 'PayoutRatio',
+        defaultContent: '',
+        render: function (d) {
+          const v = parseFloat(d);
+          return isFinite(v) ? v.toFixed(1) + ' %' : '';
+        }
+      },
+
+      {
+        data: 'PE',
+        defaultContent: '',
+        render: function (d) {
+          const v = parseFloat(d);
+          return isFinite(v) ? v.toFixed(1) : '';
+        }
+      }
+    ]
+  });
+
+});
 </script>
-
-</body>
-</html>

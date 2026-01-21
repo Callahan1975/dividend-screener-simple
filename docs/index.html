@@ -2,18 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Dividend Screener</title>
+<title>Dividend Screener – Baseline</title>
 
 <link rel="stylesheet"
       href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
+<style>
+    body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        margin: 20px;
+    }
+    h1 {
+        margin-bottom: 12px;
+    }
+</style>
 </head>
 
 <body>
 
-<h2>Dividend Screener – Baseline</h2>
+<h1>Dividend Screener – Baseline</h1>
 
 <table id="screener" class="display" style="width:100%">
     <thead>
@@ -23,32 +33,42 @@
             <th>Country</th>
             <th>Sector</th>
             <th>Price</th>
-            <th>DividendYield</th>
-            <th>PayoutRatio</th>
+            <th>Dividend Yield</th>
+            <th>Payout Ratio</th>
             <th>PE</th>
-            <th>MarketCap</th>
         </tr>
     </thead>
 </table>
 
 <script>
 $(document).ready(function () {
+
     $('#screener').DataTable({
         ajax: {
-    url: 'https://callahan1975.github.io/dividend-screener-simple/data/screener_results.csv',
-    dataType: 'text',
-    dataSrc: function (csv) {
-        const lines = csv.trim().split('\n');
-        const headers = lines[0].split(',');
+            // Absolut URL = stabil på GitHub Pages + Safari
+            url: 'https://callahan1975.github.io/dividend-screener-simple/data/screener_results.csv',
+            dataType: 'text',
+            dataSrc: function (csv) {
 
-        return lines.slice(1).map(line => {
-            const values = line.split(',');
-            let row = {};
-            headers.forEach((h, i) => row[h] = values[i] ?? "");
-            return row;
-        });
-    }
-},
+                const lines = csv.trim().split('\n');
+                const rawHeaders = lines[0].split(',');
+
+                // Normalisér headers: fjern %, mellemrum, specialtegn
+                const headers = rawHeaders.map(h =>
+                    h.replace(/[^a-zA-Z0-9_]/g, '')
+                );
+
+                return lines.slice(1).map(line => {
+                    const values = line.split(',');
+                    let row = {};
+                    headers.forEach((h, i) => {
+                        row[h] = values[i] ?? "";
+                    });
+                    return row;
+                });
+            }
+        },
+
         columns: [
             { data: 'Ticker' },
             { data: 'Name' },
@@ -57,12 +77,14 @@ $(document).ready(function () {
             { data: 'Price' },
             { data: 'DividendYield' },
             { data: 'PayoutRatio' },
-            { data: 'PE' },
-            { data: 'MarketCap' }
+            { data: 'PE' }
         ],
+
         pageLength: 25,
-        order: [[0, 'asc']]
+        order: [[0, 'asc']],
+        deferRender: true
     });
+
 });
 </script>
 

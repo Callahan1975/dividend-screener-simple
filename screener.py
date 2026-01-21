@@ -7,7 +7,8 @@ from datetime import datetime
 # CONFIG
 # =========================
 TICKER_FILE = "data/ticker_alias.csv"
-OUTPUT_FILE = "data/screener_results.csv"
+OUTPUT_FILE = "docs/data/screener_results.csv"
+
 
 SLEEP_BETWEEN_CALLS = 1.2  # beskytter mod rate limit
 

@@ -1,114 +1,80 @@
 import yfinance as yf
 import pandas as pd
 import time
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import datetime
 
-# ==============================
-# CONFIG
-# ==============================
-TICKER_FILE = Path("data/tickers.txt")
-OUTPUT_FILE = Path("data/screener_results.csv")
+TICKER_FILE = "data/tickers.txt"
+OUTPUT_FILE = "data/screener_results.csv"
 
-SLEEP_SECONDS = 2          # pause mellem tickers
-MAX_RETRIES = 3            # retry ved rate limit
-RETRY_SLEEP = 10           # pause ved rate limit
+def resolve_country(ticker, info):
+    if info.get("country"):
+        return info.get("country")
 
-# ==============================
-# HELPERS
-# ==============================
-def safe_pct(value):
-    try:
-        if value is None or pd.isna(value):
-            return None
-        return round(float(value) * 100, 2)
-    except Exception:
-        return None
+    if ticker.endswith(".CO"):
+        return "Denmark"
+    if ticker.endswith(".TO"):
+        return "Canada"
+    if ticker.endswith(".ST"):
+        return "Sweden"
+    if ticker.endswith(".HE"):
+        return "Finland"
+    if ticker.endswith(".AS"):
+        return "Netherlands"
+    if ticker.endswith(".L"):
+        return "United Kingdom"
+
+    if info.get("exchange") in ["NYQ", "NMS"]:
+        return "United States"
+
+    return None
 
 def safe_float(value):
     try:
-        if value is None or pd.isna(value):
-            return None
         return round(float(value), 2)
-    except Exception:
+    except:
         return None
 
-def fetch_ticker_data(ticker):
-    for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            t = yf.Ticker(ticker)
-            info = t.fast_info
-            info_full = t.info
+def fetch_ticker(ticker):
+    try:
+        stock = yf.Ticker(ticker)
+        info = stock.fast_info or {}
+        full = stock.info or {}
 
-            price = safe_float(info.get("last_price"))
+        price = safe_float(info.get("last_price"))
+        dividend_yield = full.get("dividendYield")
+        payout = full.get("payoutRatio")
 
-            dividend_yield = safe_pct(
-                info_full.get("dividendYield")
-                or info_full.get("trailingAnnualDividendYield")
-            )
+        return {
+            "GeneratedUTC": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "Ticker": ticker,
+            "Name": full.get("shortName"),
+            "Country": resolve_country(ticker, full),
+            "Sector": full.get("sector"),
+            "Industry": full.get("industry"),
+            "Price": price,
+            "DividendYield_%": safe_float(dividend_yield * 100) if dividend_yield else None,
+            "PayoutRatio_%": safe_float(payout * 100) if payout else None,
+            "PE": safe_float(full.get("trailingPE")),
+        }
 
-            payout_ratio = safe_pct(info_full.get("payoutRatio"))
-            pe = safe_float(info_full.get("trailingPE"))
+    except Exception as e:
+        print(f"ERROR {ticker}: {e}")
+        return None
 
-            return {
-                "Ticker": ticker,
-                "Name": info_full.get("shortName"),
-                "Country": info_full.get("country"),
-                "Sector": info_full.get("sector"),
-                "Industry": info_full.get("industry"),
-                "Price": price,
-                "DividendYield_%": dividend_yield,
-                "PayoutRatio_%": payout_ratio,
-                "PE": pe,
-            }
-
-        except Exception as e:
-            if "Too Many Requests" in str(e):
-                print(f"RATE LIMIT {ticker} – retry {attempt}/{MAX_RETRIES}")
-                time.sleep(RETRY_SLEEP)
-            else:
-                print(f"ERROR {ticker}: {e}")
-                break
-
-    # fallback – ALDRIG 0.00
-    return {
-        "Ticker": ticker,
-        "Name": None,
-        "Country": None,
-        "Sector": None,
-        "Industry": None,
-        "Price": None,
-        "DividendYield_%": None,
-        "PayoutRatio_%": None,
-        "PE": None,
-    }
-
-# ==============================
-# MAIN
-# ==============================
 def main():
-    if not TICKER_FILE.exists():
-        raise FileNotFoundError("tickers.txt not found")
-
-    tickers = [
-        t.strip()
-        for t in TICKER_FILE.read_text().splitlines()
-        if t.strip() and not t.startswith("#")
-    ]
+    with open(TICKER_FILE) as f:
+        tickers = [t.strip() for t in f if t.strip()]
 
     rows = []
-    generated_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-
-    for ticker in tickers:
-        print(f"Fetching {ticker}")
-        data = fetch_ticker_data(ticker)
-        data["GeneratedUTC"] = generated_utc
-        rows.append(data)
-        time.sleep(SLEEP_SECONDS)
+    for t in tickers:
+        print(f"Fetching {t}")
+        row = fetch_ticker(t)
+        if row:
+            rows.append(row)
+        time.sleep(2)  # 🔒 Rate-limit protection
 
     df = pd.DataFrame(rows)
 
-    # FAST kolonneorden – må IKKE ændres
     df = df[
         [
             "GeneratedUTC",
@@ -124,9 +90,7 @@ def main():
         ]
     ]
 
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUTPUT_FILE, index=False)
-
     print(f"Saved {len(df)} rows → {OUTPUT_FILE}")
 
 if __name__ == "__main__":

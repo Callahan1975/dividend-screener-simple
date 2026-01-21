@@ -1,81 +1,77 @@
-import pandas as pd
 import yfinance as yf
+import pandas as pd
 from datetime import datetime
-import time
 
 TICKER_FILE = "data/tickers.txt"
 OUTPUT_FILE = "docs/screener_results.csv"
 
-def load_tickers():
-    with open(TICKER_FILE) as f:
-        return [l.strip() for l in f if l.strip() and not l.startswith("#")]
-
-def safe(val):
-    return None if pd.isna(val) else val
-
-def confidence_score(row):
-    score = 50
-
-    # Dividend yield
-    if row["DividendYield_%"]:
-        if row["DividendYield_%"] >= 3:
-            score += 10
-        elif row["DividendYield_%"] >= 2:
-            score += 5
-
-    # Payout ratio
-    if row["PayoutRatio_%"]:
-        if row["PayoutRatio_%"] < 60:
-            score += 10
-        elif row["PayoutRatio_%"] > 90:
-            score -= 15
-
-    # PE sanity
-    if row["PE"]:
-        if row["PE"] < 20:
-            score += 5
-        elif row["PE"] > 40:
-            score -= 10
-
-    return max(0, min(100, score))
-
-def signal_from_confidence(c):
-    if c >= 75:
-        return "BUY"
-    if c >= 55:
-        return "HOLD"
-    return "WATCH"
+COLUMNS = [
+    "GeneratedUTC",
+    "Ticker",
+    "Name",
+    "Country",
+    "Currency",
+    "Exchange",
+    "Sector",
+    "Industry",
+    "Price",
+    "DividendYield",
+    "PayoutRatio",
+    "PE",
+    "Confidence",
+    "Signal"
+]
 
 rows = []
-for ticker in load_tickers():
+
+with open(TICKER_FILE) as f:
+    tickers = [l.strip() for l in f if l.strip() and not l.startswith("#")]
+
+for ticker in tickers:
     try:
         t = yf.Ticker(ticker)
-        i = t.info
+        info = t.info
+
+        price = info.get("currentPrice")
+        dividend = info.get("dividendYield")
+        payout = info.get("payoutRatio")
+
+        dividend_yield = round(dividend * 100, 2) if dividend else None
+        payout_ratio = round(payout * 100, 2) if payout else None
+
+        confidence = 50
+        if dividend_yield and dividend_yield > 2:
+            confidence += 10
+        if payout_ratio and payout_ratio < 70:
+            confidence += 10
+
+        if confidence >= 75:
+            signal = "BUY"
+        elif confidence >= 60:
+            signal = "HOLD"
+        else:
+            signal = "WATCH"
 
         rows.append({
             "GeneratedUTC": datetime.utcnow().strftime("%Y-%m-%d"),
             "Ticker": ticker,
-            "Name": i.get("shortName"),
-            "Country": i.get("country"),
-            "Currency": i.get("currency"),
-            "Exchange": i.get("exchange"),
-            "Sector": i.get("sector"),
-            "Industry": i.get("industry"),
-            "Price": safe(i.get("currentPrice")),
-            "DividendYield_%": safe((i.get("dividendYield") or 0) * 100),
-            "PayoutRatio_%": safe((i.get("payoutRatio") or 0) * 100),
-            "PE": safe(i.get("trailingPE")),
+            "Name": info.get("longName"),
+            "Country": info.get("country"),
+            "Currency": info.get("currency"),
+            "Exchange": info.get("exchange"),
+            "Sector": info.get("sector"),
+            "Industry": info.get("industry"),
+            "Price": round(price, 2) if price else None,
+            "DividendYield": dividend_yield,
+            "PayoutRatio": payout_ratio,
+            "PE": info.get("trailingPE"),
+            "Confidence": confidence,
+            "Signal": signal
         })
 
-        time.sleep(1)
-
     except Exception as e:
-        print("ERROR", ticker, e)
+        print(f"Error on {ticker}: {e}")
 
-df = pd.DataFrame(rows)
-
-df["Confidence"] = df.apply(confidence_score, axis=1)
-df["Signal"] = df["Confidence"].apply(signal_from_confidence)
-
+df = pd.DataFrame(rows, columns=COLUMNS)
 df.to_csv(OUTPUT_FILE, index=False)
-print("✅ screener_results.csv updated")
+print(f"Saved {len(df)} rows to {OUTPUT_FILE}")

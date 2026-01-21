@@ -4,15 +4,21 @@
   <meta charset="UTF-8">
   <title>Dividend Screener – Baseline</title>
 
-  <link rel="stylesheet"
-        href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 
   <style>
-    body { font-family: Arial, sans-serif; margin: 30px; }
-    h1 { margin-bottom: 20px; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
+      margin: 24px;
+      background: #ffffff;
+    }
+    h1 {
+      margin-bottom: 12px;
+    }
+    table.dataTable thead th {
+      white-space: nowrap;
+    }
   </style>
 </head>
 
@@ -35,50 +41,92 @@
   </thead>
 </table>
 
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- DataTables -->
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
 <script>
 $(document).ready(function () {
-
-  console.log("Page loaded");
 
   $('#screener').DataTable({
     ajax: {
       url: 'data/screener_results.csv',
       dataType: 'text',
-      error: function (xhr, err) {
-        console.error("CSV load error:", err);
-      },
       dataSrc: function (csv) {
+        const lines = csv.trim().split('\n');
+        const headers = lines[0].split(',');
 
-        const rows = csv.split('\n');
-        const headers = rows[0].split(',');
+        const rows = [];
+        for (let i = 1; i < lines.length; i++) {
+          const obj = {};
+          const currentline = lines[i].split(',');
 
-        return rows.slice(1).filter(r => r.trim() !== '').map(row => {
-          const values = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
-
-          let obj = {};
-          headers.forEach((h, i) => {
-            obj[h.trim()] = values[i]
-              ? values[i].replace(/^"|"$/g, '')
-              : '';
+          headers.forEach((h, j) => {
+            obj[h] = currentline[j] ?? "";
           });
-          return obj;
-        });
+
+          rows.push(obj);
+        }
+        return rows;
       }
     },
 
-    pageLength: 25,
     deferRender: true,
+    pageLength: 25,
+    order: [[0, "asc"]],
 
     columns: [
-      { data: 'Ticker', defaultContent: '' },
-      { data: 'Name', defaultContent: '' },
-      { data: 'Country', defaultContent: '' },
-      { data: 'Sector', defaultContent: '' },
+      { data: "Ticker" },
+      { data: "Name" },
+      { data: "Country" },
+      { data: "Sector" },
 
-      { data: 'Price', render: d => isFinite(d) ? Number(d).toFixed(2) : '' },
-      { data: 'DividendYield', render: d => isFinite(d) ? Number(d).toFixed(2) + ' %' : '' },
-      { data: 'PayoutRatio', render: d => isFinite(d) ? Number(d).toFixed(1) + ' %' : '' },
-      { data: 'PE', render: d => isFinite(d) ? Number(d).toFixed(1) : '' }
+      {
+        data: "Price",
+        render: function (data, type) {
+          if (type !== 'display') return data;
+          if (!data) return "";
+          return parseFloat(data).toFixed(2);
+        }
+      },
+
+      {
+        data: "DividendYield",
+        render: function (data, type) {
+          if (type !== 'display') return data;
+          if (!data) return "";
+          const v = parseFloat(data);
+          if (isNaN(v)) return "";
+          let weight = v >= 3 ? "font-weight:600" : "";
+          let dot = v >= 5 ? " •" : "";
+          return `<span style="${weight}">${v.toFixed(2)}%${dot}</span>`;
+        }
+      },
+
+      {
+        data: "PayoutRatio",
+        render: function (data, type) {
+          if (type !== 'display') return data;
+          if (!data) return "";
+          const v = parseFloat(data);
+          if (isNaN(v)) return "";
+          let warn = v >= 95 ? " ⚠" : "";
+          return `${v.toFixed(1)}%${warn}`;
+        }
+      },
+
+      {
+        data: "PE",
+        render: function (data, type) {
+          if (type !== 'display') return data;
+          if (!data) return "";
+          const v = parseFloat(data);
+          if (isNaN(v)) return "";
+          return v.toFixed(1);
+        }
+      }
     ]
   });
 

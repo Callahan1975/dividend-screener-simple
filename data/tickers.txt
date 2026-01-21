@@ -1,12 +1,83 @@
-# =========================
-# DIVIDEND SCREENER TICKERS
-# Gold Standard – Jan 2026
-# =========================
+# ======================
+# DENMARK (DK)
+CARL-B.CO
+NOVO-B.CO
+DSV.CO
+MAERSK-B.CO
+PNDORA.CO
+COLO-B.CO
+DANSKE.CO
+SYDB.CO
+TRYG.CO
+TOP.CO
 
-# =========================
+# ======================
+# SWEDEN (SE)
+ATCO-A.ST
+ATCO-B.ST
+VOLV-B.ST
+SHB-A.ST
+SEB-A.ST
+NDA-SE.ST
+TEL2-B.ST
+CIBUS.ST
+SBB-B.ST
+SKF-B.ST
+
+# ======================
+# NORWAY (NO)
+DNB.OL
+ORK.OL
+YAR.OL
+TEL.OL
+MOWI.OL
+AKERBP.OL
+SALM.OL
+EQNR.OL
+GJF.OL
+STB.OL
+
+# ======================
+# FINLAND (FI)
+NDA-FI.HE
+KNEBV.HE
+SAMPO.HE
+ELISA.HE
+FORTUM.HE
+METSB.HE
+UPM.HE
+WRT1V.HE
+NOKIA.HE
+KESKOA.HE
+
+# ======================
+# NETHERLANDS (NL)
+ASML.AS
+NN.AS
+INGA.AS
+ABN.AS
+RAND.AS
+WKL.AS
+HEIA.AS
+DSM.AS
+AKZA.AS
+IMCD.AS
+
+# ======================
+# CANADA (CA)
+RY.TO
+TD.TO
+BMO.TO
+BNS.TO
+CM.TO
+ENB.TO
+TRP.TO
+FTS.TO
+CNQ.TO
+SU.TO
+
+# ======================
 # UNITED STATES (US)
-# Dividend Kings / Aristocrats / Contenders
-# =========================
 AAPL
 ABBV
 ABT
@@ -15,10 +86,7 @@ AEP
 AFL
 AMCR
 AMGN
-AOS
-APD
 AVGO
-AWK
 BAC
 BDX
 BLK
@@ -26,94 +94,13 @@ CAT
 CB
 CL
 COST
-CSCO
 CVX
-HD
 JNJ
 KO
-LOW
-MCD
-MDT
-MMM
 MSFT
 NEE
-O
 PEP
 PG
-T
 TXN
-UNH
 V
-WMT
 WM
-XOM
-
-# =========================
-# CANADA (CA) – Top Dividend Stocks
-# =========================
-BMO.TO
-BNS.TO
-CM.TO
-ENB.TO
-FTS.TO
-RY.TO
-TD.TO
-TRP.TO
-T.TO
-CNQ.TO
-
-# =========================
-# DENMARK (DK) – Top Dividend Stocks
-# =========================
-CARL-B.CO
-DANSKE.CO
-NDA-DK.CO
-NOVO-B.CO
-TRYG.CO
-PNDORA.CO
-ORSTED.CO
-COLO-B.CO
-SYDB.CO
-ROCK-B.CO
-
-# =========================
-# SWEDEN (SE) – Top Dividend Stocks
-# =========================
-ATCO-A.ST
-ATCO-B.ST
-SHB-A.ST
-SWED-A.ST
-SEB-A.ST
-VOLV-B.ST
-TEL2-B.ST
-ESSITY-B.ST
-SKA-B.ST
-CIBUS.ST
-
-# =========================
-# FINLAND (FI) – Top Dividend Stocks
-# =========================
-NDA-FI.HE
-SAMPO.HE
-FORTUM.HE
-ELISA.HE
-KESKOA.HE
-KESKOB.HE
-UPM.HE
-KCR.HE
-METSO.HE
-WRT1V.HE
-
-# =========================
-# NETHERLANDS (NL) – Top Dividend Stocks
-# =========================
-ASML.AS
-NN.AS
-INGA.AS
-AD.AS
-HEIA.AS
-AKZA.AS
-KPN.AS
-PHIA.AS
-RAND.AS
-DSM.AS

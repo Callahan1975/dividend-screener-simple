@@ -1,99 +1,103 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Dividend Screener – Decision View</title>
+  <meta charset="utf-8">
+  <title>Dividend Screener – Decision View</title>
 
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+  <link rel="stylesheet"
+        href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
-<style>
-body { font-family: Arial, sans-serif; margin: 20px; }
-h1 { margin-bottom: 5px; }
-.small { color: #666; margin-bottom: 15px; }
-.badge-buy { color: #0a7a0a; font-weight: bold; }
-.badge-hold { color: #b8860b; font-weight: bold; }
-.badge-watch { color: #888; font-weight: bold; }
-</style>
+  <style>
+    body { font-family: system-ui; margin: 20px; }
+    .badge { padding: 3px 8px; border-radius: 10px; font-size: 12px; }
+    .GOLD { background:#ffd700; }
+    .BUY { background:#c8f7c5; }
+    .HOLD { background:#eee; }
+    .WATCH { background:#ffd6d6; }
+    .High { background:#c8f7c5; }
+    .Medium { background:#ffe9a8; }
+    .Low { background:#ffd6d6; }
+  </style>
 </head>
 
 <body>
+<h2>Dividend Screener – Decision View</h2>
 
-<h1>Dividend Screener – Decision View</h1>
-<div class="small">Live data from data/screener_results/screener_results.csv</div>
-
-<table id="screener" class="display" style="width:100%">
-<thead>
-<tr>
-  <th>Ticker</th>
-  <th>Name</th>
-  <th>Country</th>
-  <th>Sector</th>
-  <th>Currency</th>
-  <th>Price</th>
-  <th>Yield %</th>
-  <th>Payout %</th>
-  <th>PE</th>
-  <th>Score</th>
-  <th>Signal</th>
-  <th>Conf</th>
-  <th>Why</th>
-</tr>
-</thead>
+<table id="tbl" class="display" style="width:100%">
+  <thead>
+    <tr>
+      <th>Ticker</th>
+      <th>Name</th>
+      <th>Country</th>
+      <th>Sector</th>
+      <th>Currency</th>
+      <th>Price</th>
+      <th>Yield %</th>
+      <th>Payout %</th>
+      <th>PE</th>
+      <th>Score</th>
+      <th>Signal</th>
+      <th>Conf</th>
+      <th>Why</th>
+    </tr>
+  </thead>
 </table>
 
 <script>
 $(document).ready(function () {
-  $('#screener').DataTable({
+  $('#tbl').DataTable({
     ajax: {
-      url: '../data/screener_results/screener_results.csv',
+      url: 'data/screener_results/screener_decision.csv',
       dataType: 'text',
       dataSrc: function (csv) {
-        const lines = csv.split('\n');
-        const headers = lines[0].split(',');
-        return lines.slice(1).map(line => {
-          const values = line.split(',');
-          let row = {};
-          headers.forEach((h, i) => row[h] = values[i]);
-          return row;
+        const rows = csv.split('\n').slice(1);
+        return rows.map(r => {
+          const c = r.split(',');
+          return {
+            Ticker: c[0],
+            Name: c[1],
+            Country: c[2],
+            Sector: c[5],
+            Currency: c[3],
+            Price: c[8],
+            Yield: c[9],
+            Payout: c[10],
+            PE: c[11],
+            Score: c[c.length-4],
+            Signal: c[c.length-3],
+            Conf: c[c.length-2],
+            Why: c[c.length-1]
+          };
         });
       }
     },
     columns: [
-      { data: "Ticker" },
-      { data: "Name" },
-      { data: "Country" },
-      { data: "Sector" },
-      { data: "Currency" },
-      { data: "Price" },
+      {data:'Ticker'},
+      {data:'Name'},
+      {data:'Country'},
+      {data:'Sector'},
+      {data:'Currency'},
+      {data:'Price'},
+      {data:'Yield'},
+      {data:'Payout'},
+      {data:'PE'},
+      {data:'Score'},
       {
-        data: "DividendYield",
-        render: d => d ? `${Number(d).toFixed(2)}%` : ""
+        data:'Signal',
+        render:d=>`<span class="badge ${d}">${d}</span>`
       },
       {
-        data: "PayoutRatio",
-        render: d => d ? `${Number(d).toFixed(0)}%` : ""
+        data:'Conf',
+        render:d=>`<span class="badge ${d}">${d}</span>`
       },
-      { data: "PE" },
-      { data: "Score" },
-      {
-        data: "Signal",
-        render: function (d) {
-          if (d === "BUY") return `<span class="badge-buy">${d}</span>`;
-          if (d === "HOLD") return `<span class="badge-hold">${d}</span>`;
-          return `<span class="badge-watch">${d}</span>`;
-        }
-      },
-      { data: "Confidence" },
-      { data: "Why" }
+      {data:'Why'}
     ],
-    pageLength: 25,
-    order: [[11, "desc"]]
+    order:[[9,'desc']]
   });
 });
 </script>
-
 </body>
 </html>

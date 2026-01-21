@@ -7,10 +7,11 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/plug-ins/1.13.8/dataRender/ellipsis.js"></script>
 
 <style>
 body { font-family: system-ui; margin: 20px; }
-.badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; }
+.badge { padding:4px 8px; border-radius:6px; font-size:12px; }
 .buy { background:#d1fae5; }
 .hold { background:#e0f2fe; }
 .watch { background:#fee2e2; }
@@ -46,45 +47,36 @@ body { font-family: system-ui; margin: 20px; }
 
 <script>
 $(document).ready(function () {
-$('#tbl').DataTable({
+  $('#tbl').DataTable({
     ajax: {
-        url: 'data/screener_results/screener_results.csv',
-        dataType: 'text',
-        dataSrc: function (csv) {
-            const lines = csv.split('\n');
-            const headers = lines[0].split(',');
-            return lines.slice(1).map(l => {
-                const d = l.split(',');
-                let o = {};
-                headers.forEach((h,i)=>o[h]=d[i]);
-                return o;
-            });
-        }
+      url: 'data/screener_results/screener_results.csv',
+      dataType: 'csv'
     },
     columns: [
-        {data:'Ticker'},
-        {data:'Name'},
-        {data:'Country'},
-        {data:'Sector'},
-        {data:'Currency'},
-        {data:'Price'},
-        {data:'DividendYield_%'},
-        {data:'PayoutRatio_%'},
-        {data:'PE'},
-        {data:'Score'},
-        {
-            data:'Signal',
-            render:d=>`<span class="badge ${d.toLowerCase()}">${d}</span>`
-        },
-        {
-            data:'Conf',
-            render:d=>`<span class="badge ${d.toLowerCase()}">${d}</span>`
-        },
-        {data:'Why'}
+      { data: 'Ticker' },
+      { data: 'Name' },
+      { data: 'Country' },
+      { data: 'Sector' },
+      { data: 'Currency' },
+      { data: 'Price' },
+      { data: 'DividendYield_%' },
+      { data: 'PayoutRatio_%' },
+      { data: 'PE' },
+      { data: 'Score' },
+      {
+        data: 'Signal',
+        render: d => `<span class="badge ${d?.toLowerCase()}">${d}</span>`
+      },
+      {
+        data: 'Conf',
+        render: d => `<span class="badge ${d?.toLowerCase()}">${d}</span>`
+      },
+      { data: 'Why' }
     ],
-    order:[[9,'desc']],
-    pageLength:25
-});
+    order: [[9, 'desc']],
+    pageLength: 25,
+    deferRender: true
+  });
 });
 </script>
 </body>

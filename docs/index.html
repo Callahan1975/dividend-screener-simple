@@ -1,121 +1,127 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Dividend Screener – Baseline</title>
+  <meta charset="UTF-8" />
+  <title>Dividend Screener – Baseline</title>
 
-    <link
-        rel="stylesheet"
-        href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css"
-    >
+  <!-- DataTables CSS -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css"
+  />
 
-    <style>
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-            margin: 24px;
-        }
-        h1 {
-            margin-bottom: 12px;
-        }
-        table.dataTable thead th {
-            font-weight: 600;
-        }
-    </style>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, Helvetica, Arial, sans-serif;
+      margin: 30px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    table.dataTable tbody td {
+      vertical-align: middle;
+    }
+
+    .num {
+      text-align: right;
+    }
+
+    .muted {
+      color: #999;
+    }
+  </style>
 </head>
+
 <body>
+  <h1>Dividend Screener – Baseline</h1>
 
-<h1>Dividend Screener – Baseline</h1>
-
-<table id="screener" class="display" style="width:100%">
+  <table id="screener" class="display" style="width: 100%">
     <thead>
-        <tr>
-            <th>Ticker</th>
-            <th>Name</th>
-            <th>Country</th>
-            <th>Sector</th>
-            <th>Price</th>
-            <th>Dividend Yield</th>
-            <th>Payout Ratio</th>
-            <th>PE</th>
-        </tr>
+      <tr>
+        <th>Ticker</th>
+        <th>Name</th>
+        <th>Country</th>
+        <th>Sector</th>
+        <th class="num">Price</th>
+        <th class="num">Dividend Yield</th>
+        <th class="num">Payout Ratio</th>
+        <th class="num">PE</th>
+      </tr>
     </thead>
-</table>
+    <tbody></tbody>
+  </table>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-<script>
-$(document).ready(function () {
+  <!-- DataTables -->
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
-    $('#screener').DataTable({
-        ajax: {
-            url: 'data/screener_results.csv',
-            dataType: 'text',
-            dataSrc: function (csv) {
-                const lines = csv.trim().split('\n');
-                const headers = lines[0].split(',');
+  <!-- PapaParse (CSV) -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-                return lines.slice(1).map(line => {
-                    const values = line.split(',');
-                    let row = {};
-                    headers.forEach((h, i) => {
-                        row[h] = values[i] ?? '';
-                    });
-                    return row;
-                });
-            }
-        },
+  <script>
+    function fmtNumber(v) {
+      if (v === null || v === undefined || v === "") return "–";
+      const n = Number(v);
+      return isNaN(n) ? "–" : n.toFixed(2);
+    }
 
-        columns: [
-            { data: 'Ticker' },
-            { data: 'Name' },
-            { data: 'Country' },
-            { data: 'Sector' },
+    function fmtPercent(v) {
+      if (v === null || v === undefined || v === "") return "–";
+      const n = Number(v);
+      return isNaN(n) ? "–" : n.toFixed(2) + " %";
+    }
 
+    fetch("data/screener_results.csv")
+      .then((r) => r.text())
+      .then((csv) => {
+        const parsed = Papa.parse(csv, {
+          header: true,
+          skipEmptyLines: true,
+        });
+
+        const data = parsed.data;
+
+        $("#screener").DataTable({
+          data: data,
+
+          columns: [
+            { data: "Ticker" },
+            { data: "Name" },
+            { data: "Country" },
+            { data: "Sector" },
             {
-                data: 'Price',
-                render: d => {
-                    const v = Number(d);
-                    return isNaN(v) ? '–' : v.toFixed(2);
-                }
+              data: "Price",
+              className: "num",
+              render: (d) => fmtNumber(d),
             },
-
             {
-                data: 'DividendYield_%',
-                render: d => {
-                    const v = Number(d);
-                    return (v > 0 && v < 20)
-                        ? v.toFixed(2) + ' %'
-                        : '–';
-                }
+              data: "DividendYield_%",
+              className: "num",
+              render: (d) => fmtPercent(d),
             },
-
             {
-                data: 'PayoutRatio_%',
-                render: d => {
-                    const v = Number(d);
-                    return (v >= 0 && v <= 200)
-                        ? v.toFixed(1) + ' %'
-                        : '–';
-                }
+              data: "PayoutRatio_%",
+              className: "num",
+              render: (d) => fmtPercent(d),
             },
-
             {
-                data: 'PE',
-                render: d => {
-                    const v = Number(d);
-                    return isNaN(v) ? '–' : v.toFixed(1);
-                }
-            }
-        ],
+              data: "PE",
+              className: "num",
+              render: (d) => fmtNumber(d),
+            },
+          ],
 
-        pageLength: 25,
-        order: [[0, 'asc']],
-        deferRender: true
-    });
-
-});
-</script>
-
+          pageLength: 25,
+          order: [[0, "asc"]],
+          deferRender: true,
+          autoWidth: false,
+        });
+      });
+  </script>
 </body>
 </html>

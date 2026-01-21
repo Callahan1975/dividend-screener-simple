@@ -12,8 +12,8 @@
 body { font-family: system-ui; margin: 20px; }
 .badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; }
 .buy { background:#d1fae5; }
-.hold { background:#e5e7eb; }
-.watch { background:#fde68a; }
+.hold { background:#e0f2fe; }
+.watch { background:#fee2e2; }
 .high { background:#bbf7d0; }
 .medium { background:#fde68a; }
 .low { background:#fecaca; }
@@ -31,11 +31,11 @@ body { font-family: system-ui; margin: 20px; }
 <th>Name</th>
 <th>Country</th>
 <th>Sector</th>
+<th>Currency</th>
 <th>Price</th>
 <th>Yield %</th>
 <th>Payout %</th>
 <th>PE</th>
-<th>DivCAGR 5Y %</th>
 <th>Score</th>
 <th>Signal</th>
 <th>Conf</th>
@@ -46,74 +46,45 @@ body { font-family: system-ui; margin: 20px; }
 
 <script>
 $(document).ready(function () {
-  $('#tbl').DataTable({
+$('#tbl').DataTable({
     ajax: {
-      url: 'data/screener_results/screener_results.csv',
-      dataType: 'text',
-      dataSrc: function (csv) {
-        const lines = csv.split('\n');
-        const headers = lines[0].split(',');
-        return lines.slice(1).map(l => {
-          const v = l.split(',');
-          let row = {};
-          headers.forEach((h,i)=>row[h]=v[i]);
-          return row;
-        });
-      }
+        url: 'data/screener_results/screener_results.csv',
+        dataType: 'text',
+        dataSrc: function (csv) {
+            const lines = csv.split('\n');
+            const headers = lines[0].split(',');
+            return lines.slice(1).map(l => {
+                const d = l.split(',');
+                let o = {};
+                headers.forEach((h,i)=>o[h]=d[i]);
+                return o;
+            });
+        }
     },
     columns: [
-      { data:'Ticker' },
-      { data:'Name' },
-      { data:'Country' },
-      { data:'Sector' },
-      { data:'Price' },
-      { data:'DividendYield_%' },
-      { data:'PayoutRatio_%' },
-      { data:'PE' },
-      { data:'DivCAGR_5Y_%' },
-      {
-        data:null,
-        render:r=>{
-          let s=0;
-          if(r.DividendYield_%>3) s+=30;
-          if(r.DivCAGR_5Y_%>5) s+=30;
-          if(r.PayoutRatio_%<70) s+=20;
-          if(r.PE && r.PE<20) s+=20;
-          return s;
-        }
-      },
-      {
-        data:null,
-        render:r=>{
-          let s=0;
-          if(r.DividendYield_%>3) s+=30;
-          if(r.DivCAGR_5Y_%>5) s+=30;
-          if(r.PayoutRatio_%<70) s+=20;
-          if(r.PE && r.PE<20) s+=20;
-          if(s>=80) return '<span class="badge buy">BUY</span>';
-          if(s>=60) return '<span class="badge hold">HOLD</span>';
-          return '<span class="badge watch">WATCH</span>';
-        }
-      },
-      {
-        data:null,
-        render:r=>{
-          if(r.PayoutRatio_%<60) return '<span class="badge high">High</span>';
-          if(r.PayoutRatio_%<80) return '<span class="badge medium">Medium</span>';
-          return '<span class="badge low">Low</span>';
-        }
-      },
-      {
-        data:null,
-        render:r=>{
-          if(r.DividendYield_%>5 && r.PayoutRatio_%<70) return 'High yield + sustainable';
-          if(r.PayoutRatio_%>90) return 'Payout risk';
-          return '—';
-        }
-      }
+        {data:'Ticker'},
+        {data:'Name'},
+        {data:'Country'},
+        {data:'Sector'},
+        {data:'Currency'},
+        {data:'Price'},
+        {data:'DividendYield_%'},
+        {data:'PayoutRatio_%'},
+        {data:'PE'},
+        {data:'Score'},
+        {
+            data:'Signal',
+            render:d=>`<span class="badge ${d.toLowerCase()}">${d}</span>`
+        },
+        {
+            data:'Conf',
+            render:d=>`<span class="badge ${d.toLowerCase()}">${d}</span>`
+        },
+        {data:'Why'}
     ],
-    order:[[9,'desc']]
-  });
+    order:[[9,'desc']],
+    pageLength:25
+});
 });
 </script>
 </body>

@@ -1,120 +1,107 @@
-# Dividend Screener – STABLE MASTER VERSION
-# Single source of truth: data/ticker_alias.csv
-
-import pandas as pd
 import yfinance as yf
-from pathlib import Path
+import pandas as pd
 from datetime import datetime
+from pathlib import Path
 
-# ------------------
-# PATHS
-# ------------------
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
-RESULTS_DIR = DATA_DIR / "screener_results"
-RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+# =========================
+# CONFIG
+# =========================
 
-ALIAS_FILE = DATA_DIR / "ticker_alias.csv"
-OUTPUT_FILE = RESULTS_DIR / "screener_results.csv"
+TICKER_FILE = "data/screener_results/tickers_master.txt"
+OUTPUT_FILE = "data/screener_results/screener_results.csv"
 
-# ------------------
+# fallback hvis tickers_master.txt mangler
+FALLBACK_TICKERS = [
+    "NOVO-B.CO", "DSV.CO", "MAERSK-B.CO", "CARL-B.CO", "PNDORA.CO",
+    "COLO-B.CO", "DANSKE.CO", "SYDB.CO", "TRYG.CO",
+    "AAPL", "MSFT", "KO", "PEP", "PG"
+]
+
+# =========================
 # LOAD TICKERS
-# ------------------
-alias_df = pd.read_csv(ALIAS_FILE)
-alias_df["Ticker"] = alias_df["Ticker"].str.strip().str.upper()
-tickers = alias_df["Ticker"].dropna().unique().tolist()
+# =========================
 
-print(f"Loaded {len(tickers)} tickers")
+if Path(TICKER_FILE).exists():
+    with open(TICKER_FILE, "r") as f:
+        tickers = [t.strip() for t in f if t.strip() and not t.startswith("#")]
+else:
+    print("⚠️ tickers_master.txt not found – using fallback list")
+    tickers = FALLBACK_TICKERS
 
-# ------------------
+# =========================
 # HELPERS
-# ------------------
-def safe(v):
+# =========================
+
+def safe(info, key):
+    val = info.get(key)
+    if val in [None, "", "N/A"]:
+        return None
+    return val
+
+def pct(val):
     try:
-        if v is None:
-            return None
-        return float(v)
-    except Exception:
+        return round(float(val) * 100, 2)
+    except:
         return None
 
-# ------------------
+# =========================
 # MAIN LOOP
-# ------------------
+# =========================
+
 rows = []
-now = datetime.utcnow().strftime("%Y-%m-%d")
 
-for t in tickers:
+for ticker in tickers:
+    print(f"Fetching {ticker}...")
     try:
-        stock = yf.Ticker(t)
-        info = stock.info
+        t = yf.Ticker(ticker)
+        info = t.info
 
-        price = safe(info.get("currentPrice"))
-        dividend = safe(info.get("dividendRate"))
-        payout = safe(info.get("payoutRatio"))
-        pe = safe(info.get("trailingPE"))
+        price = safe(info, "currentPrice") or safe(info, "regularMarketPrice")
+        dividend_yield = pct(safe(info, "dividendYield"))
+        payout_ratio = pct(safe(info, "payoutRatio"))
 
-        yield_pct = (dividend / price * 100) if dividend and price else None
-        payout_pct = payout * 100 if payout is not None else None
+        row = {
+            "Ticker": ticker,
+            "Name": safe(info, "shortName"),
+            "Country": safe(info, "country"),
+            "Sector": safe(info, "sector"),
+            "Currency": safe(info, "currency"),
+            "Price": round(price, 2) if price else None,
+            "DividendYield_%": dividend_yield,
+            "PayoutRatio_%": payout_ratio,
+            "PE": safe(info, "trailingPE"),
+            "DivCAGR_5Y_%": None,   # kommer senere
+            "Score": None,          # kommer senere
+            "Signal": None,         # kommer senere
+            "Confidence": None,     # kommer senere
+            "Why": None             # kommer senere
+        }
 
-        # -------- SCORE MODEL --------
-        score = 0
-        if yield_pct and yield_pct >= 3:
-            score += 30
-        if payout_pct and payout_pct <= 70:
-            score += 20
-        if payout_pct and payout_pct <= 50:
-            score += 10
-        if pe and pe <= 20:
-            score += 20
-
-        # -------- SIGNAL --------
-        if score >= 70:
-            signal = "BUY"
-        elif score >= 50:
-            signal = "HOLD"
-        else:
-            signal = "WATCH"
-
-        # -------- CONFIDENCE --------
-        if payout_pct and payout_pct > 90:
-            conf = "Low"
-        elif payout_pct and payout_pct > 70:
-            conf = "Medium"
-        else:
-            conf = "High"
-
-        # -------- WHY --------
-        why = ""
-        if yield_pct and yield_pct >= 5 and payout_pct and payout_pct <= 70:
-            why = "High yield + sustainable payout"
-        elif payout_pct and payout_pct > 90:
-            why = "Payout risk"
-
-        rows.append({
-            "Ticker": t,
-            "Name": info.get("longName"),
-            "Country": info.get("country"),
-            "Sector": info.get("sector"),
-            "Currency": info.get("currency"),
-            "Price": price,
-            "DividendYield_%": round(yield_pct, 2) if yield_pct else None,
-            "PayoutRatio_%": round(payout_pct, 1) if payout_pct else None,
-            "PE": round(pe, 2) if pe else None,
-            "Score": score,
-            "Signal": signal,
-            "Conf": conf,
-            "Why": why,
-            "Updated": now
-        })
+        rows.append(row)
 
     except Exception as e:
-        print(f"Failed {t}: {e}")
+        print(f"❌ Error on {ticker}: {e}")
 
-# ------------------
+# =========================
 # SAVE CSV
-# ------------------
-df = pd.DataFrame(rows)
-df.sort_values("Score", ascending=False, inplace=True)
-df.to_csv(OUTPUT_FILE, index=False)
+# =========================
 
-print(f"Saved {len(df)} rows → {OUTPUT_FILE}")
+df = pd.DataFrame(rows, columns=[
+    "Ticker",
+    "Name",
+    "Country",
+    "Sector",
+    "Currency",
+    "Price",
+    "DividendYield_%",
+    "PayoutRatio_%",
+    "PE",
+    "DivCAGR_5Y_%",
+    "Score",
+    "Signal",
+    "Confidence",
+    "Why"
+])
+
+df.to_csv(OUTPUT_FILE, index=False)
+print(f"✅ Saved {len(df)} rows to {OUTPUT_FILE}")

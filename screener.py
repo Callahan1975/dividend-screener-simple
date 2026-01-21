@@ -8,7 +8,7 @@ import time
 # =========================
 TICKER_FILE = "data/tickers.txt"
 OUTPUT_FILE = "data/screener_results.csv"
-SLEEP_BETWEEN_CALLS = 1.2  # rate limit protection
+SLEEP = 1.2
 
 COLUMNS = [
     "GeneratedUTC",
@@ -25,58 +25,49 @@ COLUMNS = [
 # =========================
 # LOAD TICKERS
 # =========================
-with open(TICKER_FILE, "r") as f:
-    tickers = [
-        line.strip()
-        for line in f
-        if line.strip() and not line.startswith("#")
-    ]
+with open(TICKER_FILE) as f:
+    tickers = [l.strip() for l in f if l.strip() and not l.startswith("#")]
 
 rows = []
-now_utc = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
 # =========================
 # FETCH DATA
 # =========================
 for ticker in tickers:
     try:
-        stock = yf.Ticker(ticker)
-        info = stock.fast_info if hasattr(stock, "fast_info") else {}
-        full = stock.info or {}
+        t = yf.Ticker(ticker)
+        info = t.info or {}
 
-        price = info.get("last_price") or full.get("currentPrice")
+        price = info.get("currentPrice")
+        dividend_rate = info.get("trailingAnnualDividendRate")
+        payout = info.get("payoutRatio")
+        pe = info.get("trailingPE")
 
-        dividend_yield = full.get("dividendYield")
-        if dividend_yield is not None:
-            dividend_yield = round(dividend_yield * 100, 2)
-
-        payout = full.get("payoutRatio")
-        if payout is not None:
-            payout = round(payout * 100, 2)
-
-        pe = full.get("trailingPE")
-        if pe is not None:
-            pe = round(pe, 2)
+        # ✅ CORRECT dividend yield calculation
+        dividend_yield = None
+        if price and dividend_rate:
+            dividend_yield = round((dividend_rate / price) * 100, 2)
 
         row = {
-            "GeneratedUTC": now_utc,
+            "GeneratedUTC": now,
             "Ticker": ticker,
-            "Name": full.get("shortName") or full.get("longName"),
-            "Country": full.get("country"),
-            "Sector": full.get("sector"),
+            "Name": info.get("longName") or info.get("shortName"),
+            "Country": info.get("country"),
+            "Sector": info.get("sector"),
             "Price": round(price, 2) if price else None,
             "DividendYield_%": dividend_yield,
-            "PayoutRatio_%": payout,
-            "PE": pe,
+            "PayoutRatio_%": round(payout * 100, 2) if payout else None,
+            "PE": round(pe, 2) if pe else None,
         }
 
         rows.append(row)
-        time.sleep(SLEEP_BETWEEN_CALLS)
+        time.sleep(SLEEP)
 
     except Exception as e:
         print(f"ERROR {ticker}: {e}")
         rows.append({
-            "GeneratedUTC": now_utc,
+            "GeneratedUTC": now,
             "Ticker": ticker,
             "Name": None,
             "Country": None,
@@ -88,9 +79,9 @@ for ticker in tickers:
         })
 
 # =========================
-# SAVE CSV
+# SAVE
 # =========================
 df = pd.DataFrame(rows, columns=COLUMNS)
 df.to_csv(OUTPUT_FILE, index=False)
 
-print(f"✅ Screener completed: {len(df)} tickers written to {OUTPUT_FILE}")
+print(f"✅ Screener finished: {len(df)} tickers")

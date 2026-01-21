@@ -4,11 +4,17 @@
 <meta charset="UTF-8">
 <title>Dividend Screener – Baseline</title>
 
+<!-- DataTables CSS -->
 <link rel="stylesheet"
       href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 
+<!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- DataTables -->
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
+<!-- PapaParse -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <style>
@@ -44,22 +50,27 @@
 <script>
 (function () {
 
-    // SAFETY: ensure libs are loaded
+    // HARD SAFETY CHECKS
     if (typeof Papa === "undefined") {
-        document.body.insertAdjacentHTML("beforeend",
-            "<p style='color:red'>PapaParse not loaded</p>");
+        document.body.insertAdjacentHTML(
+            "beforeend",
+            "<p style='color:red'>PapaParse failed to load</p>"
+        );
         return;
     }
 
     if (!$.fn.DataTable) {
-        document.body.insertAdjacentHTML("beforeend",
-            "<p style='color:red'>DataTables not loaded</p>");
+        document.body.insertAdjacentHTML(
+            "beforeend",
+            "<p style='color:red'>DataTables failed to load</p>"
+        );
         return;
     }
 
     $(document).ready(function () {
 
         $('#screener').DataTable({
+
             ajax: function (data, callback) {
 
                 Papa.parse(
@@ -68,27 +79,34 @@
                         download: true,
                         header: true,
                         skipEmptyLines: true,
+
                         complete: function (results) {
 
-                            if (!results || !results.data) {
-                                console.error("PapaParse returned no data");
+                            if (!results || !Array.isArray(results.data)) {
+                                console.error("Invalid CSV data", results);
                                 callback({ data: [] });
                                 return;
                             }
 
-                            const normalized = results.data.map(row => {
+                            // NORMALISE HEADERS (THIS IS THE KEY)
+                            const normalizedData = results.data.map(row => {
                                 let clean = {};
                                 Object.keys(row).forEach(key => {
-                                    const cleanKey = key.replace(/[^a-zA-Z0-9_]/g, '');
+                                    const cleanKey = key
+                                        .replace(/\s+/g, '')   // remove spaces
+                                        .replace('%', '')      // remove %
+                                        .replace(/[^a-zA-Z0-9_]/g, '');
+
                                     clean[cleanKey] = row[key];
                                 });
                                 return clean;
                             });
 
-                            callback({ data: normalized });
+                            callback({ data: normalizedData });
                         },
+
                         error: function (err) {
-                            console.error("PapaParse error:", err);
+                            console.error("PapaParse error", err);
                             callback({ data: [] });
                         }
                     }

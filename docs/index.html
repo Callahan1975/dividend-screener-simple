@@ -1,28 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dividend Screener – Baseline</title>
+
+  <link rel="stylesheet"
+        href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; margin: 30px; }
+    h1 { margin-bottom: 20px; }
+  </style>
+</head>
+
+<body>
+
+<h1>Dividend Screener – Baseline</h1>
+
+<table id="screener" class="display" style="width:100%">
+  <thead>
+    <tr>
+      <th>Ticker</th>
+      <th>Name</th>
+      <th>Country</th>
+      <th>Sector</th>
+      <th>Price</th>
+      <th>Dividend Yield</th>
+      <th>Payout Ratio</th>
+      <th>PE</th>
+    </tr>
+  </thead>
+</table>
+
 <script>
-document.addEventListener("DOMContentLoaded", function () {
+$(document).ready(function () {
+
+  console.log("Page loaded");
 
   $('#screener').DataTable({
     ajax: {
       url: 'data/screener_results.csv',
       dataType: 'text',
+      error: function (xhr, err) {
+        console.error("CSV load error:", err);
+      },
       dataSrc: function (csv) {
-        const lines = csv.trim().split('\n');
-        const headers = lines[0].split(',');
 
-        return lines.slice(1).map(line => {
-          const values = line.split(',');
-          let row = {};
+        const rows = csv.split('\n');
+        const headers = rows[0].split(',');
+
+        return rows.slice(1).filter(r => r.trim() !== '').map(row => {
+          const values = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
+
+          let obj = {};
           headers.forEach((h, i) => {
-            row[h.trim()] = values[i] !== undefined ? values[i].trim() : null;
+            obj[h.trim()] = values[i]
+              ? values[i].replace(/^"|"$/g, '')
+              : '';
           });
-          return row;
+          return obj;
         });
       }
     },
 
-    deferRender: true,
     pageLength: 25,
-    order: [[0, 'asc']],
+    deferRender: true,
 
     columns: [
       { data: 'Ticker', defaultContent: '' },
@@ -30,43 +75,15 @@ document.addEventListener("DOMContentLoaded", function () {
       { data: 'Country', defaultContent: '' },
       { data: 'Sector', defaultContent: '' },
 
-      {
-        data: 'Price',
-        defaultContent: '',
-        render: function (d) {
-          const v = parseFloat(d);
-          return isFinite(v) ? v.toFixed(2) : '';
-        }
-      },
-
-      {
-        data: 'DividendYield',
-        defaultContent: '',
-        render: function (d) {
-          const v = parseFloat(d);
-          return isFinite(v) ? v.toFixed(2) + ' %' : '';
-        }
-      },
-
-      {
-        data: 'PayoutRatio',
-        defaultContent: '',
-        render: function (d) {
-          const v = parseFloat(d);
-          return isFinite(v) ? v.toFixed(1) + ' %' : '';
-        }
-      },
-
-      {
-        data: 'PE',
-        defaultContent: '',
-        render: function (d) {
-          const v = parseFloat(d);
-          return isFinite(v) ? v.toFixed(1) : '';
-        }
-      }
+      { data: 'Price', render: d => isFinite(d) ? Number(d).toFixed(2) : '' },
+      { data: 'DividendYield', render: d => isFinite(d) ? Number(d).toFixed(2) + ' %' : '' },
+      { data: 'PayoutRatio', render: d => isFinite(d) ? Number(d).toFixed(1) + ' %' : '' },
+      { data: 'PE', render: d => isFinite(d) ? Number(d).toFixed(1) : '' }
     ]
   });
 
 });
 </script>
+
+</body>
+</html>

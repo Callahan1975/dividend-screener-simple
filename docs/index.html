@@ -50,7 +50,7 @@
 <script>
 (function () {
 
-    // HARD SAFETY CHECKS
+    // SAFETY CHECKS
     if (typeof Papa === "undefined") {
         document.body.insertAdjacentHTML(
             "beforeend",
@@ -88,7 +88,7 @@
                                 return;
                             }
 
-                            // NORMALISE HEADERS (THIS IS THE KEY)
+                            // NORMALISE CSV HEADERS
                             const normalizedData = results.data.map(row => {
                                 let clean = {};
                                 Object.keys(row).forEach(key => {
@@ -113,15 +113,16 @@
                 );
             },
 
+            // ⬇⬇⬇ THIS IS THE CRITICAL PART ⬇⬇⬇
             columns: [
-                { data: 'Ticker' },
-                { data: 'Name' },
-                { data: 'Country' },
-                { data: 'Sector' },
-                { data: 'Price' },
-                { data: 'DividendYield' },
-                { data: 'PayoutRatio' },
-                { data: 'PE' }
+                { data: 'Ticker',         defaultContent: '' },
+                { data: 'Name',           defaultContent: '' },
+                { data: 'Country',        defaultContent: '' },
+                { data: 'Sector',         defaultContent: '' },
+                { data: 'Price',          defaultContent: '' },
+                { data: 'DividendYield',  defaultContent: '' },
+                { data: 'PayoutRatio',    defaultContent: '' },
+                { data: 'PE',             defaultContent: '' }
             ],
 
             pageLength: 25,

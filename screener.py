@@ -3,73 +3,159 @@ import pandas as pd
 import time
 from datetime import datetime
 
-TICKERS = [
-    "AAPL","ABBV","ABT","ADP","AEP","AFL","AIG","AMCR","AMGN","AOS",
-    "APD","AVGO","AWK","BAC","BDX","BLK","CARL-B.CO","CAT"
-]
+# =========================
+# CONFIG
+# =========================
+TICKER_FILE = "data/ticker_alias.csv"
+OUTPUT_FILE = "data/screener_results.csv"
 
-ROWS = []
+SLEEP_BETWEEN_CALLS = 1.2  # beskytter mod rate limit
 
-def safe(v):
-    return None if v in [None, "", "nan"] else v
 
-for t in TICKERS:
-    print(f"Fetching {t}")
+# =========================
+# LOAD TICKERS
+# =========================
+tickers_df = pd.read_csv(TICKER_FILE)
+tickers = tickers_df["Ticker"].dropna().unique().tolist()
+
+
+# =========================
+# HELPERS
+# =========================
+def safe_float(x):
     try:
-        tk = yf.Ticker(t)
-        info = tk.info
+        return float(x)
+    except:
+        return None
 
-        price = safe(info.get("currentPrice"))
-        dividend_yield = None
 
-        # 1) Preferred: dividendYield
-        if info.get("dividendYield"):
-            dividend_yield = round(info["dividendYield"] * 100, 2)
+def confidence_score(row):
+    score = 0
 
-        # 2) Fallback: dividendRate / price
-        elif info.get("dividendRate") and price:
-            dividend_yield = round((info["dividendRate"] / price) * 100, 2)
+    # ---- 1. Valuation (PE)
+    pe = safe_float(row.get("PE"))
+    if pe is not None:
+        if pe <= 15:
+            score += 2
+        elif pe <= 25:
+            score += 1
+        elif pe <= 35:
+            score += 0
+        else:
+            score -= 1
 
-        # 3) LAST fallback (Apple-safe)
-        elif info.get("trailingAnnualDividendRate") and price:
-            dividend_yield = round(
-                info["trailingAnnualDividendRate"] / price * 100, 2
-            )
+    # ---- 2. Dividend presence
+    dy = safe_float(row.get("DividendYield_%"))
+    if dy is not None and dy > 0:
+        score += 1
 
-        payout = safe(info.get("payoutRatio"))
-        if payout is not None:
-            payout = round(payout * 100, 1)
+    # ---- 3. Payout discipline
+    payout = safe_float(row.get("PayoutRatio_%"))
+    if payout is not None:
+        if payout <= 60:
+            score += 2
+        elif payout <= 80:
+            score += 1
+        elif payout <= 100:
+            score += 0
+        else:
+            score -= 2
 
-        ROWS.append({
-            "GeneratedUTC": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
-            "Ticker": t,
-            "Name": info.get("longName"),
+    # ---- 4. Sector stability
+    sector = str(row.get("Sector", "")).lower()
+    if sector in ["utilities", "consumer defensive", "healthcare"]:
+        score += 1
+
+    return score
+
+
+def signal_from_score(score):
+    if score >= 5:
+        return "STRONG"
+    elif score >= 3:
+        return "GOOD"
+    elif score >= 1:
+        return "OK"
+    elif score == 0:
+        return "NEUTRAL"
+    else:
+        return "RISK"
+
+
+# =========================
+# MAIN LOOP
+# =========================
+rows = []
+generated_utc = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+for ticker in tickers:
+    print(f"Processing {ticker}")
+    try:
+        yf_ticker = yf.Ticker(ticker)
+        info = yf_ticker.info
+
+        row = {
+            "GeneratedUTC": generated_utc,
+            "Ticker": ticker,
+            "Name": info.get("shortName"),
             "Country": info.get("country"),
+            "Currency": info.get("currency"),
+            "Exchange": info.get("exchange"),
             "Sector": info.get("sector"),
-            "Price": price,
-            "DividendYield_%": dividend_yield,
-            "PayoutRatio_%": payout,
-            "PE": info.get("trailingPE")
-        })
-
-        time.sleep(2)  # 🚨 RATE LIMIT FIX
+            "Industry": info.get("industry"),
+            "Price": safe_float(info.get("currentPrice")),
+            "DividendYield_%": safe_float(
+                info.get("dividendYield") * 100
+                if info.get("dividendYield") is not None
+                else None
+            ),
+            "PayoutRatio_%": safe_float(
+                info.get("payoutRatio") * 100
+                if info.get("payoutRatio") is not None
+                else None
+            ),
+            "PE": safe_float(info.get("trailingPE")),
+        }
 
     except Exception as e:
-        print(f"ERROR {t}: {e}")
+        print(f"ERROR {ticker}: {e}")
+        row = {
+            "GeneratedUTC": generated_utc,
+            "Ticker": ticker,
+            "Name": None,
+            "Country": None,
+            "Currency": None,
+            "Exchange": None,
+            "Sector": None,
+            "Industry": None,
+            "Price": None,
+            "DividendYield_%": None,
+            "PayoutRatio_%": None,
+            "PE": None,
+        }
 
-df = pd.DataFrame(ROWS)
+    rows.append(row)
+    time.sleep(SLEEP_BETWEEN_CALLS)
 
-# 🔒 GARANTÉR KOLONNER (ALDRIG KeyError)
-EXPECTED_COLS = [
-    "GeneratedUTC","Ticker","Name","Country","Sector",
-    "Price","DividendYield_%","PayoutRatio_%","PE"
-]
 
-for c in EXPECTED_COLS:
-    if c not in df.columns:
-        df[c] = None
+# =========================
+# BUILD DATAFRAME
+# =========================
+df = pd.DataFrame(rows)
 
-df = df[EXPECTED_COLS]
+# ---- Confidence + Signal
+df["ConfidenceScore"] = df.apply(confidence_score, axis=1)
+df["Signal"] = df["ConfidenceScore"].apply(signal_from_score)
 
-df.to_csv("data/screener_results.csv", index=False)
-print("DONE")
+# ---- Sort for readability
+df = df.sort_values(
+    by=["ConfidenceScore", "DividendYield_%"],
+    ascending=[False, False],
+    na_position="last",
+)
+
+# =========================
+# SAVE
+# =========================
+df.to_csv(OUTPUT_FILE, index=False)
+print("✅ screener_results.csv written")

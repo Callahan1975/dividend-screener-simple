@@ -1,135 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Dividend Screener – Baseline</title>
+    <meta charset="UTF-8">
+    <title>Dividend Screener – Baseline</title>
 
-  <!-- DataTables CSS -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+    <link rel="stylesheet"
+          href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 
-  <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
-      margin: 24px;
-      background: #ffffff;
-    }
-    h1 {
-      margin-bottom: 12px;
-    }
-    table.dataTable thead th {
-      white-space: nowrap;
-    }
-  </style>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
+    <style>
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont; padding: 20px; }
+        h1 { margin-bottom: 10px; }
+    </style>
 </head>
-
 <body>
 
 <h1>Dividend Screener – Baseline</h1>
 
 <table id="screener" class="display" style="width:100%">
-  <thead>
+    <thead>
     <tr>
-      <th>Ticker</th>
-      <th>Name</th>
-      <th>Country</th>
-      <th>Sector</th>
-      <th>Price</th>
-      <th>Dividend Yield</th>
-      <th>Payout Ratio</th>
-      <th>PE</th>
+        <th>Ticker</th>
+        <th>Name</th>
+        <th>Country</th>
+        <th>Sector</th>
+        <th>Price</th>
+        <th>Dividend Yield</th>
+        <th>Payout Ratio</th>
+        <th>PE</th>
     </tr>
-  </thead>
+    </thead>
 </table>
-
-<!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-<!-- DataTables -->
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
 <script>
 $(document).ready(function () {
+    $('#screener').DataTable({
+        ajax: {
+            url: 'data/screener_results.csv',
+            dataType: 'text',
+            dataSrc: function (csv) {
+                const lines = csv.trim().split('\n');
+                const headers = lines[0].split(',');
 
-  $('#screener').DataTable({
-    ajax: {
-      url: 'data/screener_results.csv',
-      dataType: 'text',
-      dataSrc: function (csv) {
-        const lines = csv.trim().split('\n');
-        const headers = lines[0].split(',');
+                return lines.slice(1).map(line => {
+                    const values = line.split(',');
+                    let row = {};
 
-        const rows = [];
-        for (let i = 1; i < lines.length; i++) {
-          const obj = {};
-          const currentline = lines[i].split(',');
+                    headers.forEach((h, i) => {
+                        row[h] = values[i] === 'NaN' ? null : values[i];
+                    });
 
-          headers.forEach((h, j) => {
-            obj[h] = currentline[j] ?? "";
-          });
+                    return row;
+                });
+            }
+        },
 
-          rows.push(obj);
-        }
-        return rows;
-      }
-    },
+        columns: [
+            { data: 'Ticker' },
+            { data: 'Name' },
+            { data: 'Country' },
+            { data: 'Sector' },
+            {
+                data: 'Price',
+                render: d => d ? Number(d).toFixed(2) : ''
+            },
+            {
+                data: 'DividendYield_%',
+                render: d => d ? Number(d).toFixed(2) + ' %' : ''
+            },
+            {
+                data: 'PayoutRatio_%',
+                render: d => d ? Number(d).toFixed(1) + ' %' : ''
+            },
+            {
+                data: 'PE',
+                render: d => d ? Number(d).toFixed(1) : ''
+            }
+        ],
 
-    deferRender: true,
-    pageLength: 25,
-    order: [[0, "asc"]],
-
-    columns: [
-      { data: "Ticker" },
-      { data: "Name" },
-      { data: "Country" },
-      { data: "Sector" },
-
-      {
-        data: "Price",
-        render: function (data, type) {
-          if (type !== 'display') return data;
-          if (!data) return "";
-          return parseFloat(data).toFixed(2);
-        }
-      },
-
-      {
-        data: "DividendYield",
-        render: function (data, type) {
-          if (type !== 'display') return data;
-          if (!data) return "";
-          const v = parseFloat(data);
-          if (isNaN(v)) return "";
-          let weight = v >= 3 ? "font-weight:600" : "";
-          let dot = v >= 5 ? " •" : "";
-          return `<span style="${weight}">${v.toFixed(2)}%${dot}</span>`;
-        }
-      },
-
-      {
-        data: "PayoutRatio",
-        render: function (data, type) {
-          if (type !== 'display') return data;
-          if (!data) return "";
-          const v = parseFloat(data);
-          if (isNaN(v)) return "";
-          let warn = v >= 95 ? " ⚠" : "";
-          return `${v.toFixed(1)}%${warn}`;
-        }
-      },
-
-      {
-        data: "PE",
-        render: function (data, type) {
-          if (type !== 'display') return data;
-          if (!data) return "";
-          const v = parseFloat(data);
-          if (isNaN(v)) return "";
-          return v.toFixed(1);
-        }
-      }
-    ]
-  });
-
+        order: [[0, 'asc']],
+        pageLength: 25
+    });
 });
 </script>
 

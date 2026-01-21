@@ -1,135 +1,133 @@
 import yfinance as yf
 import pandas as pd
 import time
-import os
-from datetime import datetime
-from functools import lru_cache
+from datetime import datetime, timezone
+from pathlib import Path
 
-# =========================
-# KONFIG
-# =========================
-INPUT_TICKERS_FILE = "data/dividend_classes.csv"
-OUTPUT_FILE = "docs/data/screener_results.csv"
+# ==============================
+# CONFIG
+# ==============================
+TICKER_FILE = Path("data/tickers.txt")
+OUTPUT_FILE = Path("data/screener_results.csv")
 
-REQUEST_SLEEP = 0.6  # beskytter mod rate limit
+SLEEP_SECONDS = 2          # pause mellem tickers
+MAX_RETRIES = 3            # retry ved rate limit
+RETRY_SLEEP = 10           # pause ved rate limit
 
-# =========================
-# CACHE
-# =========================
-@lru_cache(maxsize=512)
-def get_info_cached(ticker):
-    return yf.Ticker(ticker).info
-
-# =========================
-# LOAD TICKERS
-# =========================
-tickers_df = pd.read_csv(INPUT_TICKERS_FILE)
-tickers = tickers_df["Ticker"].dropna().unique().tolist()
-
-# =========================
-# LOAD GAMMEL DATA (fallback)
-# =========================
-old_df = None
-if os.path.exists(OUTPUT_FILE):
-    old_df = pd.read_csv(OUTPUT_FILE)
-
-rows = []
-
-# =========================
-# LOOP
-# =========================
-for ticker in tickers:
-    print(f"Processing {ticker}")
-    time.sleep(REQUEST_SLEEP)
-
+# ==============================
+# HELPERS
+# ==============================
+def safe_pct(value):
     try:
-        info = get_info_cached(ticker)
+        if value is None or pd.isna(value):
+            return None
+        return round(float(value) * 100, 2)
+    except Exception:
+        return None
 
-        price = info.get("regularMarketPrice")
-        dividend_yield = info.get("dividendYield")
-        payout_ratio = info.get("payoutRatio")
-        pe = info.get("trailingPE")
+def safe_float(value):
+    try:
+        if value is None or pd.isna(value):
+            return None
+        return round(float(value), 2)
+    except Exception:
+        return None
 
-        country = info.get("country")
-        sector = info.get("sector")
-        currency = info.get("currency")
-        exchange = info.get("exchange")
-        industry = info.get("industry")
-        name = info.get("shortName") or info.get("longName")
+def fetch_ticker_data(ticker):
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            t = yf.Ticker(ticker)
+            info = t.fast_info
+            info_full = t.info
 
-        # Konverter til procent
-        if dividend_yield is not None:
-            dividend_yield = round(dividend_yield * 100, 2)
+            price = safe_float(info.get("last_price"))
 
-        if payout_ratio is not None:
-            payout_ratio = round(payout_ratio * 100, 2)
+            dividend_yield = safe_pct(
+                info_full.get("dividendYield")
+                or info_full.get("trailingAnnualDividendYield")
+            )
 
-    except Exception as e:
-        print(f"Rate limit / error on {ticker}: {e}")
+            payout_ratio = safe_pct(info_full.get("payoutRatio"))
+            pe = safe_float(info_full.get("trailingPE"))
 
-        if old_df is not None and ticker in old_df["Ticker"].values:
-            prev = old_df[old_df["Ticker"] == ticker].iloc[0]
-            price = prev["Price"]
-            dividend_yield = prev["DividendYield_%"]
-            payout_ratio = prev["PayoutRatio_%"]
-            pe = prev["PE"]
-            country = prev["Country"]
-            sector = prev["Sector"]
-            currency = prev["Currency"]
-            exchange = prev["Exchange"]
-            industry = prev["Industry"]
-            name = prev["Name"]
-        else:
-            price = None
-            dividend_yield = None
-            payout_ratio = None
-            pe = None
-            country = None
-            sector = None
-            currency = None
-            exchange = None
-            industry = None
-            name = None
+            return {
+                "Ticker": ticker,
+                "Name": info_full.get("shortName"),
+                "Country": info_full.get("country"),
+                "Sector": info_full.get("sector"),
+                "Industry": info_full.get("industry"),
+                "Price": price,
+                "DividendYield_%": dividend_yield,
+                "PayoutRatio_%": payout_ratio,
+                "PE": pe,
+            }
 
-    rows.append({
-        "GeneratedUTC": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        except Exception as e:
+            if "Too Many Requests" in str(e):
+                print(f"RATE LIMIT {ticker} – retry {attempt}/{MAX_RETRIES}")
+                time.sleep(RETRY_SLEEP)
+            else:
+                print(f"ERROR {ticker}: {e}")
+                break
+
+    # fallback – ALDRIG 0.00
+    return {
         "Ticker": ticker,
-        "Name": name,
-        "Country": country,
-        "Currency": currency,
-        "Exchange": exchange,
-        "Sector": sector,
-        "Industry": industry,
-        "Price": price,
-        "DividendYield_%": dividend_yield,
-        "PayoutRatio_%": payout_ratio,
-        "PE": pe
-    })
+        "Name": None,
+        "Country": None,
+        "Sector": None,
+        "Industry": None,
+        "Price": None,
+        "DividendYield_%": None,
+        "PayoutRatio_%": None,
+        "PE": None,
+    }
 
-# =========================
-# WRITE OUTPUT
-# =========================
-os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+# ==============================
+# MAIN
+# ==============================
+def main():
+    if not TICKER_FILE.exists():
+        raise FileNotFoundError("tickers.txt not found")
 
-df = pd.DataFrame(rows)
-
-# Sikrer kolonneorden
-df = df[
-    [
-        "GeneratedUTC",
-        "Ticker",
-        "Name",
-        "Country",
-        "Currency",
-        "Exchange",
-        "Sector",
-        "Industry",
-        "Price",
-        "DividendYield_%",
-        "PayoutRatio_%",
-        "PE",
+    tickers = [
+        t.strip()
+        for t in TICKER_FILE.read_text().splitlines()
+        if t.strip() and not t.startswith("#")
     ]
-]
 
-df.to_csv(OUTPUT_FILE, index=False)
-print("✅ Screener completed successfully")
+    rows = []
+    generated_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    for ticker in tickers:
+        print(f"Fetching {ticker}")
+        data = fetch_ticker_data(ticker)
+        data["GeneratedUTC"] = generated_utc
+        rows.append(data)
+        time.sleep(SLEEP_SECONDS)
+
+    df = pd.DataFrame(rows)
+
+    # FAST kolonneorden – må IKKE ændres
+    df = df[
+        [
+            "GeneratedUTC",
+            "Ticker",
+            "Name",
+            "Country",
+            "Sector",
+            "Industry",
+            "Price",
+            "DividendYield_%",
+            "PayoutRatio_%",
+            "PE",
+        ]
+    ]
+
+    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(OUTPUT_FILE, index=False)
+
+    print(f"Saved {len(df)} rows → {OUTPUT_FILE}")
+
+if __name__ == "__main__":
+    main()

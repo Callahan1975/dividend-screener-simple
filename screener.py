@@ -37,34 +37,35 @@ rows = []
 for ticker in INPUT_TICKERS:
     try:
         t = yf.Ticker(ticker)
-
-        # ---- rate-limit protection ----
-        time.sleep(2)
+        time.sleep(2)  # rate-limit protection
 
         info = t.info
         if not info:
-            print(f"SKIP {ticker}: no info")
             continue
 
         price = safe_float(info.get("currentPrice"))
-        dividend = safe_float(info.get("dividendRate"))
         eps = safe_float(info.get("trailingEps"))
         pe = safe_float(info.get("trailingPE"))
 
-        # Price is mandatory
-        if not price:
-            print(f"SKIP {ticker}: no price")
-            continue
-
-        # Dividend Yield (%)
+        # ---- DIVIDEND LOGIC (ROBUST) ----
         dividend_yield = None
-        if dividend and price:
-            dividend_yield = round((dividend / price) * 100, 2)
 
-        # Payout Ratio (%)
+        # 1) Prefer dividendYield (already % in decimal)
+        dy = safe_float(info.get("dividendYield"))
+        if dy:
+            dividend_yield = round(dy * 100, 2)
+
+        # 2) Fallback: dividendRate / price
+        else:
+            dividend_rate = safe_float(info.get("dividendRate"))
+            if dividend_rate and price:
+                dividend_yield = round((dividend_rate / price) * 100, 2)
+
+        # ---- PAYOUT RATIO ----
         payout_ratio = None
-        if dividend and eps and eps > 0:
-            payout_ratio = round((dividend / eps) * 100, 1)
+        dividend_rate = safe_float(info.get("dividendRate"))
+        if dividend_rate and eps and eps > 0:
+            payout_ratio = round((dividend_rate / eps) * 100, 1)
 
         rows.append({
             "GeneratedUTC": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
@@ -75,7 +76,7 @@ for ticker in INPUT_TICKERS:
             "Exchange": info.get("exchange"),
             "Sector": info.get("sector"),
             "Industry": info.get("industry"),
-            "Price": round(price, 2),
+            "Price": round(price, 2) if price else None,
             "DividendYield_%": dividend_yield,
             "PayoutRatio_%": payout_ratio,
             "PE": round(pe, 1) if pe else None
@@ -88,15 +89,9 @@ for ticker in INPUT_TICKERS:
         time.sleep(5)
 
 # -------------------------------------------------
-# SAFE WRITE CSV (ALWAYS)
+# SAFE WRITE
 # -------------------------------------------------
-if rows:
-    df = pd.DataFrame(rows)
-else:
-    # Create EMPTY dataframe with correct columns
-    df = pd.DataFrame(columns=COLUMNS)
-
-df = df.reindex(columns=COLUMNS)
+df = pd.DataFrame(rows, columns=COLUMNS)
 df.to_csv(OUTPUT_FILE, index=False)
 
-print(f"✔ Screener finished – {len(df)} rows written")
+print(f"✔ Screener finished – {len(df)} rows")

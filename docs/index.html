@@ -1,17 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Dividend Screener – Baseline</title>
+<meta charset="UTF-8">
+<title>Dividend Screener – Baseline</title>
 
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    table.dataTable thead th { font-weight: bold; }
-  </style>
+<style>
+body { font-family: Arial, sans-serif; margin: 20px; }
+.badge { padding: 4px 8px; border-radius: 6px; font-weight: 600; }
+.STRONG { background:#1b5e20; color:#fff; }
+.BUY { background:#2e7d32; color:#fff; }
+.HOLD { background:#f9a825; color:#000; }
+.WATCH { background:#ef6c00; color:#fff; }
+.AVOID { background:#c62828; color:#fff; }
+.num { text-align:right; }
+</style>
 </head>
 
 <body>
@@ -19,20 +25,20 @@
 <h1>Dividend Screener – Baseline</h1>
 
 <table id="screener" class="display" style="width:100%">
-  <thead>
-    <tr>
-      <th>Ticker</th>
-      <th>Name</th>
-      <th>Country</th>
-      <th>Sector</th>
-      <th>Price</th>
-      <th>Dividend Yield</th>
-      <th>Payout Ratio</th>
-      <th>PE</th>
-    </tr>
-  </thead>
-  <tbody>
-  </tbody>
+<thead>
+<tr>
+<th>Ticker</th>
+<th>Name</th>
+<th>Country</th>
+<th>Sector</th>
+<th class="num">Price</th>
+<th class="num">Dividend Yield</th>
+<th class="num">Payout Ratio</th>
+<th class="num">PE</th>
+<th class="num">Confidence</th>
+<th>Signal</th>
+</tr>
+</thead>
 </table>
 
 <script>
@@ -46,20 +52,32 @@ $(document).ready(function () {
       const data = rows.map(r => {
         const c = r.split(",");
         return [
-          c[1],                         // Ticker
-          c[2],                         // Name
-          c[3],                         // Country
-          c[6],                         // Sector
-          c[8],                         // Price
-          c[9] ? c[9] + " %" : "–",     // DividendYield_%
-          c[10] ? c[10] + " %" : "–",   // PayoutRatio_%
-          c[11]                         // PE
+          c[1],                    // Ticker
+          c[2],                    // Name
+          c[3],                    // Country
+          c[4],                    // Sector
+          c[5],                    // Price
+          c[6] ? c[6] + " %" : "–",// DividendYield
+          c[7] ? c[7] + " %" : "–",// PayoutRatio
+          c[8] || "–",             // PE
+          c[9] || "–",             // Confidence
+          c[10]                    // Signal
         ];
       });
 
       $('#screener').DataTable({
         data: data,
-        pageLength: 25
+        pageLength: 25,
+        order: [[8, 'desc']],
+        columnDefs: [
+          { targets: [4,5,6,7,8], className: 'num' },
+          {
+            targets: 9,
+            render: function(data){
+              return '<span class="badge ' + data.replace(' ','') + '">' + data + '</span>';
+            }
+          }
+        ]
       });
     });
 

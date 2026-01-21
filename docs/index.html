@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <style>
 body { font-family: Arial; padding: 20px; }
@@ -17,45 +18,60 @@ body { font-family: Arial; padding: 20px; }
 </head>
 
 <body>
+
 <h1>Dividend Screener – Baseline</h1>
 
 <table id="screener" class="display" style="width:100%">
 <thead>
 <tr>
-<th>Ticker</th><th>Name</th><th>Country</th><th>Currency</th><th>Exchange</th>
-<th>Sector</th><th>Industry</th><th>Price</th>
-<th>Dividend Yield</th><th>Payout Ratio</th><th>PE</th>
-<th>Confidence</th><th>Signal</th>
+<th>Ticker</th>
+<th>Name</th>
+<th>Country</th>
+<th>Currency</th>
+<th>Exchange</th>
+<th>Sector</th>
+<th>Industry</th>
+<th>Price</th>
+<th>Dividend Yield</th>
+<th>Payout Ratio</th>
+<th>PE</th>
+<th>Confidence</th>
+<th>Signal</th>
 </tr>
 </thead>
 </table>
 
 <script>
-$(document).ready(function () {
-  $('#screener').DataTable({
-    ajax: {
-      url: 'screener_results.csv',
-      dataSrc: ''
-    },
-    columns: [
-      { data: 'Ticker' },
-      { data: 'Name' },
-      { data: 'Country' },
-      { data: 'Currency' },
-      { data: 'Exchange' },
-      { data: 'Sector' },
-      { data: 'Industry' },
-      { data: 'Price' },
-      { data: 'DividendYield_%', render: d => d ? d.toFixed(2) + '%' : '-' },
-      { data: 'PayoutRatio_%', render: d => d ? d.toFixed(1) + '%' : '-' },
-      { data: 'PE', render: d => d ? d.toFixed(1) : '-' },
-      { data: 'Confidence' },
-      { data: 'Signal', render: d => `<span class="${d}">${d}</span>` }
-    ],
-    order: [[11, 'desc']],
-    pageLength: 25
-  });
+Papa.parse("screener_results.csv", {
+  download: true,
+  header: true,
+  dynamicTyping: true,
+  complete: function(results) {
+
+    $('#screener').DataTable({
+      data: results.data,
+      columns: [
+        { data: "Ticker" },
+        { data: "Name" },
+        { data: "Country" },
+        { data: "Currency" },
+        { data: "Exchange" },
+        { data: "Sector" },
+        { data: "Industry" },
+        { data: "Price" },
+        { data: "DividendYield_%", render: d => d ? d.toFixed(2) + "%" : "-" },
+        { data: "PayoutRatio_%", render: d => d ? d.toFixed(1) + "%" : "-" },
+        { data: "PE", render: d => d ? d.toFixed(1) : "-" },
+        { data: "Confidence" },
+        { data: "Signal", render: d => `<span class="${d}">${d}</span>` }
+      ],
+      order: [[11, "desc"]],
+      pageLength: 25
+    });
+
+  }
 });
 </script>
+
 </body>
 </html>

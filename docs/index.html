@@ -4,23 +4,19 @@
   <meta charset="UTF-8">
   <title>Dividend Screener – Decision View</title>
 
-  <!-- DataTables -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
   <style>
-    body { font-family: system-ui; margin: 20px; }
-    .badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; }
-    .buy { background:#d1fae5; }
-    .hold { background:#fde68a; }
-    .watch { background:#e5e7eb; }
-    .high { background:#bbf7d0; }
-    .medium { background:#fde68a; }
-    .low { background:#fecaca; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+      margin: 24px;
+    }
+    h2 { margin-bottom: 4px; }
+    p { color: #555; margin-top: 0; }
   </style>
 </head>
-
 <body>
 
 <h2>Dividend Screener – Decision View</h2>
@@ -32,17 +28,14 @@
       <th>Ticker</th>
       <th>Name</th>
       <th>Country</th>
-      <th>Sector</th>
       <th>Currency</th>
+      <th>Exchange</th>
+      <th>Sector</th>
+      <th>Industry</th>
       <th>Price</th>
-      <th>Yield %</th>
-      <th>Payout %</th>
+      <th>Dividend Yield %</th>
+      <th>Payout Ratio %</th>
       <th>PE</th>
-      <th>DivCAGR 5Y %</th>
-      <th>Score</th>
-      <th>Signal</th>
-      <th>Conf</th>
-      <th>Why</th>
     </tr>
   </thead>
 </table>
@@ -56,80 +49,28 @@ $(document).ready(function () {
       dataSrc: function (csv) {
         const lines = csv.trim().split('\n');
         const headers = lines[0].split(',');
-        return lines.slice(1).map(l => {
-          const values = l.split(',');
-          let o = {};
-          headers.forEach((h,i) => o[h] = values[i]);
-          return o;
+        return lines.slice(1).map(line => {
+          const values = line.split(',');
+          let row = {};
+          headers.forEach((h, i) => row[h] = values[i]);
+          return row;
         });
       }
     },
-
     columns: [
       { data: 'Ticker' },
       { data: 'Name' },
       { data: 'Country' },
-      { data: 'Sector' },
       { data: 'Currency' },
+      { data: 'Exchange' },
+      { data: 'Sector' },
+      { data: 'Industry' },
       { data: 'Price' },
       { data: 'DividendYield_%' },
       { data: 'PayoutRatio_%' },
-      { data: 'PE' },
-      { data: 'DivCAGR_5Y' },
-
-      /* SCORE */
-      {
-        data: null,
-        render: function (r) {
-          let s = 0;
-          if (+r.DividendYield_% >= 3) s += 30;
-          if (+r.DivCAGR_5Y >= 5) s += 30;
-          if (+r.PayoutRatio_% > 0 && +r.PayoutRatio_% <= 70) s += 20;
-          if (+r.PE > 0 && +r.PE <= 20) s += 20;
-          return s;
-        }
-      },
-
-      /* SIGNAL */
-      {
-        data: null,
-        render: function (r) {
-          let s = 0;
-          if (+r.DividendYield_% >= 3) s += 30;
-          if (+r.DivCAGR_5Y >= 5) s += 30;
-          if (+r.PayoutRatio_% > 0 && +r.PayoutRatio_% <= 70) s += 20;
-          if (+r.PE > 0 && +r.PE <= 20) s += 20;
-
-          if (s >= 80) return '<span class="badge buy">BUY</span>';
-          if (s >= 60) return '<span class="badge hold">HOLD</span>';
-          return '<span class="badge watch">WATCH</span>';
-        }
-      },
-
-      /* CONFIDENCE */
-      {
-        data: null,
-        render: function (r) {
-          if (+r.PayoutRatio_% <= 60) return '<span class="badge high">High</span>';
-          if (+r.PayoutRatio_% <= 80) return '<span class="badge medium">Medium</span>';
-          return '<span class="badge low">Low</span>';
-        }
-      },
-
-      /* WHY */
-      {
-        data: null,
-        render: function (r) {
-          if (+r.DividendYield_% >= 4 && +r.PayoutRatio_% <= 70)
-            return 'High yield + sustainable';
-          if (+r.PayoutRatio_% > 90)
-            return 'Payout risk';
-          return '';
-        }
-      }
+      { data: 'PE' }
     ],
-
-    order: [[10, 'desc']],
+    order: [[8, 'desc']],
     pageLength: 25
   });
 });

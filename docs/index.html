@@ -1,45 +1,77 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <title>Dividend Screener – Baseline</title>
 
-  <link rel="stylesheet"
-    href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 
-  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+  <!-- DataTables JS -->
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 24px;
+    }
+    h1 {
+      margin-bottom: 12px;
+    }
+    .BUY { color: #1a7f37; font-weight: 600; }
+    .HOLD { color: #9a6700; font-weight: 600; }
+    .WATCH { color: #6a737d; font-weight: 600; }
+  </style>
 </head>
-
 <body>
+
 <h1>Dividend Screener – Baseline</h1>
 
 <table id="screener" class="display" style="width:100%">
-<thead>
-<tr>
-  <th>Ticker</th>
-  <th>Name</th>
-  <th>Country</th>
-  <th>Currency</th>
-  <th>Exchange</th>
-  <th>Sector</th>
-  <th>Industry</th>
-  <th>Price</th>
-  <th>Dividend Yield</th>
-  <th>Payout Ratio</th>
-  <th>PE</th>
-  <th>Confidence</th>
-  <th>Signal</th>
-</tr>
-</thead>
+  <thead>
+    <tr>
+      <th>Ticker</th>
+      <th>Name</th>
+      <th>Country</th>
+      <th>Currency</th>
+      <th>Exchange</th>
+      <th>Sector</th>
+      <th>Industry</th>
+      <th>Price</th>
+      <th>Dividend Yield</th>
+      <th>Payout Ratio</th>
+      <th>PE</th>
+      <th>Confidence</th>
+      <th>Signal</th>
+    </tr>
+  </thead>
 </table>
 
 <script>
 $(document).ready(function () {
+
   $('#screener').DataTable({
+    pageLength: 25,
     ajax: {
       url: 'screener_results.csv',
-      dataSrc: ''
+      dataType: 'text',
+      dataSrc: function (csv) {
+
+        const lines = csv.trim().split('\n');
+        const headers = lines[0].split(',');
+
+        return lines.slice(1).map(line => {
+          const data = line.split(',');
+          let row = {};
+          headers.forEach((h, i) => {
+            row[h] = data[i];
+          });
+          return row;
+        });
+      }
     },
     columns: [
       { data: 'Ticker' },
@@ -50,13 +82,20 @@ $(document).ready(function () {
       { data: 'Sector' },
       { data: 'Industry' },
       { data: 'Price' },
-      { data: 'DividendYield' },
-      { data: 'PayoutRatio' },
+      { data: 'DividendYield_%' },
+      { data: 'PayoutRatio_%' },
       { data: 'PE' },
       { data: 'Confidence' },
-      { data: 'Signal' }
+      {
+        data: 'Signal',
+        render: function (data) {
+          if (!data) return '';
+          return '<span class="' + data + '">' + data + '</span>';
+        }
+      }
     ]
   });
+
 });
 </script>
 

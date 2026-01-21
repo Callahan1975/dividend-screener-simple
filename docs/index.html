@@ -4,15 +4,23 @@
     <meta charset="UTF-8">
     <title>Dividend Screener – Baseline</title>
 
-    <link rel="stylesheet"
-          href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <!-- DataTables CSS -->
+    <link
+        rel="stylesheet"
+        href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css"
+    >
 
     <style>
-        body { font-family: system-ui, -apple-system, BlinkMacSystemFont; padding: 20px; }
-        h1 { margin-bottom: 10px; }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 24px;
+        }
+        h1 {
+            margin-bottom: 12px;
+        }
+        table.dataTable thead th {
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -21,21 +29,28 @@
 
 <table id="screener" class="display" style="width:100%">
     <thead>
-    <tr>
-        <th>Ticker</th>
-        <th>Name</th>
-        <th>Country</th>
-        <th>Sector</th>
-        <th>Price</th>
-        <th>Dividend Yield</th>
-        <th>Payout Ratio</th>
-        <th>PE</th>
-    </tr>
+        <tr>
+            <th>Ticker</th>
+            <th>Name</th>
+            <th>Country</th>
+            <th>Sector</th>
+            <th>Price</th>
+            <th>Dividend Yield</th>
+            <th>Payout Ratio</th>
+            <th>PE</th>
+        </tr>
     </thead>
 </table>
 
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
 <script>
 $(document).ready(function () {
+
     $('#screener').DataTable({
         ajax: {
             url: 'data/screener_results.csv',
@@ -47,11 +62,9 @@ $(document).ready(function () {
                 return lines.slice(1).map(line => {
                     const values = line.split(',');
                     let row = {};
-
                     headers.forEach((h, i) => {
-                        row[h] = values[i] === 'NaN' ? null : values[i];
+                        row[h] = values[i] ?? '';
                     });
-
                     return row;
                 });
             }
@@ -62,27 +75,49 @@ $(document).ready(function () {
             { data: 'Name' },
             { data: 'Country' },
             { data: 'Sector' },
+
             {
                 data: 'Price',
-                render: d => d ? Number(d).toFixed(2) : ''
+                render: d => {
+                    const v = Number(d);
+                    return isNaN(v) ? '' : v.toFixed(2);
+                }
             },
+
             {
                 data: 'DividendYield_%',
-                render: d => d ? Number(d).toFixed(2) + ' %' : ''
+                render: d => {
+                    const v = Number(d);
+                    return (!isNaN(v) && v > 0 && v < 20)
+                        ? v.toFixed(2) + ' %'
+                        : '';
+                }
             },
+
             {
                 data: 'PayoutRatio_%',
-                render: d => d ? Number(d).toFixed(1) + ' %' : ''
+                render: d => {
+                    const v = Number(d);
+                    return (!isNaN(v) && v >= 0 && v <= 200)
+                        ? v.toFixed(1) + ' %'
+                        : '';
+                }
             },
+
             {
                 data: 'PE',
-                render: d => d ? Number(d).toFixed(1) : ''
+                render: d => {
+                    const v = Number(d);
+                    return isNaN(v) ? '' : v.toFixed(1);
+                }
             }
         ],
 
+        pageLength: 25,
         order: [[0, 'asc']],
-        pageLength: 25
+        deferRender: true
     });
+
 });
 </script>
 

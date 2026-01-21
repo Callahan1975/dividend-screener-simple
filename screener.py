@@ -1,24 +1,23 @@
 import pandas as pd
+from pathlib import Path
 
-# load data (din logik her)
-df = pd.read_csv("raw_data.csv")
+# ---- CONTRACT PATH ----
+CSV_PATH = Path("data/screener_results.csv")
 
-# HARD CONTRACT – kun disse kolonner
-COLUMNS = [
-    "Ticker",
-    "Name",
-    "Country",
-    "Sector",
-    "Price",
-    "DividendYield",
-    "PayoutRatio",
-    "PE",
-    "MarketCap"
-]
+# ---- VALIDATE CONTRACT ----
+if not CSV_PATH.exists():
+    raise FileNotFoundError(
+        "❌ Contract CSV missing: data/screener_results.csv"
+    )
 
-df = df[COLUMNS]
+# ---- LOAD CONTRACT ----
+df = pd.read_csv(CSV_PATH)
 
-# Ryd NaN
-df = df.fillna("")
+# ---- BASIC SANITY CHECK ----
+if df.empty:
+    raise ValueError("❌ Contract CSV is empty")
 
-df.to_csv("data/screener_results.csv", index=False)
+# ---- RE-SAVE (NORMALIZE) ----
+df.to_csv(CSV_PATH, index=False)
+
+print("✅ Dividend Screener contract CSV validated and preserved")

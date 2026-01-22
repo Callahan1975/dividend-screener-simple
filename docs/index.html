@@ -8,6 +8,7 @@
 
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
@@ -42,38 +43,34 @@
 
 <script>
 $(document).ready(function () {
-  $('#screener').DataTable({
-    ajax: {
-      url: 'data/screener_results.csv',
-      dataType: 'text',
-      dataSrc: function (csv) {
-        const lines = csv.split('\n');
-        const headers = lines[0].split(',');
-        return lines.slice(1).filter(l => l.trim()).map(line => {
-          const values = line.split(',');
-          let obj = {};
-          headers.forEach((h, i) => obj[h] = values[i]);
-          return obj;
-        });
-      }
-    },
-    columns: [
-      { data: 'Ticker' },
-      { data: 'Name' },
-      { data: 'Country' },
-      { data: 'Currency' },
-      { data: 'Exchange' },
-      { data: 'Sector' },
-      { data: 'Industry' },
-      { data: 'Price' },
-      { data: 'DividendYield' },
-      { data: 'PayoutRatio' },
-      { data: 'PE' },
-      { data: 'Confidence' },
-      { data: 'Signal',
-        render: d => `<span class="${d}">${d}</span>`
-      }
-    ]
+  Papa.parse('data/screener_results.csv', {
+    download: true,
+    header: true,
+    dynamicTyping: true,
+    skipEmptyLines: true,
+    complete: function(results) {
+      $('#screener').DataTable({
+        data: results.data,
+        columns: [
+          { data: 'Ticker' },
+          { data: 'Name' },
+          { data: 'Country' },
+          { data: 'Currency' },
+          { data: 'Exchange' },
+          { data: 'Sector' },
+          { data: 'Industry' },
+          { data: 'Price' },
+          { data: 'DividendYield' },
+          { data: 'PayoutRatio' },
+          { data: 'PE' },
+          { data: 'Confidence' },
+          {
+            data: 'Signal',
+            render: d => `<span class="${d}">${d}</span>`
+          }
+        ]
+      });
+    }
   });
 });
 </script>

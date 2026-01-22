@@ -1,12 +1,6 @@
 GeneratedUTC,Ticker,Name,Country,Currency,Exchange,Sector,Industry,Price,DividendYield_%,PayoutRatio_%,PE,Confidence,Signal
-2026-01-21,AAPL,Apple Inc.,United States,USD,NASDAQ,Technology,Consumer Electronics,247.66,0.52,13.7,33.24,70,HOLD
-2026-01-21,ABBV,AbbVie Inc.,United States,USD,NYSE,Healthcare,Drug Manufacturers - General,216.07,3.13,4.9,162.46,60,HOLD
-2026-01-21,ABT,Abbott Laboratories,United States,USD,NYSE,Healthcare,Medical Devices,120.89,2.03,29.1,15.19,70,HOLD
-2026-01-21,ADP,Automatic Data Processing Inc.,United States,USD,NASDAQ,Technology,Software - Application,257.07,2.65,60.8,25.38,70,HOLD
-2026-01-21,AEP,American Electric Power Company Inc.,United States,USD,NYSE,Utilities,Utilities - Regulated Electric,116.62,3.26,54.5,17.42,70,HOLD
-2026-01-21,AFL,Aflac Incorporated,United States,USD,NYSE,Financial Services,Insurance - Life,108.46,2.26,29.4,14.23,70,HOLD
-2026-01-21,AMCR,Amcor plc,Switzerland,USD,NYSE,Consumer Cyclical,Packaging & Containers,42.39,5.94,33.9,28.07,60,HOLD
-2026-01-21,CARL-B.CO,Carlsberg A/S,Denmark,DKK,CPH,Consumer Defensive,Beverages - Brewers,848.00,3.23,53.6,16.82,70,HOLD
-2026-01-21,DANSKE.CO,Danske Bank A/S,Denmark,DKK,CPH,Financial Services,Banks - Regional,314.00,6.10,34.3,11.51,70,HOLD
-2026-01-21,DNB.OL,DNB Bank ASA,Norway,NOK,OSL,Financial Services,Banks - Regional,279.20,6.70,57.8,9.63,70,HOLD
-2026-01-21,MAERSK-B.CO,A.P. Moller - Maersk B A/S,Denmark,DKK,CPH,Industrials,Marine Shipping,14845.00,9.80,51.9,7.39,70,HOLD
+2026-01-21,AAPL,Apple Inc.,United States,USD,NMS,Technology,Consumer Electronics,247.65,0.52,13.7,33.24,70,HOLD
+2026-01-21,ABBV,AbbVie Inc.,United States,USD,NYQ,Healthcare,Drug Manufacturers - General,216.15,3.13,49.9,16.25,60,HOLD
+2026-01-21,ABT,Abbott Laboratories,United States,USD,NYQ,Healthcare,Medical Devices,120.73,2.03,29.1,15.17,70,HOLD
+2026-01-21,ADP,Automatic Data Processing Inc.,United States,USD,NMS,Technology,Software - Application,60.81,2.65,60.8,25.37,70,HOLD
+2026-01-21,AEP

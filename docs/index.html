@@ -4,8 +4,10 @@
   <meta charset="UTF-8">
   <title>Dividend Screener – Baseline</title>
 
-  <link rel="stylesheet"
-        href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
@@ -14,8 +16,8 @@
     .WATCH { color: gray; font-weight: bold; }
   </style>
 </head>
-
 <body>
+
 <h1>Dividend Screener – Baseline</h1>
 
 <table id="screener" class="display" style="width:100%">
@@ -38,44 +40,43 @@
   </thead>
 </table>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
 <script>
 $(document).ready(function () {
-  Papa.parse("screener_results.csv", {
-    download: true,
-    header: true,
-    dynamicTyping: true,
-    complete: function (results) {
-      $('#screener').DataTable({
-        data: results.data,
-        pageLength: 25,
-        columns: [
-          { data: "Ticker" },
-          { data: "Name" },
-          { data: "Country" },
-          { data: "Currency" },
-          { data: "Exchange" },
-          { data: "Sector" },
-          { data: "Industry" },
-          { data: "Price" },
-          { data: "DividendYield" },
-          { data: "PayoutRatio" },
-          { data: "PE" },
-          { data: "Confidence" },
-          {
-            data: "Signal",
-            render: function (data) {
-              return `<span class="${data}">${data}</span>`;
-            }
-          }
-        ]
-      });
-    }
+  $('#screener').DataTable({
+    ajax: {
+      url: 'data/screener_results.csv',
+      dataType: 'text',
+      dataSrc: function (csv) {
+        const lines = csv.split('\n');
+        const headers = lines[0].split(',');
+        return lines.slice(1).filter(l => l.trim()).map(line => {
+          const values = line.split(',');
+          let obj = {};
+          headers.forEach((h, i) => obj[h] = values[i]);
+          return obj;
+        });
+      }
+    },
+    columns: [
+      { data: 'Ticker' },
+      { data: 'Name' },
+      { data: 'Country' },
+      { data: 'Currency' },
+      { data: 'Exchange' },
+      { data: 'Sector' },
+      { data: 'Industry' },
+      { data: 'Price' },
+      { data: 'DividendYield' },
+      { data: 'PayoutRatio' },
+      { data: 'PE' },
+      { data: 'Confidence' },
+      { data: 'Signal',
+        render: d => `<span class="${d}">${d}</span>`
+      }
+    ]
   });
 });
 </script>
+
 </body>
 </html>

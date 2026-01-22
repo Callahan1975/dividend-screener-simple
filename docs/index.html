@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Dividend Screener – Baseline</title>
 
-  <!-- DataTables CSS -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 
   <style>
@@ -13,24 +12,9 @@
       padding: 20px;
     }
 
-    h1 {
-      margin-bottom: 20px;
-    }
-
-    .BUY {
-      color: green;
-      font-weight: bold;
-    }
-
-    .HOLD {
-      color: #b8860b;
-      font-weight: bold;
-    }
-
-    .WATCH {
-      color: gray;
-      font-weight: bold;
-    }
+    .BUY { color: green; font-weight: bold; }
+    .HOLD { color: #b8860b; font-weight: bold; }
+    .WATCH { color: gray; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -57,13 +41,8 @@
   </thead>
 </table>
 
-<!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-<!-- PapaParse -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
-<!-- DataTables -->
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
 <script>
@@ -73,12 +52,12 @@ Papa.parse("screener_results.csv", {
   dynamicTyping: true,
   complete: function(results) {
 
-    const data = results.data.filter(r => r.Ticker);
+    const rows = results.data.filter(r => r.Ticker);
 
     $('#screener').DataTable({
-      data: data,
+      data: rows,
       pageLength: 25,
-      order: [[11, 'desc']],   // Confidence
+      order: [[11, 'desc']],
       columns: [
         { data: 'Ticker' },
         { data: 'Name' },
@@ -88,8 +67,8 @@ Papa.parse("screener_results.csv", {
         { data: 'Sector' },
         { data: 'Industry' },
         { data: 'Price' },
-        { data: 'DividendYield_%' },
-        { data: 'PayoutRatio_%' },
+        { data: 'DividendYield' },   // ✅ KORREKT
+        { data: 'PayoutRatio' },     // ✅ KORREKT
         { data: 'PE' },
         { data: 'Confidence' },
         {

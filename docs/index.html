@@ -1,158 +1,186 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Dividend Screener – Baseline</title>
+<meta charset="UTF-8">
+<title>Dividend Screener – Baseline</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 
-  <style>
-    body{
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-      margin:40px;
-      background:#fff;
-      color:#111;
-    }
-    h1{ margin:0 0 10px 0; }
-    .meta{ color:#666; margin:0 0 18px 0; }
-    table.dataTable thead th{ white-space:nowrap; }
-    .signal-BUY{ color:#1a7f37; font-weight:700; }
-    .signal-HOLD{ color:#b8860b; font-weight:700; }
-    .signal-AVOID{ color:#b42318; font-weight:700; }
-    .muted{ color:#888; }
-  </style>
+<style>
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  margin:32px;
+  background:#fff;
+  color:#111;
+}
+h1{ margin-bottom:6px; }
+.meta{ color:#666; margin-bottom:16px; }
+
+.filters{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+}
+.filters select{
+  padding:6px 8px;
+  font-size:14px;
+}
+
+.signal-BUY{ color:#1a7f37; font-weight:700; }
+.signal-HOLD{ color:#b8860b; font-weight:700; }
+.signal-AVOID{ color:#b42318; font-weight:700; }
+
+table.dataTable thead th{
+  white-space:nowrap;
+}
+</style>
 </head>
+
 <body>
 
-  <h1>Dividend Screener – Baseline</h1>
-  <p class="meta">CSV source: <code>data/screener_results/screener_results.csv</code> · <span id="generated" class="muted"></span></p>
+<h1>Dividend Screener – Baseline</h1>
+<p class="meta">
+CSV source: <code>data/screener_results/screener_results.csv</code> ·
+<span id="generated"></span>
+</p>
 
-  <table id="screener" class="display" style="width:100%">
-    <thead>
-      <tr>
-        <th>Ticker</th>
-        <th>Name</th>
-        <th>Country</th>
-        <th>Currency</th>
-        <th>Exchange</th>
-        <th>Sector</th>
-        <th>Industry</th>
-        <th>Price</th>
-        <th>Dividend Yield</th>
-        <th>Payout Ratio</th>
-        <th>PE</th>
-        <th>Confidence</th>
-        <th>Signal</th>
+<!-- FILTER BAR -->
+<div class="filters">
+  <select id="fClass">
+    <option value="">All Classes</option>
+    <option value="King">King</option>
+    <option value="Aristocrat">Aristocrat</option>
+    <option value="Contender">Contender</option>
+  </select>
 
-        <!-- DEBUG (so we can prove dividends are being calculated) -->
-        <th>LTM Dividend</th>
-        <th>LTM Count</th>
-      </tr>
-    </thead>
-  </table>
+  <select id="fRegion">
+    <option value="">All Regions</option>
+    <option value="US">US</option>
+    <option value="DK">DK</option>
+    <option value="SE">SE</option>
+    <option value="NL">NL</option>
+    <option value="CA">CA</option>
+  </select>
 
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <select id="fTop10">
+    <option value="">Top 10: All</option>
+    <option value="Yes">Top 10 Only</option>
+  </select>
 
-  <script>
-    const CSV_URL = "data/screener_results/screener_results.csv";
-    const REQUIRED = [
-      "GeneratedUTC",
-      "Ticker","Name","Country","Currency","Exchange","Sector","Industry",
-      "Price","DividendYield","PayoutRatio","PE","Confidence","Signal",
-      "LTM_Dividend","LTM_Dividend_Count"
-    ];
+  <select id="fSignal">
+    <option value="">All Signals</option>
+    <option value="BUY">BUY</option>
+    <option value="HOLD">HOLD</option>
+    <option value="AVOID">AVOID</option>
+  </select>
+</div>
 
-    function toFloat(x){
-      const s = (x ?? "").toString().trim();
-      if (!s) return "";
-      const n = Number(s);
-      return Number.isFinite(n) ? n : "";
-    }
+<table id="screener" class="display" style="width:100%">
+<thead>
+<tr>
+  <th>Ticker</th>
+  <th>Name</th>
+  <th>Region</th>
+  <th>Dividend Class</th>
+  <th>Top10</th>
+  <th>Price</th>
+  <th>Dividend Yield</th>
+  <th>Payout Ratio</th>
+  <th>PE</th>
+  <th>Confidence</th>
+  <th>Signal</th>
+  <th>LTM Dividend</th>
+  <th>LTM Count</th>
+</tr>
+</thead>
+</table>
 
-    function toInt(x){
-      const s = (x ?? "").toString().trim();
-      if (!s) return "";
-      const n = parseInt(s, 10);
-      return Number.isFinite(n) ? n : "";
-    }
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-    function sanitizeRow(r){
-      for (const k of REQUIRED){
-        if (!(k in r) || r[k] === null || r[k] === undefined) r[k] = "";
+<script>
+const CSV_URL = "data/screener_results/screener_results.csv";
+
+function num(x){
+  const n = Number(x);
+  return Number.isFinite(n) ? n : null;
+}
+
+$(document).ready(function(){
+
+  Papa.parse(CSV_URL,{
+    download:true,
+    header:true,
+    skipEmptyLines:true,
+    complete:function(res){
+
+      const rows = res.data.map(r => ({
+        Ticker: r.Ticker,
+        Name: r.Name,
+        Region: r.Region,
+        DividendClass: r.DividendClass,
+        Top10Region: r.Top10Region,
+        Price: num(r.Price),
+        DividendYield: num(r.DividendYield),
+        PayoutRatio: num(r.PayoutRatio),
+        PE: num(r.PE),
+        Confidence: num(r.Confidence),
+        Signal: r.Signal,
+        LTM_Dividend: num(r.LTM_Dividend),
+        LTM_Count: num(r.LTM_Count),
+        GeneratedUTC: r.GeneratedUTC
+      }));
+
+      if(rows.length){
+        document.getElementById("generated").textContent =
+          "GeneratedUTC: " + rows[0].GeneratedUTC;
       }
-      r.Price = toFloat(r.Price);
-      r.DividendYield = toFloat(r.DividendYield);
-      r.PayoutRatio = toFloat(r.PayoutRatio);
-      r.PE = toFloat(r.PE);
-      r.Confidence = toInt(r.Confidence);
-      r.LTM_Dividend = toFloat(r.LTM_Dividend);
-      r.LTM_Dividend_Count = toInt(r.LTM_Dividend_Count);
 
-      r.Ticker = (r.Ticker || "").toString().trim();
-      r.Name = (r.Name || "").toString().trim();
-      r.Signal = (r.Signal || "").toString().trim().toUpperCase();
-
-      return r;
-    }
-
-    function initTable(rows){
-      $('#screener').DataTable({
+      const table = $('#screener').DataTable({
         data: rows,
         pageLength: 25,
-        order: [[0, "asc"]],
+        order: [[6,"desc"]],   // default: highest yield first
         columns: [
-          { data: "Ticker" },
-          { data: "Name" },
-          { data: "Country" },
-          { data: "Currency" },
-          { data: "Exchange" },
-          { data: "Sector" },
-          { data: "Industry" },
-          { data: "Price" },
-          { data: "DividendYield" },
-          { data: "PayoutRatio" },
-          { data: "PE" },
-          { data: "Confidence" },
+          {data:"Ticker"},
+          {data:"Name"},
+          {data:"Region"},
+          {data:"DividendClass"},
+          {data:"Top10Region"},
+          {data:"Price"},
+          {data:"DividendYield"},
+          {data:"PayoutRatio"},
+          {data:"PE"},
+          {data:"Confidence"},
           {
-            data: "Signal",
-            render: function(v){
-              if (!v) return "";
-              return `<span class="signal-${v}">${v}</span>`;
-            }
+            data:"Signal",
+            render:(v)=> v ? `<span class="signal-${v}">${v}</span>` : ""
           },
-          { data: "LTM_Dividend" },
-          { data: "LTM_Dividend_Count" }
+          {data:"LTM_Dividend"},
+          {data:"LTM_Count"}
         ]
       });
-    }
 
-    $(document).ready(function(){
-      Papa.parse(CSV_URL, {
-        download: true,
-        header: true,
-        skipEmptyLines: true,
-        complete: function(results){
-          const raw = Array.isArray(results.data) ? results.data : [];
-          const rows = raw
-            .filter(r => r && (r.Ticker || r.Name))
-            .map(sanitizeRow);
-
-          // show generated time from first row (proof CSV updated)
-          const gen = rows.length ? rows[0].GeneratedUTC : "";
-          document.getElementById("generated").textContent = gen ? (`GeneratedUTC: ${gen}`) : "No GeneratedUTC found";
-
-          initTable(rows);
-        },
-        error: function(err){
-          console.error("Failed to load CSV:", err);
-          alert("Could not load screener_results.csv. Check path and GitHub Pages deployment.");
-        }
+      // FILTER HOOKS
+      $('#fClass').on('change', function(){
+        table.column(3).search(this.value).draw();
       });
-    });
-  </script>
+      $('#fRegion').on('change', function(){
+        table.column(2).search(this.value).draw();
+      });
+      $('#fTop10').on('change', function(){
+        table.column(4).search(this.value).draw();
+      });
+      $('#fSignal').on('change', function(){
+        table.column(10).search(this.value).draw();
+      });
+    }
+  });
+
+});
+</script>
 
 </body>
 </html>

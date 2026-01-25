@@ -4,29 +4,20 @@ import os
 from datetime import datetime
 
 # =============================
-# PATHS (ABSOLUT – STABILT)
+# PATHS
 # =============================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 TICKER_FILE = os.path.join(BASE_DIR, "tickers.txt")
+
 OUTPUT_DIR = os.path.join(BASE_DIR, "data", "screener_results")
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "screener_results.csv")
 
 FIELDS = [
-    "Ticker",
-    "Name",
-    "Country",
-    "Currency",
-    "Exchange",
-    "Sector",
-    "Industry",
-    "Price",
-    "DividendYield",
-    "PayoutRatio",
-    "PE",
-    "Confidence",
-    "Signal"
+    "Ticker","Name","Country","Currency","Exchange",
+    "Sector","Industry","Price",
+    "DividendYield","PayoutRatio","PE",
+    "Confidence","Signal"
 ]
 
 # =============================
@@ -43,17 +34,12 @@ def load_tickers(path):
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            ticker = line.split("#")[0].strip()
-            if ticker:
-                tickers.append(ticker)
-
+            tickers.append(line)
     return sorted(set(tickers))
 
 
 def safe_float(x, digits=4):
     try:
-        if x is None:
-            return ""
         return round(float(x), digits)
     except Exception:
         return ""
@@ -85,14 +71,10 @@ def calc_confidence(yield_pct, payout, pe):
 
 def main():
     print("▶ Dividend Screener starting")
-    print(f"▶ Base dir: {BASE_DIR}")
-    print(f"▶ Loading tickers from: {TICKER_FILE}")
+    print("▶ Base dir:", BASE_DIR)
+    print("▶ Loading tickers from:", TICKER_FILE)
 
     tickers = load_tickers(TICKER_FILE)
-
-    if not tickers:
-        raise RuntimeError("No valid tickers found")
-
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     rows = []
@@ -105,16 +87,11 @@ def main():
             name = info.get("longName") or info.get("shortName")
             price = info.get("regularMarketPrice")
 
-            # Drop broken rows
             if not name or price is None:
                 continue
 
-            dividend_yield = safe_float(
-                info.get("dividendYield") * 100 if info.get("dividendYield") else ""
-            )
-            payout_ratio = safe_float(
-                info.get("payoutRatio") * 100 if info.get("payoutRatio") else ""
-            )
+            dividend_yield = safe_float(info.get("dividendYield", 0) * 100)
+            payout_ratio = safe_float(info.get("payoutRatio", 0) * 100)
             pe = safe_float(info.get("trailingPE"))
 
             confidence = calc_confidence(dividend_yield, payout_ratio, pe)
@@ -123,11 +100,11 @@ def main():
             row = {
                 "Ticker": ticker,
                 "Name": name,
-                "Country": info.get("country", ""),
-                "Currency": info.get("currency", ""),
-                "Exchange": info.get("exchange", ""),
-                "Sector": info.get("sector", ""),
-                "Industry": info.get("industry", ""),
+                "Country": info.get("country",""),
+                "Currency": info.get("currency",""),
+                "Exchange": info.get("exchange",""),
+                "Sector": info.get("sector",""),
+                "Industry": info.get("industry",""),
                 "Price": safe_float(price),
                 "DividendYield": dividend_yield,
                 "PayoutRatio": payout_ratio,
@@ -135,9 +112,6 @@ def main():
                 "Confidence": confidence,
                 "Signal": signal
             }
-
-            for f in FIELDS:
-                row.setdefault(f, "")
 
             rows.append(row)
 
@@ -147,13 +121,11 @@ def main():
     with open(OUTPUT_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDS)
         writer.writeheader()
-        for r in rows:
-            writer.writerow(r)
+        writer.writerows(rows)
 
     print(f"✔ CSV written: {OUTPUT_FILE}")
     print(f"✔ Rows: {len(rows)}")
-    print(f"✔ Timestamp: {datetime.utcnow().isoformat()}Z")
-
+    print(f"✔ {datetime.utcnow().isoformat()}Z")
 
 if __name__ == "__main__":
     main()

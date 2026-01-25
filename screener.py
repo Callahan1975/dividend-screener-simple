@@ -4,13 +4,14 @@ import os
 from datetime import datetime
 
 # =============================
-# PATHS
+# PATHS (VIGTIGT)
 # =============================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TICKER_FILE = os.path.join(BASE_DIR, "tickers.txt")
 
-OUTPUT_DIR = os.path.join(BASE_DIR, "data", "screener_results")
+# ⬇️ WRITE DIRECTLY TO DOCS FOR GITHUB PAGES
+OUTPUT_DIR = os.path.join(BASE_DIR, "docs", "data", "screener_results")
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "screener_results.csv")
 
 FIELDS = [
@@ -42,20 +43,13 @@ def safe_float(x, digits=2):
         return ""
 
 
-def calc_ltm_dividend(ticker_obj):
-    """
-    Robust LTM dividend using pandas time-aware filtering
-    """
-    divs = ticker_obj.dividends
+def calc_ltm_dividend(t):
+    divs = t.dividends
     if divs is None or divs.empty:
         return ""
-
-    # THIS IS THE FIX
     ltm = divs.last("365D")
-
     if ltm.empty:
         return ""
-
     return round(float(ltm.sum()), 4)
 
 
@@ -102,7 +96,6 @@ def main():
             if not name or price is None:
                 continue
 
-            # ---- FIXED DIVIDEND LOGIC ----
             ltm_dividend = calc_ltm_dividend(t)
 
             dividend_yield = (
@@ -123,7 +116,7 @@ def main():
             confidence = calc_confidence(dividend_yield, payout_ratio, pe)
             signal = calc_signal(dividend_yield, payout_ratio)
 
-            row = {
+            rows.append({
                 "Ticker": ticker,
                 "Name": name,
                 "Country": info.get("country",""),
@@ -137,9 +130,7 @@ def main():
                 "PE": pe,
                 "Confidence": confidence,
                 "Signal": signal
-            }
-
-            rows.append(row)
+            })
 
         except Exception as e:
             print(f"⚠ Skipped {ticker}: {e}")
@@ -149,7 +140,7 @@ def main():
         writer.writeheader()
         writer.writerows(rows)
 
-    print(f"✔ CSV written: {OUTPUT_FILE}")
+    print(f"✔ CSV written to: {OUTPUT_FILE}")
     print(f"✔ Rows: {len(rows)}")
     print(f"✔ {datetime.utcnow().isoformat()}Z")
 

@@ -49,13 +49,15 @@ Papa.parse("data/screener_results/screener_results.csv", {
   skipEmptyLines: true,
   complete: function(res){
 
-    if(res.data.length && res.data[0].GeneratedUTC){
+    const rows = res.data.filter(r => r.Ticker && r.Name);
+
+    if(rows.length && rows[0].GeneratedUTC){
       document.getElementById("generated").textContent =
-        "GeneratedUTC: " + res.data[0].GeneratedUTC;
+        "GeneratedUTC: " + rows[0].GeneratedUTC;
     }
 
     $('#tbl').DataTable({
-      data: res.data,
+      data: rows,
       pageLength: 25,
       order: [[6,"desc"]],
       columns: [

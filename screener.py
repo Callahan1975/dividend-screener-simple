@@ -4,11 +4,13 @@ import os
 from datetime import datetime
 
 # =============================
-# CONFIG
+# PATHS (ABSOLUT – STABILT)
 # =============================
 
-TICKER_FILE = "tickers.txt"
-OUTPUT_DIR = "data/screener_results"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+TICKER_FILE = os.path.join(BASE_DIR, "tickers.txt")
+OUTPUT_DIR = os.path.join(BASE_DIR, "data", "screener_results")
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "screener_results.csv")
 
 FIELDS = [
@@ -32,33 +34,27 @@ FIELDS = [
 # =============================
 
 def load_tickers(path):
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Ticker file not found: {path}")
+
     tickers = []
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            # remove inline comments
             ticker = line.split("#")[0].strip()
             if ticker:
                 tickers.append(ticker)
+
     return sorted(set(tickers))
 
 
-def safe_float(x):
+def safe_float(x, digits=4):
     try:
         if x is None:
             return ""
-        return round(float(x), 4)
-    except Exception:
-        return ""
-
-
-def safe_int(x):
-    try:
-        if x is None:
-            return ""
-        return int(x)
+        return round(float(x), digits)
     except Exception:
         return ""
 
@@ -83,12 +79,15 @@ def calc_confidence(yield_pct, payout, pe):
         score += 10
     return min(score, 100)
 
-
 # =============================
 # MAIN
 # =============================
 
 def main():
+    print("▶ Dividend Screener starting")
+    print(f"▶ Base dir: {BASE_DIR}")
+    print(f"▶ Loading tickers from: {TICKER_FILE}")
+
     tickers = load_tickers(TICKER_FILE)
 
     if not tickers:
@@ -106,12 +105,16 @@ def main():
             name = info.get("longName") or info.get("shortName")
             price = info.get("regularMarketPrice")
 
-            # DROP broken rows early
+            # Drop broken rows
             if not name or price is None:
                 continue
 
-            dividend_yield = safe_float(info.get("dividendYield") * 100 if info.get("dividendYield") else "")
-            payout_ratio = safe_float(info.get("payoutRatio") * 100 if info.get("payoutRatio") else "")
+            dividend_yield = safe_float(
+                info.get("dividendYield") * 100 if info.get("dividendYield") else ""
+            )
+            payout_ratio = safe_float(
+                info.get("payoutRatio") * 100 if info.get("payoutRatio") else ""
+            )
             pe = safe_float(info.get("trailingPE"))
 
             confidence = calc_confidence(dividend_yield, payout_ratio, pe)
@@ -133,19 +136,13 @@ def main():
                 "Signal": signal
             }
 
-            # ensure ALL fields exist
             for f in FIELDS:
-                if f not in row or row[f] is None:
-                    row[f] = ""
+                row.setdefault(f, "")
 
             rows.append(row)
 
         except Exception as e:
-            print(f"Skipped {ticker}: {e}")
-
-    # =============================
-    # WRITE CSV
-    # =============================
+            print(f"⚠ Skipped {ticker}: {e}")
 
     with open(OUTPUT_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDS)
@@ -153,7 +150,7 @@ def main():
         for r in rows:
             writer.writerow(r)
 
-    print(f"✔ Screener generated: {OUTPUT_FILE}")
+    print(f"✔ CSV written: {OUTPUT_FILE}")
     print(f"✔ Rows: {len(rows)}")
     print(f"✔ Timestamp: {datetime.utcnow().isoformat()}Z")
 

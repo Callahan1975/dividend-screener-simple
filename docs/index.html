@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Dividend Screener – DGI</title>
+<title>Dividend Screener – Baseline</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
@@ -12,63 +12,27 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
   margin:32px;
 }
-.filters{
-  margin-bottom:16px;
-}
-.filters select{
-  margin-right:10px;
-  padding:6px 8px;
-}
-.signal-BUY{color:#1a7f37;font-weight:700}
-.signal-HOLD{color:#b8860b;font-weight:700}
-.signal-AVOID{color:#b42318;font-weight:700}
 table.dataTable thead th{white-space:nowrap}
 </style>
 </head>
 
 <body>
 
-<h1>Dividend Screener – DGI</h1>
+<h1>Dividend Screener – Baseline</h1>
 <p id="generated"></p>
-
-<div class="filters">
-  <select id="fClass">
-    <option value="">All Classes</option>
-    <option value="King">King</option>
-    <option value="Aristocrat">Aristocrat</option>
-    <option value="Contender">Contender</option>
-  </select>
-
-  <select id="fRegion">
-    <option value="">All Regions</option>
-    <option value="US">US</option>
-    <option value="DK">DK</option>
-    <option value="SE">SE</option>
-    <option value="NL">NL</option>
-    <option value="CA">CA</option>
-  </select>
-
-  <select id="fSignal">
-    <option value="">All Signals</option>
-    <option value="BUY">BUY</option>
-    <option value="HOLD">HOLD</option>
-    <option value="AVOID">AVOID</option>
-  </select>
-</div>
 
 <table id="tbl" class="display" style="width:100%">
 <thead>
 <tr>
   <th>Ticker</th>
   <th>Name</th>
-  <th>Region</th>
-  <th>Dividend Class</th>
-  <th>Dividend Yield</th>
-  <th>Div CAGR 3Y</th>
-  <th>Div CAGR 5Y</th>
-  <th>Payout Ratio</th>
-  <th>Confidence</th>
-  <th>Signal</th>
+  <th>Country</th>
+  <th>Sector</th>
+  <th>Industry</th>
+  <th>Price</th>
+  <th>Dividend Yield (%)</th>
+  <th>Payout Ratio (%)</th>
+  <th>PE</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -85,44 +49,26 @@ Papa.parse("data/screener_results/screener_results.csv", {
   skipEmptyLines: true,
   complete: function(res){
 
-    const rows = res.data.filter(r =>
-      r.Ticker || r.ticker || r.Symbol
-    );
-
-    if(rows.length && rows[0].GeneratedUTC){
+    if(res.data.length && res.data[0].GeneratedUTC){
       document.getElementById("generated").textContent =
-        "GeneratedUTC: " + rows[0].GeneratedUTC;
+        "GeneratedUTC: " + res.data[0].GeneratedUTC;
     }
 
-    const table = $('#tbl').DataTable({
-      data: rows,
+    $('#tbl').DataTable({
+      data: res.data,
       pageLength: 25,
-      order: [[8,"desc"],[6,"desc"],[4,"desc"]],
+      order: [[6,"desc"]],
       columns: [
-        { data: r => r.Ticker || r.ticker || r.Symbol },
-        { data: r => r.Name || r.name || "" },
-        { data: r => r.Region || r.region || "" },
-        { data: r => r.DividendClass || r.Class || "" },
-        { data: r => r.DividendYield || r.Yield || "" },
-        { data: r => r.DivCAGR_3Y || r.CAGR_3Y || "" },
-        { data: r => r.DivCAGR_5Y || r.CAGR_5Y || "" },
-        { data: r => r.PayoutRatio || r.Payout || "" },
-        { data: r => r.Confidence || "" },
-        {
-          data: r => r.Signal || "",
-          render: v => v ? `<span class="signal-${v}">${v}</span>` : ""
-        }
+        { data: "Ticker" },
+        { data: "Name" },
+        { data: "Country" },
+        { data: "Sector" },
+        { data: "Industry" },
+        { data: "Price" },
+        { data: "DividendYield_%" },
+        { data: "PayoutRatio_%" },
+        { data: "PE" }
       ]
-    });
-
-    $('#fClass').on('change', function(){
-      table.column(3).search(this.value).draw();
-    });
-    $('#fRegion').on('change', function(){
-      table.column(2).search(this.value).draw();
-    });
-    $('#fSignal').on('change', function(){
-      table.column(9).search(this.value).draw();
     });
   }
 });

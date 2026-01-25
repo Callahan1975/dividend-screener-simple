@@ -38,11 +38,36 @@ def load_tickers(path):
     return sorted(set(tickers))
 
 
-def safe_float(x, digits=4):
+def safe_float(x, digits=2):
     try:
         return round(float(x), digits)
     except Exception:
         return ""
+
+
+def calc_dividend_yield(info, price):
+    """
+    Yahoo is inconsistent – prefer annual dividend rate
+    """
+    div_rate = info.get("trailingAnnualDividendRate")
+    if div_rate and price:
+        return round((div_rate / price) * 100, 2)
+    return ""
+
+
+def calc_payout_ratio(info):
+    """
+    Prefer Yahoo payoutRatio, fallback to dividend / EPS
+    """
+    if info.get("payoutRatio") is not None:
+        return round(info.get("payoutRatio") * 100, 2)
+
+    div = info.get("trailingAnnualDividendRate")
+    eps = info.get("trailingEps")
+    if div and eps and eps > 0:
+        return round((div / eps) * 100, 2)
+
+    return ""
 
 
 def calc_signal(yield_pct, payout):
@@ -51,16 +76,16 @@ def calc_signal(yield_pct, payout):
     if yield_pct >= 4 and payout <= 70:
         return "BUY"
     if payout > 90:
-        return "SELL"
+        return "AVOID"
     return "HOLD"
 
 
 def calc_confidence(yield_pct, payout, pe):
     score = 50
     if yield_pct != "" and yield_pct >= 3:
-        score += 10
+        score += 15
     if payout != "" and payout <= 70:
-        score += 10
+        score += 15
     if pe != "" and pe <= 20:
         score += 10
     return min(score, 100)
@@ -90,8 +115,8 @@ def main():
             if not name or price is None:
                 continue
 
-            dividend_yield = safe_float(info.get("dividendYield", 0) * 100)
-            payout_ratio = safe_float(info.get("payoutRatio", 0) * 100)
+            dividend_yield = calc_dividend_yield(info, price)
+            payout_ratio = calc_payout_ratio(info)
             pe = safe_float(info.get("trailingPE"))
 
             confidence = calc_confidence(dividend_yield, payout_ratio, pe)

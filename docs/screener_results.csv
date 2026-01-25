@@ -1,6 +1,6 @@
-GeneratedUTC,Ticker,Name,Country,Currency,Exchange,Sector,Industry,Price,DividendYield,PayoutRatio,PE,Confidence,Signal
-2026-01-21,AAPL,Apple Inc.,United States,USD,NMS,Technology,Consumer Electronics,247.65,0.52,13.7,33.24,70,HOLD
-2026-01-21,ABBV,AbbVie Inc.,United States,USD,NYQ,Healthcare,Drug Manufacturers - General,216.15,3.13,49.9,16.25,60,HOLD
-2026-01-21,ABT,Abbott Laboratories,United States,USD,NYQ,Healthcare,Medical Devices,120.73,2.03,29.1,15.17,70,HOLD
-2026-01-21,ADP,Automatic Data Processing Inc.,United States,USD,NMS,Technology,Software - Application,60.81,2.65,60.8,25.37,70,HOLD
-2026-01-21,AEP
+Ticker,Name,Country,Currency,Exchange,Sector,Industry,Price,DividendYield,PayoutRatio,PE,Confidence,Signal
+AAPL,Apple Inc.,United States,USD,NMS,Technology,Consumer Electronics,247.65,0.52,13.7,33.24,70,HOLD
+ABT,Abbott Laboratories,United States,USD,NYQ,Healthcare,Medical Devices,120.73,2.03,29.1,15.17,70,HOLD
+ADP,Automatic Data Processing Inc.,United States,USD,NMS,Technology,Software - Application,60.81,2.65,60.8,25.37,70,HOLD
+ABBV,AbbVie Inc.,United States,USD,NYQ,Healthcare,Drug Manufacturers - General,216.15,3.13,49.9,16.25,60,HOLD
+AEP,American Electric Power Company Inc.,United States,USD,NYQ,Utilities,Electric Utilities,92.31,4.10,66.2,18.40,65,HOLD

@@ -2,97 +2,33 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Dividend Screener – Baseline</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
+<title>Dividend Screener – DGI</title>
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-
 <style>
-body{
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-  margin:32px;
-  background:#fff;
-  color:#111;
-}
-h1{ margin-bottom:6px; }
-.meta{ color:#666; margin-bottom:16px; }
-
-.filters{
-  display:flex;
-  gap:12px;
-  flex-wrap:wrap;
-  margin-bottom:14px;
-}
-.filters select{
-  padding:6px 8px;
-  font-size:14px;
-}
-
-.signal-BUY{ color:#1a7f37; font-weight:700; }
-.signal-HOLD{ color:#b8860b; font-weight:700; }
-.signal-AVOID{ color:#b42318; font-weight:700; }
-
-table.dataTable thead th{
-  white-space:nowrap;
-}
+body{font-family:-apple-system,Arial;margin:32px}
+.filters select{margin-right:8px;padding:6px}
+.signal-BUY{color:#1a7f37;font-weight:700}
+.signal-HOLD{color:#b8860b;font-weight:700}
+.signal-AVOID{color:#b42318;font-weight:700}
 </style>
 </head>
 
 <body>
+<h1>Dividend Screener – DGI</h1>
+<p id="gen"></p>
 
-<h1>Dividend Screener – Baseline</h1>
-<p class="meta">
-CSV source: <code>data/screener_results/screener_results.csv</code> ·
-<span id="generated"></span>
-</p>
-
-<!-- FILTER BAR -->
 <div class="filters">
-  <select id="fClass">
-    <option value="">All Classes</option>
-    <option value="King">King</option>
-    <option value="Aristocrat">Aristocrat</option>
-    <option value="Contender">Contender</option>
-  </select>
-
-  <select id="fRegion">
-    <option value="">All Regions</option>
-    <option value="US">US</option>
-    <option value="DK">DK</option>
-    <option value="SE">SE</option>
-    <option value="NL">NL</option>
-    <option value="CA">CA</option>
-  </select>
-
-  <select id="fTop10">
-    <option value="">Top 10: All</option>
-    <option value="Yes">Top 10 Only</option>
-  </select>
-
-  <select id="fSignal">
-    <option value="">All Signals</option>
-    <option value="BUY">BUY</option>
-    <option value="HOLD">HOLD</option>
-    <option value="AVOID">AVOID</option>
-  </select>
+<select id="fClass"><option value="">All Classes</option><option>King</option><option>Aristocrat</option><option>Contender</option></select>
+<select id="fRegion"><option value="">All Regions</option><option>US</option><option>DK</option><option>SE</option><option>NL</option><option>CA</option></select>
+<select id="fSignal"><option value="">All Signals</option><option>BUY</option><option>HOLD</option><option>AVOID</option></select>
 </div>
 
-<table id="screener" class="display" style="width:100%">
+<table id="tbl" class="display" style="width:100%">
 <thead>
 <tr>
-  <th>Ticker</th>
-  <th>Name</th>
-  <th>Region</th>
-  <th>Dividend Class</th>
-  <th>Top10</th>
-  <th>Price</th>
-  <th>Dividend Yield</th>
-  <th>Payout Ratio</th>
-  <th>PE</th>
-  <th>Confidence</th>
-  <th>Signal</th>
-  <th>LTM Dividend</th>
-  <th>LTM Count</th>
+<th>Ticker</th><th>Name</th><th>Region</th><th>Class</th>
+<th>Yield</th><th>CAGR 3Y</th><th>CAGR 5Y</th>
+<th>Payout</th><th>Confidence</th><th>Signal</th>
 </tr>
 </thead>
 </table>
@@ -102,85 +38,32 @@ CSV source: <code>data/screener_results/screener_results.csv</code> ·
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <script>
-const CSV_URL = "data/screener_results/screener_results.csv";
+Papa.parse("data/screener_results/screener_results.csv",{
+download:true,header:true,complete:r=>{
+const d=r.data.filter(x=>x.Ticker);
+$("#gen").text("Generated: "+d[0].GeneratedUTC);
 
-function num(x){
-  const n = Number(x);
-  return Number.isFinite(n) ? n : null;
-}
-
-$(document).ready(function(){
-
-  Papa.parse(CSV_URL,{
-    download:true,
-    header:true,
-    skipEmptyLines:true,
-    complete:function(res){
-
-      const rows = res.data.map(r => ({
-        Ticker: r.Ticker,
-        Name: r.Name,
-        Region: r.Region,
-        DividendClass: r.DividendClass,
-        Top10Region: r.Top10Region,
-        Price: num(r.Price),
-        DividendYield: num(r.DividendYield),
-        PayoutRatio: num(r.PayoutRatio),
-        PE: num(r.PE),
-        Confidence: num(r.Confidence),
-        Signal: r.Signal,
-        LTM_Dividend: num(r.LTM_Dividend),
-        LTM_Count: num(r.LTM_Count),
-        GeneratedUTC: r.GeneratedUTC
-      }));
-
-      if(rows.length){
-        document.getElementById("generated").textContent =
-          "GeneratedUTC: " + rows[0].GeneratedUTC;
-      }
-
-      const table = $('#screener').DataTable({
-        data: rows,
-        pageLength: 25,
-        order: [[6,"desc"]],   // default: highest yield first
-        columns: [
-          {data:"Ticker"},
-          {data:"Name"},
-          {data:"Region"},
-          {data:"DividendClass"},
-          {data:"Top10Region"},
-          {data:"Price"},
-          {data:"DividendYield"},
-          {data:"PayoutRatio"},
-          {data:"PE"},
-          {data:"Confidence"},
-          {
-            data:"Signal",
-            render:(v)=> v ? `<span class="signal-${v}">${v}</span>` : ""
-          },
-          {data:"LTM_Dividend"},
-          {data:"LTM_Count"}
-        ]
-      });
-
-      // FILTER HOOKS
-      $('#fClass').on('change', function(){
-        table.column(3).search(this.value).draw();
-      });
-      $('#fRegion').on('change', function(){
-        table.column(2).search(this.value).draw();
-      });
-      $('#fTop10').on('change', function(){
-        table.column(4).search(this.value).draw();
-      });
-      $('#fSignal').on('change', function(){
-        table.column(10).search(this.value).draw();
-      });
-    }
-  });
-
+const t=$("#tbl").DataTable({
+data:d,
+order:[[8,"desc"],[6,"desc"],[4,"desc"]],
+columns:[
+{data:"Ticker"},
+{data:"Name"},
+{data:"Region"},
+{data:"DividendClass"},
+{data:"DividendYield"},
+{data:"DivCAGR_3Y"},
+{data:"DivCAGR_5Y"},
+{data:"PayoutRatio"},
+{data:"Confidence"},
+{data:"Signal",render:v=>`<span class="signal-${v}">${v}</span>`}
+]
 });
-</script>
 
+$("#fClass").on("change",()=>t.column(3).search(fClass.value).draw());
+$("#fRegion").on("change",()=>t.column(2).search(fRegion.value).draw());
+$("#fSignal").on("change",()=>t.column(9).search(fSignal.value).draw());
+}});
+</script>
 </body>
 </html>

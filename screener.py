@@ -1,6 +1,5 @@
 import yfinance as yf
-import csv
-import os
+import csv, os, math
 from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -10,44 +9,43 @@ OUTPUT_DIR = os.path.join(BASE_DIR, "docs", "data", "screener_results")
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "screener_results.csv")
 
 FIELDS = [
-    "GeneratedUTC",
-    "Ticker","Name","Country","Currency","Exchange",
-    "Sector","Industry","Price",
-    "DividendYield","PayoutRatio","PE",
-    "Confidence","Signal",
-    "DividendClass",
-    "Region",
-    "Top10Region",
+    "GeneratedUTC","Ticker","Name","Country","Currency","Exchange",
+    "Sector","Industry","Region","DividendClass","Top10Region",
+    "Price","DividendYield","PayoutRatio","SectorPayoutMax",
+    "DivCAGR_3Y","DivCAGR_5Y",
+    "PE","Confidence","Signal",
     "LTM_Dividend","LTM_Count"
 ]
 
-DIVIDEND_CLASS = {
-    "PG": "King","JNJ": "King","KO": "King","PEP": "King",
-    "MMM": "King","EMR": "King","CL": "King","KMB": "King",
-    "LOW": "King","HD": "King",
-
-    "ABBV": "Aristocrat","ADP": "Aristocrat","AFL": "Aristocrat",
-    "APD": "Aristocrat","CAT": "Aristocrat","CVX": "Aristocrat",
-    "IBM": "Aristocrat","MCD": "Aristocrat","MSFT": "Aristocrat",
-    "NEE": "Aristocrat",
-
-    "AVGO": "Contender","COST": "Contender","TXN": "Contender",
-    "WM": "Contender","UNH": "Contender","V": "Contender","MA": "Contender"
+SECTOR_PAYOUT_MAX = {
+    "Utilities":110,
+    "Financial Services":120,
+    "Energy":130,
+    "Real Estate":150,
+    "Consumer Defensive":90,
+    "Industrials":80,
+    "Technology":70,
+    "Healthcare":80,
+    "Basic Materials":80,
+    "Consumer Cyclical":80,
+    "Default":75
 }
 
-TOP10_REGIONS = {
-    "DK": ["PNDORA.CO","NOVO-B.CO","TRYG.CO","CARL-B.CO","COLO-B.CO","DSV.CO","SYDB.CO","DANSKE.CO","ISS.CO","SPNO.CO"],
-    "SE": ["SHB-A.ST","SEB-A.ST","SWED-A.ST","ATCO-A.ST","ATCO-B.ST","VOLV-B.ST","TEL2-B.ST","SBB-B.ST","CAST.ST","NDA-SE.ST"],
-    "NL": ["UNA.AS","ASML.AS","NN.AS","INGA.AS","AD.AS","HEIA.AS","KPN.AS","ABN.AS","RAND.AS","DSM.AS"],
-    "CA": ["ENB.TO","TD.TO","BMO.TO","BNS.TO","RY.TO","FTS.TO","TRP.TO","CNQ.TO","SU.TO","T.TO"]
+DIVIDEND_CLASS = {
+    "PG":"King","JNJ":"King","KO":"King","PEP":"King","EMR":"King","CL":"King",
+    "KMB":"King","LOW":"King","HD":"King",
+    "ABBV":"Aristocrat","ADP":"Aristocrat","AFL":"Aristocrat","APD":"Aristocrat",
+    "CAT":"Aristocrat","CVX":"Aristocrat","IBM":"Aristocrat","MCD":"Aristocrat",
+    "MSFT":"Aristocrat","NEE":"Aristocrat",
+    "AVGO":"Contender","COST":"Contender","TXN":"Contender","WM":"Contender",
+    "UNH":"Contender","V":"Contender","MA":"Contender"
 }
 
 def load_tickers():
-    with open(TICKER_FILE, "r", encoding="utf-8") as f:
+    with open(TICKER_FILE,"r",encoding="utf-8") as f:
         return sorted({
-            line.strip().split("#")[0].strip()
-            for line in f
-            if line.strip() and not line.startswith("#")
+            l.split("#")[0].strip()
+            for l in f if l.strip() and not l.startswith("#")
         })
 
 def region_from_ticker(t):
@@ -57,73 +55,101 @@ def region_from_ticker(t):
     if t.endswith(".TO"): return "CA"
     return "US"
 
-def calc_signal(y, p):
-    if y == "" or p == "": return "HOLD"
-    if y >= 4 and p <= 70: return "BUY"
-    if p > 90: return "AVOID"
+def calc_ltm_and_cagr(t):
+    hist = t.history(period="8y", actions=True)
+    if hist.empty or "Dividends" not in hist:
+        return ("",0,"","")
+    divs = hist["Dividends"]
+    yearly = divs[divs>0].groupby(divs.index.year).sum()
+
+    ltm = yearly.iloc[-1] if len(yearly)>=1 else ""
+    count = (divs>0).sum()
+
+    def cagr(years):
+        if len(yearly) < years+1: return ""
+        start = yearly.iloc[-(years+1)]
+        end = yearly.iloc[-1]
+        if start<=0 or end<=0: return ""
+        return round((end/start)**(1/years)-1,4)
+
+    return (
+        round(float(ltm),2) if ltm!="" else "",
+        int(count),
+        cagr(3),
+        cagr(5)
+    )
+
+def calc_confidence(y,p,pe,c3,c5):
+    score = 50
+    if y>=3: score+=15
+    if c5!="" and c5>=0.05: score+=15
+    elif c3!="" and c3>=0.05: score+=10
+    if p!="" and p<=70: score+=10
+    if pe!="" and pe<=20: score+=5
+    return min(score,100)
+
+def calc_signal(y,p,pmax,c3,c5,conf):
+    if p!="" and p>pmax: return "AVOID"
+    if (c5!="" and c5<0) or (c3!="" and c3<0): return "AVOID"
+    if y>=3 and conf>=70 and ((c5!="" and c5>=0.03) or (c3!="" and c3>=0.03)):
+        return "BUY"
     return "HOLD"
 
-def calc_confidence(y, p, pe):
-    s = 50
-    if y != "" and y >= 3: s += 15
-    if p != "" and p <= 70: s += 15
-    if pe != "" and pe <= 20: s += 10
-    return min(s, 100)
-
 def main():
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    rows = []
-    gen = datetime.utcnow().isoformat()+"Z"
+    os.makedirs(OUTPUT_DIR,exist_ok=True)
+    rows=[]
+    gen=datetime.utcnow().isoformat()+"Z"
 
     for tkr in load_tickers():
         try:
-            t = yf.Ticker(tkr)
-            info = t.info
-            price = info.get("regularMarketPrice")
+            t=yf.Ticker(tkr)
+            info=t.info
+            price=info.get("regularMarketPrice")
             if not price: continue
 
-            hist = t.history(period="400d", actions=True)
-            divs = hist["Dividends"][hist["Dividends"] > 0] if "Dividends" in hist else []
-            ltm = divs.sum() if len(divs) else ""
-            yld = round((ltm/price)*100,2) if ltm != "" else ""
+            ltm, cnt, c3, c5 = calc_ltm_and_cagr(t)
+            y=round((ltm/price)*100,2) if ltm!="" else ""
+            eps=info.get("trailingEps")
+            p=round((ltm/eps)*100,2) if ltm!="" and eps and eps>0 else ""
 
-            eps = info.get("trailingEps")
-            payout = round((ltm/eps)*100,2) if ltm != "" and eps and eps>0 else ""
+            sector=info.get("sector","")
+            pmax=SECTOR_PAYOUT_MAX.get(sector,SECTOR_PAYOUT_MAX["Default"])
+            pe=round(info.get("trailingPE"),2) if info.get("trailingPE") else ""
 
-            pe = round(info.get("trailingPE"),2) if info.get("trailingPE") else ""
-
-            region = region_from_ticker(tkr)
-            top10 = tkr in TOP10_REGIONS.get(region, [])
+            conf=calc_confidence(y,p,pe,c3,c5)
+            sig=calc_signal(y,p,pmax,c3,c5,conf)
 
             rows.append({
-                "GeneratedUTC": gen,
-                "Ticker": tkr,
-                "Name": info.get("longName",""),
-                "Country": info.get("country",""),
-                "Currency": info.get("currency",""),
-                "Exchange": info.get("exchange",""),
-                "Sector": info.get("sector",""),
-                "Industry": info.get("industry",""),
-                "Price": round(price,2),
-                "DividendYield": yld,
-                "PayoutRatio": payout,
-                "PE": pe,
-                "Confidence": calc_confidence(yld,payout,pe),
-                "Signal": calc_signal(yld,payout),
-                "DividendClass": DIVIDEND_CLASS.get(tkr,""),
-                "Region": region,
-                "Top10Region": "Yes" if top10 else "No",
-                "LTM_Dividend": round(ltm,2) if ltm!="" else "",
-                "LTM_Count": len(divs)
+                "GeneratedUTC":gen,
+                "Ticker":tkr,
+                "Name":info.get("longName",""),
+                "Country":info.get("country",""),
+                "Currency":info.get("currency",""),
+                "Exchange":info.get("exchange",""),
+                "Sector":sector,
+                "Industry":info.get("industry",""),
+                "Region":region_from_ticker(tkr),
+                "DividendClass":DIVIDEND_CLASS.get(tkr,""),
+                "Top10Region":"Yes" if region_from_ticker(tkr)!="US" else "No",
+                "Price":round(price,2),
+                "DividendYield":y,
+                "PayoutRatio":p,
+                "SectorPayoutMax":pmax,
+                "DivCAGR_3Y":c3,
+                "DivCAGR_5Y":c5,
+                "PE":pe,
+                "Confidence":conf,
+                "Signal":sig,
+                "LTM_Dividend":ltm,
+                "LTM_Count":cnt
             })
-
         except Exception as e:
-            print("Skip", tkr, e)
+            print("Skip",tkr,e)
 
     with open(OUTPUT_FILE,"w",newline="",encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=FIELDS)
+        w=csv.DictWriter(f,fieldnames=FIELDS)
         w.writeheader()
         w.writerows(rows)
 
-if __name__ == "__main__":
+if __name__=="__main__":
     main()

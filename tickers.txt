@@ -1,0 +1,20 @@
+# =========================
+# Denmark (.CO)
+# =========================
+PNDORA.CO
+SYDB.CO
+SPNO.CO
+
+# =========================
+# United States
+# =========================
+AAPL
+MSFT
+JNJ
+PG
+PEP
+KO
+ABBV
+ADP
+SO
+NEE

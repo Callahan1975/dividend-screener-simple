@@ -1,7 +1,7 @@
 import yfinance as yf
 import csv
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # =============================
 # PATHS
@@ -44,19 +44,19 @@ def safe_float(x, digits=2):
 
 def calc_ltm_dividend(ticker_obj):
     """
-    Sum dividends over last 12 months
+    Robust LTM dividend using pandas time-aware filtering
     """
     divs = ticker_obj.dividends
     if divs is None or divs.empty:
         return ""
 
-    one_year_ago = datetime.utcnow() - timedelta(days=365)
-    ltm = divs[divs.index >= one_year_ago]
+    # THIS IS THE FIX
+    ltm = divs.last("365D")
 
     if ltm.empty:
         return ""
 
-    return round(ltm.sum(), 4)
+    return round(float(ltm.sum()), 4)
 
 
 def calc_signal(yield_pct, payout):
@@ -102,8 +102,9 @@ def main():
             if not name or price is None:
                 continue
 
-            # --- Dividend via historical data ---
+            # ---- FIXED DIVIDEND LOGIC ----
             ltm_dividend = calc_ltm_dividend(t)
+
             dividend_yield = (
                 round((ltm_dividend / price) * 100, 2)
                 if ltm_dividend != ""

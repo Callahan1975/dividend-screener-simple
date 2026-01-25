@@ -1,7 +1,7 @@
 import yfinance as yf
 import csv
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # =============================
 # PATHS
@@ -27,15 +27,12 @@ FIELDS = [
 def load_tickers(path):
     if not os.path.exists(path):
         raise FileNotFoundError(f"Ticker file not found: {path}")
-
-    tickers = []
     with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            tickers.append(line)
-    return sorted(set(tickers))
+        return sorted({
+            line.strip()
+            for line in f
+            if line.strip() and not line.startswith("#")
+        })
 
 
 def safe_float(x, digits=2):
@@ -45,29 +42,21 @@ def safe_float(x, digits=2):
         return ""
 
 
-def calc_dividend_yield(info, price):
+def calc_ltm_dividend(ticker_obj):
     """
-    Yahoo is inconsistent – prefer annual dividend rate
+    Sum dividends over last 12 months
     """
-    div_rate = info.get("trailingAnnualDividendRate")
-    if div_rate and price:
-        return round((div_rate / price) * 100, 2)
-    return ""
+    divs = ticker_obj.dividends
+    if divs is None or divs.empty:
+        return ""
 
+    one_year_ago = datetime.utcnow() - timedelta(days=365)
+    ltm = divs[divs.index >= one_year_ago]
 
-def calc_payout_ratio(info):
-    """
-    Prefer Yahoo payoutRatio, fallback to dividend / EPS
-    """
-    if info.get("payoutRatio") is not None:
-        return round(info.get("payoutRatio") * 100, 2)
+    if ltm.empty:
+        return ""
 
-    div = info.get("trailingAnnualDividendRate")
-    eps = info.get("trailingEps")
-    if div and eps and eps > 0:
-        return round((div / eps) * 100, 2)
-
-    return ""
+    return round(ltm.sum(), 4)
 
 
 def calc_signal(yield_pct, payout):
@@ -96,8 +85,6 @@ def calc_confidence(yield_pct, payout, pe):
 
 def main():
     print("▶ Dividend Screener starting")
-    print("▶ Base dir:", BASE_DIR)
-    print("▶ Loading tickers from:", TICKER_FILE)
 
     tickers = load_tickers(TICKER_FILE)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -115,8 +102,21 @@ def main():
             if not name or price is None:
                 continue
 
-            dividend_yield = calc_dividend_yield(info, price)
-            payout_ratio = calc_payout_ratio(info)
+            # --- Dividend via historical data ---
+            ltm_dividend = calc_ltm_dividend(t)
+            dividend_yield = (
+                round((ltm_dividend / price) * 100, 2)
+                if ltm_dividend != ""
+                else ""
+            )
+
+            eps = info.get("trailingEps")
+            payout_ratio = (
+                round((ltm_dividend / eps) * 100, 2)
+                if ltm_dividend != "" and eps and eps > 0
+                else ""
+            )
+
             pe = safe_float(info.get("trailingPE"))
 
             confidence = calc_confidence(dividend_yield, payout_ratio, pe)

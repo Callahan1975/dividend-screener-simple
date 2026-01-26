@@ -1,82 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Dividend Screener – Baseline</title>
 
-  <!-- DataTables CSS -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+  <link
+    rel="stylesheet"
+    href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"
+  />
 
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
-      margin: 20px;
-    }
-    h1 {
-      margin-bottom: 10px;
-    }
-  </style>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 </head>
+
 <body>
+  <h1>Dividend Screener – Baseline</h1>
 
-<h1>Dividend Screener – Baseline</h1>
+  <table id="screener" class="display" style="width:100%">
+    <thead>
+      <tr>
+        <th>GeneratedUTC</th>
+        <th>Ticker</th>
+        <th>Name</th>
+        <th>Country</th>
+        <th>Sector</th>
+        <th>Industry</th>
+        <th>Price</th>
+        <th>Dividend Yield (%)</th>
+        <th>Payout Ratio (%)</th>
+        <th>PE</th>
+      </tr>
+    </thead>
+  </table>
 
-<table id="screener" class="display" style="width:100%">
-  <thead>
-    <tr>
-      <th>Ticker</th>
-      <th>Name</th>
-      <th>Country</th>
-      <th>Sector</th>
-      <th>Industry</th>
-      <th>Price</th>
-      <th>Dividend Yield (%)</th>
-      <th>Payout Ratio (%)</th>
-      <th>PE</th>
-    </tr>
-  </thead>
-</table>
+  <script>
+    const CSV_PATH = "screener_results.csv";
 
-<!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    fetch(CSV_PATH)
+      .then(response => response.text())
+      .then(csv => {
+        const lines = csv.trim().split("\n");
+        const headers = lines[0].split(",");
+        const rows = lines.slice(1).map(l => l.split(","));
 
-<!-- DataTables -->
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-
-<!-- PapaParse -->
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
-<script>
-  let table = $('#screener').DataTable({
-    pageLength: 25,
-    order: [[0, 'asc']],
-    columns: [
-      { data: "Ticker" },
-      { data: "Name" },
-      { data: "Country" },
-      { data: "Sector" },
-      { data: "Industry" },
-      { data: "Price", render: d => d ? Number(d).toFixed(2) : "" },
-      { data: "DividendYield_%", render: d => d ? Number(d).toFixed(2) : "" },
-      { data: "PayoutRatio_%", render: d => d ? Number(d).toFixed(2) : "" },
-      { data: "PE", render: d => d ? Number(d).toFixed(2) : "" }
-    ]
-  });
-
-  Papa.parse("data/screener_results.csv", {
-    download: true,
-    header: true,
-    dynamicTyping: true,
-    skipEmptyLines: true,
-    complete: function (results) {
-      console.log("CSV rows loaded:", results.data.length);
-      table.clear().rows.add(results.data).draw();
-    },
-    error: function (err) {
-      console.error("CSV load error:", err);
-    }
-  });
-</script>
-
+        $('#screener').DataTable({
+          data: rows,
+          columns: headers.map(h => ({ title: h })),
+          pageLength: 25,
+          order: [[1, "asc"]]
+        });
+      })
+      .catch(err => console.error("CSV load error:", err));
+  </script>
 </body>
 </html>

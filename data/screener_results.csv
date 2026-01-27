@@ -1,10 +1,6 @@
-GeneratedUTC,Ticker,Name,Country,Currency,Exchange,Sector,Industry,Price,DividendYield_%,PayoutRatio_%,PE
-2026-01-14 12:27:01 UTC,AAPL,Apple Inc.,United States,USD,NMS,Technology,Consumer Electronics,261.05,0.40,13.67,34.95
-2026-01-14 12:27:02 UTC,JNJ,Johnson & Johnson,United States,USD,NYQ,Healthcare,Drug Manufacturers - General,213.65,2.43,49.08,20.66
-2026-01-14 12:27:03 UTC,MSFT,Microsoft Corporation,United States,USD,NMS,Technology,Software - Infrastructure,470.67,0.77,23.61,33.45
-2026-01-14 12:27:04 UTC,PG,Procter & Gamble Company,United States,USD,NYQ,Consumer Defensive,Household & Personal Products,144.24,2.93,60.24,21.06
-2026-01-14 12:27:05 UTC,KO,Coca-Cola Company,United States,USD,NYQ,Consumer Defensive,Beverages - Non-Alcoholic,71.24,2.86,66.72,23.59
-2026-01-14 12:27:06 UTC,NOVO-B.CO,Novo Nordisk A/S,Denmark,DKK,CPH,Healthcare,Drug Manufacturers - General,381.35,3.04,49.94,16.34
-2026-01-14 12:27:07 UTC,PNDORA.CO,Pandora A/S,Denmark,DKK,CPH,Consumer Cyclical,Luxury Goods,557.40,3.50,30.12,8.39
-2026-01-14 12:27:08 UTC,DANSKE.CO,Danske Bank A/S,Denmark,DKK,CPH,Financial Services,Banks - Regional,321.80,5.85,34.25,11.78
-2026-01-14 12:27:09 UTC,TRYG.CO,Tryg A/S,Denmark,DKK,CPH,Financial Services,Insurance - Diversified,158.10,5.15,100.46,19.84
+GeneratedUTC,Ticker,Name,Country,Sector,Industry,Price,DividendYield_%,PayoutRatio_%,PE
+2026-01-27 21:00:44,AAPL,Apple Inc.,United States,Technology,Consumer Electronics,258.27,41.0,13.669999999999998,34.620644
+2026-01-27 21:00:45,JNJ,Johnson & Johnson,United States,Healthcare,Drug Manufacturers - General,224.46,235.0,46.6,20.349957
+2026-01-27 21:00:45,MSFT,Microsoft Corporation,United States,Technology,Software - Infrastructure,480.58,77.0,23.61,34.180653
+2026-01-27 21:00:45,KO,Coca-Cola Company (The),United States,Consumer Defensive,Beverages - Non-Alcoholic,73.545,281.0,66.72,24.352648
+2026-01-27 21:00:45,PG,Procter & Gamble Company (The),United States,Consumer Defensive,Household & Personal Products,148.36,283.0,61.88,21.946745

@@ -28,39 +28,41 @@
       <th>PE</th>
     </tr>
   </thead>
+  <tbody></tbody>
 </table>
 
 <script>
-$(document).ready(function () {
-  $('#screener').DataTable({
-    ajax: {
-      url: "data/screener_results.csv",
-      dataType: "text",
-      dataSrc: function (csv) {
-        const lines = csv.trim().split("\n");
-        const headers = lines[0].split(",");
+fetch("data/screener_results.csv")
+  .then(res => res.text())
+  .then(text => {
+    const lines = text.trim().split("\n");
+    const headers = lines.shift().split(",");
 
-        return lines.slice(1).map(line => {
-          const values = line.split(",");
-          let row = {};
-          headers.forEach((h, i) => row[h] = values[i]);
-          return row;
-        });
-      }
-    },
-    columns: [
-      { data: "Ticker" },
-      { data: "Name" },
-      { data: "Country" },
-      { data: "Sector" },
-      { data: "Industry" },
-      { data: "Price" },
-      { data: "DividendYield_%" },
-      { data: "PayoutRatio_%" },
-      { data: "PE" }
-    ]
+    const rows = lines.map(line => {
+      const cols = line.split(",");
+      let row = {};
+      headers.forEach((h, i) => row[h] = cols[i]);
+      return row;
+    });
+
+    $('#screener').DataTable({
+      data: rows,
+      columns: [
+        { data: "Ticker" },
+        { data: "Name" },
+        { data: "Country" },
+        { data: "Sector" },
+        { data: "Industry" },
+        { data: "Price" },
+        { data: "DividendYield_%" },
+        { data: "PayoutRatio_%" },
+        { data: "PE" }
+      ]
+    });
+  })
+  .catch(err => {
+    console.error("CSV LOAD ERROR:", err);
   });
-});
 </script>
 
 </body>

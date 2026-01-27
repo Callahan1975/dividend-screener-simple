@@ -34,12 +34,13 @@
 $(document).ready(function () {
   $('#screener').DataTable({
     ajax: {
-      url: "../data/screener_results.csv",
+      url: "data/screener_results.csv",
       dataType: "text",
       dataSrc: function (csv) {
-        const lines = csv.split("\n");
+        const lines = csv.trim().split("\n");
         const headers = lines[0].split(",");
-        return lines.slice(1).filter(l => l).map(line => {
+
+        return lines.slice(1).map(line => {
           const values = line.split(",");
           let row = {};
           headers.forEach((h, i) => row[h] = values[i]);

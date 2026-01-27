@@ -1,56 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Dividend Screener – Baseline</title>
 
-  <link
-    rel="stylesheet"
-    href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"
-  />
+  <link rel="stylesheet"
+        href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 </head>
-
 <body>
-  <h1>Dividend Screener – Baseline</h1>
 
-  <table id="screener" class="display" style="width:100%">
-    <thead>
-      <tr>
-        <th>GeneratedUTC</th>
-        <th>Ticker</th>
-        <th>Name</th>
-        <th>Country</th>
-        <th>Sector</th>
-        <th>Industry</th>
-        <th>Price</th>
-        <th>Dividend Yield (%)</th>
-        <th>Payout Ratio (%)</th>
-        <th>PE</th>
-      </tr>
-    </thead>
-  </table>
+<h2>Dividend Screener – Baseline</h2>
 
-  <script>
-    const CSV_PATH = "screener_results.csv";
+<table id="screener" class="display" style="width:100%">
+  <thead>
+    <tr>
+      <th>Ticker</th>
+      <th>Name</th>
+      <th>Country</th>
+      <th>Sector</th>
+      <th>Industry</th>
+      <th>Price</th>
+      <th>Dividend Yield (%)</th>
+      <th>Payout Ratio (%)</th>
+      <th>PE</th>
+    </tr>
+  </thead>
+</table>
 
-    fetch(CSV_PATH)
-      .then(response => response.text())
-      .then(csv => {
-        const lines = csv.trim().split("\n");
+<script>
+$(document).ready(function () {
+  $('#screener').DataTable({
+    ajax: {
+      url: "../data/screener_results.csv",
+      dataType: "text",
+      dataSrc: function (csv) {
+        const lines = csv.split("\n");
         const headers = lines[0].split(",");
-        const rows = lines.slice(1).map(l => l.split(","));
-
-        $('#screener').DataTable({
-          data: rows,
-          columns: headers.map(h => ({ title: h })),
-          pageLength: 25,
-          order: [[1, "asc"]]
+        return lines.slice(1).filter(l => l).map(line => {
+          const values = line.split(",");
+          let row = {};
+          headers.forEach((h, i) => row[h] = values[i]);
+          return row;
         });
-      })
-      .catch(err => console.error("CSV load error:", err));
-  </script>
+      }
+    },
+    columns: [
+      { data: "Ticker" },
+      { data: "Name" },
+      { data: "Country" },
+      { data: "Sector" },
+      { data: "Industry" },
+      { data: "Price" },
+      { data: "DividendYield_%" },
+      { data: "PayoutRatio_%" },
+      { data: "PE" }
+    ]
+  });
+});
+</script>
+
 </body>
 </html>

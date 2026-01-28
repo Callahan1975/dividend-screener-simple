@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dividend Screener – Baseline</title>
+
+  <!-- DataTables CSS -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css"
+  />
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial;
+      margin: 30px;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Dividend Screener – Baseline</h1>
+
+<table id="screener" class="display">
+  <thead>
+    <tr>
+      <th>Ticker</th>
+      <th>Name</th>
+      <th>Country</th>
+      <th>Sector</th>
+      <th>Industry</th>
+      <th>Price</th>
+      <th>Dividend Yield (%)</th>
+      <th>Payout Ratio (%)</th>
+      <th>PE</th>
+    </tr>
+  </thead>
+</table>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
+<script>
+$(document).ready(function () {
+  $('#screener').DataTable({
+    ajax: {
+      url: 'screener_results.csv',
+      dataType: 'text',
+      dataSrc: function (csv) {
+        const lines = csv.trim().split('\n');
+        const headers = lines[0].split(',');
+        return lines.slice(1).map(line => {
+          const values = line.split(',');
+          let obj = {};
+          headers.forEach((h, i) => obj[h] = values[i]);
+          return obj;
+        });
+      }
+    },
+    columns: [
+      { data: 'Ticker' },
+      { data: 'Name' },
+      { data: 'Country' },
+      { data: 'Sector' },
+      { data: 'Industry' },
+      { data: 'Price' },
+      { data: 'DividendYield_%' },
+      { data: 'PayoutRatio_%' },
+      { data: 'PE' }
+    ],
+    pageLength: 25,
+    order: [[0, 'asc']]
+  });
+});
+</script>
+
+</body>
+</html>

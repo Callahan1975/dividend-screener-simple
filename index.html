@@ -41,39 +41,36 @@
 <!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-<!-- DataTables JS -->
+<!-- DataTables -->
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
+<!-- PapaParse (CSV parser) -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <script>
 $(document).ready(function () {
-  $('#screener').DataTable({
-    ajax: {
-      url: 'screener_results.csv',
-      dataType: 'text',
-      dataSrc: function (csv) {
-        const lines = csv.trim().split('\n');
-        const headers = lines[0].split(',');
-        return lines.slice(1).map(line => {
-          const values = line.split(',');
-          let obj = {};
-          headers.forEach((h, i) => obj[h] = values[i]);
-          return obj;
-        });
-      }
-    },
-    columns: [
-      { data: 'Ticker' },
-      { data: 'Name' },
-      { data: 'Country' },
-      { data: 'Sector' },
-      { data: 'Industry' },
-      { data: 'Price' },
-      { data: 'DividendYield_%' },
-      { data: 'PayoutRatio_%' },
-      { data: 'PE' }
-    ],
-    pageLength: 25,
-    order: [[6, 'desc']]
+  Papa.parse("screener_results.csv", {
+    download: true,
+    header: true,
+    dynamicTyping: true,
+    complete: function(results) {
+      $('#screener').DataTable({
+        data: results.data,
+        columns: [
+          { data: 'Ticker' },
+          { data: 'Name' },
+          { data: 'Country' },
+          { data: 'Sector' },
+          { data: 'Industry' },
+          { data: 'Price' },
+          { data: 'DividendYield_%' },
+          { data: 'PayoutRatio_%' },
+          { data: 'PE' }
+        ],
+        pageLength: 25,
+        order: [[6, 'desc']]
+      });
+    }
   });
 });
 </script>

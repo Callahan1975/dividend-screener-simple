@@ -2,10 +2,10 @@ Ticker,Name,Country,Sector,Industry,Price,DividendYield_%,PayoutRatio_%,PE
 AAPL,Apple Inc.,United States,Technology,Consumer Electronics,261.05,0.40,13.67,34.95
 MSFT,Microsoft Corporation,United States,Technology,Software - Infrastructure,470.67,0.77,23.61,33.45
 JNJ,Johnson & Johnson,United States,Healthcare,Drug Manufacturers - General,213.65,2.43,49.08,20.66
-PG,Procter & Gamble,United States,Consumer Defensive,Household & Personal Products,156.32,2.39,61.20,25.18
-KO,Coca-Cola Company,United States,Consumer Defensive,Beverages - Non-Alcoholic,61.27,3.05,74.30,22.41
-PEP,PepsiCo Inc.,United States,Consumer Defensive,Beverages - Non-Alcoholic,169.44,2.89,67.10,24.92
+PG,Procter & Gamble,United States,Consumer Defensive,Household Products,156.30,2.47,60.12,25.14
+KO,Coca-Cola Company,United States,Consumer Defensive,Beverages - Non-Alcoholic,61.20,3.08,75.44,22.91
+PEP,PepsiCo Inc.,United States,Consumer Defensive,Beverages - Non-Alcoholic,170.55,2.89,66.02,24.36
 MCD,McDonald's Corporation,United States,Consumer Cyclical,Restaurants,309.44,2.40,60.41,26.38
-ABBV,AbbVie Inc.,United States,Healthcare,Drug Manufacturers - General,173.80,3.82,55.90,17.30
-T,AT&T Inc.,United States,Communication Services,Telecom Services,17.12,6.58,71.20,8.21
-O,Realty Income Corporation,United States,Real Estate,REIT - Retail,55.21,5.82,82.40,45.10
+HD,Home Depot Inc.,United States,Consumer Cyclical,Home Improvement Retail,346.77,2.53,54.10,24.90
+V,Visa Inc.,United States,Financial Services,Credit Services,288.12,0.74,21.55,30.22
+WM,Waste Management Inc.,United States,Industrials,Waste Management,196.18,1.42,55.33,28.17

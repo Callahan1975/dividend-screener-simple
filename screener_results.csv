@@ -1,11 +1,11 @@
-Ticker,Name,Country,Sector,Industry,Price,DividendYield_%,PayoutRatio_%,PE
-AAPL,Apple Inc.,United States,Technology,Consumer Electronics,261.05,0.40,13.67,34.95
-MSFT,Microsoft Corporation,United States,Technology,Software - Infrastructure,470.67,0.77,23.61,33.45
-JNJ,Johnson & Johnson,United States,Healthcare,Drug Manufacturers - General,213.65,2.43,49.08,20.66
-PG,Procter & Gamble,United States,Consumer Defensive,Household Products,156.30,2.47,60.12,25.14
-KO,Coca-Cola Company,United States,Consumer Defensive,Beverages - Non-Alcoholic,61.20,3.08,75.44,22.91
-PEP,PepsiCo Inc.,United States,Consumer Defensive,Beverages - Non-Alcoholic,170.55,2.89,66.02,24.36
-MCD,McDonald's Corporation,United States,Consumer Cyclical,Restaurants,309.44,2.40,60.41,26.38
-HD,Home Depot Inc.,United States,Consumer Cyclical,Home Improvement Retail,346.77,2.53,54.10,24.90
-V,Visa Inc.,United States,Financial Services,Credit Services,288.12,0.74,21.55,30.22
-WM,Waste Management Inc.,United States,Industrials,Waste Management,196.18,1.42,55.33,28.17
+Ticker,Name,Country,Sector,Industry,Price,Dividend Yield (%),Payout Ratio (%),PE
+AAPL,"Apple Inc",US,Technology,Consumer Electronics,189.84,0.53,15.2,29.1
+MSFT,"Microsoft Corp",US,Technology,Software Infrastructure,421.12,0.71,27.4,35.8
+JNJ,"Johnson & Johnson",US,Healthcare,Drug Manufacturers,156.22,2.96,45.1,15.9
+PG,"Procter & Gamble Co",US,Consumer Defensive,Household Products,158.44,2.41,58.7,24.3
+KO,"Coca-Cola Co",US,Consumer Defensive,Beverages,61.32,3.12,76.5,22.6
+PEP,"PepsiCo Inc",US,Consumer Defensive,Beverages,170.11,2.89,66.2,24.9
+TROW,"T. Rowe Price Group, Inc",US,Financials,Asset Management,108.42,4.12,55.3,12.4
+ENB,"Enbridge Inc",CA,Energy,Oil & Gas Midstream,35.18,7.42,102.1,18.7
+TD,"Toronto-Dominion Bank",CA,Financials,Banks,60.55,4.89,48.6,10.9
+RY,"Royal Bank of Canada",CA,Financials,Banks,98.22,4.12,47.3,11.6

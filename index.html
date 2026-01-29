@@ -1,85 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Dividend Screener – Phase 2</title>
-
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-<style>
-body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; }
-.badge { padding: 4px 8px; border-radius: 6px; font-weight: 600; }
-.GOLD { background:#ffd700; }
-.BUY { background:#b6f2c2; }
-.HOLD { background:#ffe7a3; }
-.WATCH { background:#f3b0b0; }
-.High { color: #1a7f37; font-weight:600; }
-.Medium { color:#9a6700; font-weight:600; }
-.Low { color:#cf222e; font-weight:600; }
-small { color:#666; }
-</style>
-</head>
-
-<body>
-<h1>Dividend Screener – Phase 2</h1>
-<small>If table is empty, CSV could not be fetched from GitHub Pages.</small>
-
-<table id="screener" class="display" style="width:100%">
-<thead>
-<tr>
-<th>Ticker</th>
-<th>Name</th>
-<th>Country</th>
-<th>Sector</th>
-<th>Industry</th>
-<th>Price</th>
-<th>Dividend Yield (%)</th>
-<th>Payout Ratio (%)</th>
-<th>PE</th>
-<th>FairValue</th>
-<th>Upside (%)</th>
-<th>Score</th>
-<th>Signal</th>
-<th>Confidence</th>
-</tr>
-</thead>
-</table>
-
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
-<script>
-Papa.parse("./screener_results.csv?ts=" + Date.now(), {
-  download: true,
-  header: true,
-  dynamicTyping: true,
-  complete: function(results) {
-    $('#screener').DataTable({
-      data: results.data,
-      columns: [
-        { data: "Ticker" },
-        { data: "Name" },
-        { data: "Country" },
-        { data: "Sector" },
-        { data: "Industry" },
-        { data: "Price" },
-        { data: "Dividend Yield (%)" },
-        { data: "Payout Ratio (%)" },
-        { data: "PE" },
-        { data: "FairValue" },
-        { data: "Upside (%)" },
-        { data: "Score" },
-        { data: "Signal", render: d => `<span class="badge ${d}">${d}</span>` },
-        { data: "Confidence", render: d => `<span class="${d}">${d}</span>` }
-      ],
-      order: [[11, "desc"]],
-      pageLength: 25
-    });
-
-    console.log("Loaded", results.data.length, "rows");
-  }
-});
-</script>
-
-</body>
-</html>
+Ticker
+Name
+Country
+Sector
+Industry
+Price
+Dividend Yield (%)
+Payout Ratio (%)
+PE
+FairValue
+Upside (%)
+Score
+Signal
+Confidence

@@ -37,4 +37,4 @@ for ticker in TICKERS:
 df = pd.DataFrame(rows)
 
 os.makedirs("data", exist_ok=True)
-df.to_csv("data/screener_results.csv", index=False)
+df.to_csv("screener_results.csv", index=False)

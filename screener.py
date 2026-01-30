@@ -1,168 +1,133 @@
-import pandas as pd
 import yfinance as yf
-from datetime import datetime
-import os
-import math
+import pandas as pd
+from datetime import datetime, timezone
 
-# ----------------------------
+# -------------------------
 # CONFIG
-# ----------------------------
-
+# -------------------------
 TICKERS = [
-    "AAPL", "MSFT", "JNJ", "PG", "KO", "PEP", "TROW", "ENB"
+    "AAPL", "JNJ", "MSFT", "KO", "PG"
 ]
 
-# Fair PE pr. sektor (simple, konservativ)
-FAIR_PE_BY_SECTOR = {
-    "Technology": 22,
-    "Consumer Defensive": 20,
-    "Healthcare": 20,
-    "Financial Services": 12,
-    "Energy": 12,
-    "Utilities": 16,
-    "Real Estate": 16,
-    "Industrials": 18,
-    "Communication Services": 18,
-    "Basic Materials": 14,
-}
+OUTPUT_PATH = "data/screener_results.csv"
 
-# ----------------------------
+MAX_REASONABLE_YIELD = 15.0   # %
+MAX_REASONABLE_PAYOUT = 110.0 # %
+
+# -------------------------
 # HELPERS
-# ----------------------------
-
-def safe_float(x):
+# -------------------------
+def normalize_dividend_yield(raw):
+    """
+    Normalize dividend yield to %.
+    Accepts either ratio (0.041) or percent (4.1).
+    Rejects absurd values.
+    """
     try:
-        if x is None or (isinstance(x, float) and math.isnan(x)):
+        if raw is None:
             return None
-        return float(x)
+        y = float(raw)
+    except Exception:
+        return None
+
+    # ratio → %
+    if y <= 1:
+        y = y * 100
+
+    # sanity
+    if y <= 0 or y > MAX_REASONABLE_YIELD:
+        return None
+
+    return round(y, 2)
+
+
+def normalize_payout_ratio(raw):
+    try:
+        if raw is None:
+            return None
+        p = float(raw)
+    except Exception:
+        return None
+
+    if p <= 0 or p > MAX_REASONABLE_PAYOUT:
+        return None
+
+    return round(p, 2)
+
+
+def safe_float(v):
+    try:
+        return round(float(v), 4)
     except Exception:
         return None
 
 
-def calc_fair_value(eps, fair_pe):
-    if eps is None or fair_pe is None:
-        return None
-    return eps * fair_pe
-
-
-def calc_upside(price, fair_value):
-    if price is None or fair_value is None or price <= 0:
-        return None
-    return (fair_value / price - 1) * 100
-
-
-def calc_score(div_yield, upside, payout):
-    """
-    Score 0–100
-    - Yield: bedst mellem 1–6%
-    - Upside: cap ved 40%
-    - Payout: straf hvis for høj
-    """
-    score = 50
-
-    # Yield
-    if div_yield is not None:
-        if 1 <= div_yield <= 6:
-            score += 20
-        elif div_yield > 6:
-            score += 10
-
-    # Upside
-    if upside is not None:
-        score += min(max(upside, 0), 40) * 0.5  # max +20
-
-    # Payout sanity
-    if payout is not None:
-        if payout > 100:
-            score -= 20
-        elif payout > 80:
-            score -= 10
-
-    return max(0, min(100, round(score, 1)))
-
-
-def calc_signal(score, upside):
-    if score >= 80 and upside is not None and upside > 15:
-        return "GOLD"
-    if score >= 65:
-        return "BUY"
-    if score >= 50:
-        return "HOLD"
-    return "WATCH"
-
-
-def calc_confidence(eps, payout, div_yield):
-    missing = sum(x is None for x in [eps, payout, div_yield])
-    if missing == 0:
-        return "High"
-    if missing == 1:
-        return "Medium"
-    return "Low"
-
-
-# ----------------------------
+# -------------------------
 # MAIN
-# ----------------------------
-
+# -------------------------
 rows = []
 
+generated_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
 for ticker in TICKERS:
+    print(f"Processing {ticker}...")
+    stock = yf.Ticker(ticker)
+
     try:
-        stock = yf.Ticker(ticker)
         info = stock.info
-
-        price = safe_float(info.get("currentPrice"))
-        dividend_yield = safe_float(info.get("dividendYield"))
-        payout_ratio = safe_float(info.get("payoutRatio"))
-        eps = safe_float(info.get("trailingEps"))
-        pe = safe_float(info.get("trailingPE"))
-
-        # Normaliser %
-        if dividend_yield is not None:
-            dividend_yield *= 100
-        if payout_ratio is not None:
-            payout_ratio *= 100
-
-        sector = info.get("sector")
-        fair_pe = FAIR_PE_BY_SECTOR.get(sector, 15)
-
-        fair_value = calc_fair_value(eps, fair_pe)
-        upside = calc_upside(price, fair_value)
-        score = calc_score(dividend_yield, upside, payout_ratio)
-        signal = calc_signal(score, upside)
-        confidence = calc_confidence(eps, payout_ratio, dividend_yield)
-
-        rows.append({
-            "GeneratedUTC": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-            "Ticker": ticker,
-            "Name": info.get("shortName"),
-            "Country": info.get("country"),
-            "Sector": sector,
-            "Industry": info.get("industry"),
-            "Price": price,
-            "Dividend Yield (%)": round(dividend_yield, 2) if dividend_yield is not None else None,
-            "Payout Ratio (%)": round(payout_ratio, 2) if payout_ratio is not None else None,
-            "PE": pe,
-            "FairValue": round(fair_value, 2) if fair_value is not None else None,
-            "Upside (%)": round(upside, 2) if upside is not None else None,
-            "Score": score,
-            "Signal": signal,
-            "Confidence": confidence
-        })
-
     except Exception as e:
-        print(f"Error on {ticker}: {e}")
+        print(f"Failed to fetch {ticker}: {e}")
+        continue
 
+    flags = []
+
+    price = safe_float(info.get("currentPrice"))
+    dividend_yield = normalize_dividend_yield(info.get("dividendYield"))
+    payout_ratio = normalize_payout_ratio(info.get("payoutRatio"))
+
+    if dividend_yield is None:
+        flags.append("YieldMissingOrInvalid")
+
+    if payout_ratio is None:
+        flags.append("PayoutMissingOrInvalid")
+
+    row = {
+        "GeneratedUTC": generated_utc,
+        "Ticker": ticker,
+        "Name": info.get("shortName"),
+        "Country": info.get("country"),
+        "Sector": info.get("sector"),
+        "Industry": info.get("industry"),
+        "Price": price,
+        "DividendYield_%": dividend_yield,
+        "PayoutRatio_%": payout_ratio,
+        "PE": safe_float(info.get("trailingPE")),
+        "Flags": ";".join(flags) if flags else ""
+    }
+
+    rows.append(row)
+
+# -------------------------
+# EXPORT
+# -------------------------
 df = pd.DataFrame(rows)
 
-# Sikr stabil kolonnerækkefølge (VIGTIGT for DataTables)
-COLUMN_ORDER = [
-    "Ticker", "Name", "Country", "Sector", "Industry",
-    "Price", "Dividend Yield (%)", "Payout Ratio (%)", "PE",
-    "FairValue", "Upside (%)", "Score", "Signal", "Confidence"
+# Column order (explicit & stable)
+ordered_columns = [
+    "GeneratedUTC",
+    "Ticker",
+    "Name",
+    "Country",
+    "Sector",
+    "Industry",
+    "Price",
+    "DividendYield_%",
+    "PayoutRatio_%",
+    "PE",
+    "Flags"
 ]
 
-df = df[COLUMN_ORDER]
+df = df.reindex(columns=ordered_columns)
 
-df.to_csv("screener_results.csv", index=False)
-print(f"OK – wrote {len(df)} rows to screener_results.csv")
+df.to_csv(OUTPUT_PATH, index=False)
+print(f"\nSaved {len(df)} rows → {OUTPUT_PATH}")

@@ -1,6 +1,7 @@
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, timezone
+import math
 
 # -------------------------
 # CONFIG
@@ -11,18 +12,34 @@ TICKERS = [
 
 OUTPUT_PATH = "data/screener_results.csv"
 
-MAX_REASONABLE_YIELD = 15.0   # %
-MAX_REASONABLE_PAYOUT = 110.0 # %
+MAX_REASONABLE_YIELD = 15.0
+MAX_REASONABLE_PAYOUT = 110.0
+
+SECTOR_FAIR_PE = {
+    "Technology": 22,
+    "Healthcare": 20,
+    "Consumer Defensive": 20,
+    "Consumer Cyclical": 20,
+    "Financial Services": 12,
+    "Energy": 12,
+    "Utilities": 16,
+    "Industrials": 18,
+    "Basic Materials": 14,
+    "Real Estate": 16,
+    "Communication Services": 18
+}
 
 # -------------------------
 # HELPERS
 # -------------------------
+def safe_float(v):
+    try:
+        return round(float(v), 4)
+    except Exception:
+        return None
+
+
 def normalize_dividend_yield(raw):
-    """
-    Normalize dividend yield to %.
-    Accepts either ratio (0.041) or percent (4.1).
-    Rejects absurd values.
-    """
     try:
         if raw is None:
             return None
@@ -30,11 +47,9 @@ def normalize_dividend_yield(raw):
     except Exception:
         return None
 
-    # ratio → %
     if y <= 1:
-        y = y * 100
+        y *= 100
 
-    # sanity
     if y <= 0 or y > MAX_REASONABLE_YIELD:
         return None
 
@@ -55,33 +70,55 @@ def normalize_payout_ratio(raw):
     return round(p, 2)
 
 
-def safe_float(v):
+def calc_dividend_cagr(dividends, years=5):
+    if dividends is None or len(dividends) < years + 1:
+        return None
+
     try:
-        return round(float(v), 4)
+        start = dividends.iloc[-years - 1]
+        end = dividends.iloc[-1]
+        if start <= 0 or end <= 0:
+            return None
+        return round(((end / start) ** (1 / years) - 1) * 100, 2)
     except Exception:
         return None
+
+
+def classify_dividend(years):
+    if years is None:
+        return None
+    if years >= 50:
+        return "King"
+    if years >= 25:
+        return "Aristocrat"
+    if years >= 10:
+        return "Contender"
+    return None
 
 
 # -------------------------
 # MAIN
 # -------------------------
 rows = []
-
 generated_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 for ticker in TICKERS:
-    print(f"Processing {ticker}...")
+    print(f"Processing {ticker}")
     stock = yf.Ticker(ticker)
 
     try:
         info = stock.info
+        dividends = stock.dividends.resample("Y").sum()
     except Exception as e:
-        print(f"Failed to fetch {ticker}: {e}")
+        print(f"Failed {ticker}: {e}")
         continue
 
     flags = []
 
     price = safe_float(info.get("currentPrice"))
+    eps = safe_float(info.get("trailingEps"))
+    pe = safe_float(info.get("trailingPE"))
+
     dividend_yield = normalize_dividend_yield(info.get("dividendYield"))
     payout_ratio = normalize_payout_ratio(info.get("payoutRatio"))
 
@@ -91,17 +128,54 @@ for ticker in TICKERS:
     if payout_ratio is None:
         flags.append("PayoutMissingOrInvalid")
 
+    # Dividend growth
+    years_growing = len(dividends[dividends > 0]) if dividends is not None else None
+    div_cagr_5y = calc_dividend_cagr(dividends, 5)
+    dividend_class = classify_dividend(years_growing)
+
+    # Fair value
+    sector = info.get("sector")
+    fair_pe = SECTOR_FAIR_PE.get(sector)
+    fair_value = round(eps * fair_pe, 2) if eps and fair_pe else None
+    upside = round((fair_value / price - 1) * 100, 2) if price and fair_value else None
+
+    # -------------------------
+    # SIGNAL LOGIC
+    # -------------------------
+    signal = "WATCH"
+    confidence = "Low"
+
+    if upside and upside > 20 and dividend_yield and payout_ratio and payout_ratio < 80:
+        signal = "BUY"
+        confidence = "Medium"
+
+    if upside and upside > 30 and dividend_yield and dividend_yield > 2 and years_growing and years_growing >= 10:
+        signal = "GOLD"
+        confidence = "High"
+
+    if upside and upside < 0:
+        signal = "HOLD"
+        confidence = "Medium"
+
     row = {
         "GeneratedUTC": generated_utc,
         "Ticker": ticker,
         "Name": info.get("shortName"),
         "Country": info.get("country"),
-        "Sector": info.get("sector"),
+        "Sector": sector,
         "Industry": info.get("industry"),
         "Price": price,
         "DividendYield_%": dividend_yield,
         "PayoutRatio_%": payout_ratio,
-        "PE": safe_float(info.get("trailingPE")),
+        "DivCAGR_5Y_%": div_cagr_5y,
+        "YearsGrowing": years_growing,
+        "DividendClass": dividend_class,
+        "PE": pe,
+        "FairPE": fair_pe,
+        "FairValue": fair_value,
+        "Upside_%": upside,
+        "Signal": signal,
+        "Confidence": confidence,
         "Flags": ";".join(flags) if flags else ""
     }
 
@@ -112,7 +186,6 @@ for ticker in TICKERS:
 # -------------------------
 df = pd.DataFrame(rows)
 
-# Column order (explicit & stable)
 ordered_columns = [
     "GeneratedUTC",
     "Ticker",
@@ -123,11 +196,19 @@ ordered_columns = [
     "Price",
     "DividendYield_%",
     "PayoutRatio_%",
+    "DivCAGR_5Y_%",
+    "YearsGrowing",
+    "DividendClass",
     "PE",
+    "FairPE",
+    "FairValue",
+    "Upside_%",
+    "Signal",
+    "Confidence",
     "Flags"
 ]
 
 df = df.reindex(columns=ordered_columns)
-
 df.to_csv(OUTPUT_PATH, index=False)
-print(f"\nSaved {len(df)} rows → {OUTPUT_PATH}")
+
+print(f"Saved {len(df)} rows → {OUTPUT_PATH}")

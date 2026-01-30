@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Dividend Screener – Phase 2a</title>
+  <title>Dividend Screener</title>
 
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
@@ -13,20 +13,11 @@
       margin: 20px;
       background: #fafafa;
     }
-
     h1 { margin-bottom: 4px; }
-    .sub { color: #555; margin-bottom: 14px; }
-
+    .sub { color: #555; margin-bottom: 12px; }
     table.dataTable tbody td {
       font-size: 13px;
-      vertical-align: middle;
       white-space: nowrap;
-    }
-
-    .footer {
-      margin-top: 12px;
-      font-size: 12px;
-      color: #666;
     }
   </style>
 </head>
@@ -34,7 +25,8 @@
 <body>
 
 <h1>Dividend Screener</h1>
-<div class="sub">Phase 2a · Stabil core · CSV fra GitHub Actions</div>
+<div class="sub">Phase 3 · Stabil core · CSV fra GitHub Actions</div>
+<div class="sub">Data: <code>/data/screener_results.csv</code></div>
 
 <table id="screener" class="display stripe compact" style="width:100%">
   <thead>
@@ -42,8 +34,6 @@
   </thead>
   <tbody></tbody>
 </table>
-
-<div class="footer">Data: <code>/data/screener_results.csv</code></div>
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
@@ -61,7 +51,7 @@ $(document).ready(function () {
     complete: function (results) {
 
       if (!results.data || results.data.length === 0) {
-        console.error('CSV loaded but contains no rows');
+        console.error("CSV loaded but contains no rows");
         return;
       }
 
@@ -77,13 +67,11 @@ $(document).ready(function () {
         return clean;
       });
 
-      // Build table header dynamically
-      const headRow = $('#table-head');
-      headers.forEach(h => {
-        headRow.append(`<th>${h}</th>`);
-      });
+      // build header
+      const head = $('#table-head');
+      headers.forEach(h => head.append(`<th>${h}</th>`));
 
-      // Build DataTables column config dynamically
+      // build column config
       const columns = headers.map(h => ({ data: h }));
 
       $('#screener').DataTable({
@@ -91,9 +79,7 @@ $(document).ready(function () {
         columns: columns,
         pageLength: 25,
         dom: 'Bfrtip',
-        buttons: [
-          { extend: 'csvHtml5', text: 'Export CSV' }
-        ]
+        buttons: [{ extend: 'csvHtml5', text: 'Export CSV' }]
       });
     }
   });

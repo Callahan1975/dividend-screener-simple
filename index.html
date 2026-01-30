@@ -1,14 +1,186 @@
-Ticker
-Name
-Country
-Sector
-Industry
-Price
-Dividend Yield (%)
-Payout Ratio (%)
-PE
-FairValue
-Upside (%)
-Score
-Signal
-Confidence
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dividend Screener – Phase 2a</title>
+
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      margin: 20px;
+      background: #fafafa;
+    }
+
+    h1 {
+      margin-bottom: 4px;
+    }
+
+    .sub {
+      color: #555;
+      margin-bottom: 16px;
+    }
+
+    table.dataTable tbody td {
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    .right { text-align: right; }
+    .center { text-align: center; }
+
+    .badge {
+      padding: 3px 7px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      display: inline-block;
+    }
+
+    .badge-GOLD { background: #c9a227; }
+    .badge-BUY { background: #2e7d32; }
+    .badge-HOLD { background: #616161; }
+    .badge-WATCH { background: #c62828; }
+
+    .confidence-High { color: #2e7d32; font-weight: 600; }
+    .confidence-Medium { color: #f9a825; font-weight: 600; }
+    .confidence-Low { color: #c62828; font-weight: 600; }
+
+    .footer {
+      margin-top: 14px;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Dividend Screener</h1>
+<div class="sub">
+  Phase 2a · Stabil core · CSV fra GitHub Actions
+</div>
+
+<table id="screener" class="display stripe compact" style="width:100%">
+  <thead>
+    <tr>
+      <th>Ticker</th>
+      <th>Name</th>
+      <th>Country</th>
+      <th>Currency</th>
+      <th>Sector</th>
+      <th class="right">Price</th>
+      <th class="right">Yield %</th>
+      <th class="right">Payout %</th>
+      <th class="right">5Y Div CAGR %</th>
+      <th class="right">Years Grow</th>
+      <th class="right">PE</th>
+      <th class="right">Fair PE</th>
+      <th class="right">Fair Value</th>
+      <th class="right">Upside %</th>
+      <th class="center">Class</th>
+      <th class="center">Signal</th>
+      <th class="center">Confidence</th>
+      <th>Why</th>
+      <th>Flags</th>
+    </tr>
+  </thead>
+</table>
+
+<div class="footer">
+  Data: <code>/data/screener_results.csv</code> · Phase 2a
+</div>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+
+<script>
+$(document).ready(function () {
+
+  $('#screener').DataTable({
+    ajax: {
+      url: 'data/screener_results.csv',   // ✅ KORREKT STI
+      dataType: 'text',
+      dataSrc: function (csv) {
+        const lines = csv.split('\n');
+        const headers = lines[0].split(',');
+        const data = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          if (!lines[i].trim()) continue;
+          const row = lines[i].split(',');
+          const obj = {};
+          headers.forEach((h, idx) => {
+            obj[h.trim()] = row[idx];
+          });
+          data.push(obj);
+        }
+        return data;
+      }
+    },
+
+    pageLength: 25,
+    order: [[15, 'asc'], [13, 'desc']],  // Signal → Upside
+
+    columns: [
+      { data: 'Ticker' },
+      { data: 'Name' },
+      { data: 'Country' },
+      { data: 'Currency' },
+      { data: 'Sector' },
+
+      { data: 'Price', className: 'right' },
+      { data: 'DividendYield_%', className: 'right' },
+      { data: 'PayoutRatio_%', className: 'right' },
+      { data: 'DivCAGR_5Y_%', className: 'right' },
+      { data: 'YearsGrowing', className: 'right' },
+
+      { data: 'PE', className: 'right' },
+      { data: 'FairPE', className: 'right' },
+      { data: 'FairValue', className: 'right' },
+      { data: 'Upside_%', className: 'right' },
+
+      { data: 'DividendClass', className: 'center' },
+
+      {
+        data: 'Signal',
+        className: 'center',
+        render: function (data) {
+          return data
+            ? `<span class="badge badge-${data}">${data}</span>`
+            : '';
+        }
+      },
+
+      {
+        data: 'Confidence',
+        className: 'center',
+        render: function (data) {
+          return data
+            ? `<span class="confidence-${data}">${data}</span>`
+            : '';
+        }
+      },
+
+      { data: 'Why' },
+      { data: 'Flags' }
+    ],
+
+    dom: 'Bfrtip',
+    buttons: [
+      { extend: 'csvHtml5', text: 'Export CSV' }
+    ]
+  });
+
+});
+</script>
+
+</body>
+</html>

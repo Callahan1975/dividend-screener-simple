@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <title>Dividend Screener – Phase 2a</title>
 
-  <!-- DataTables CSS -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
 
@@ -15,14 +14,8 @@
       background: #fafafa;
     }
 
-    h1 {
-      margin-bottom: 4px;
-    }
-
-    .sub {
-      color: #555;
-      margin-bottom: 16px;
-    }
+    h1 { margin-bottom: 4px; }
+    .sub { color: #555; margin-bottom: 14px; }
 
     table.dataTable tbody td {
       font-size: 13px;
@@ -51,7 +44,7 @@
     .confidence-Low { color: #c62828; font-weight: 600; }
 
     .footer {
-      margin-top: 14px;
+      margin-top: 12px;
       font-size: 12px;
       color: #666;
     }
@@ -61,9 +54,7 @@
 <body>
 
 <h1>Dividend Screener</h1>
-<div class="sub">
-  Phase 2a · Stabil core · CSV fra GitHub Actions
-</div>
+<div class="sub">Phase 2a · Stabil core · CSV fra GitHub Actions</div>
 
 <table id="screener" class="display stripe compact" style="width:100%">
   <thead>
@@ -73,29 +64,26 @@
       <th>Country</th>
       <th>Currency</th>
       <th>Sector</th>
-      <th class="right">Price</th>
-      <th class="right">Yield %</th>
-      <th class="right">Payout %</th>
-      <th class="right">5Y Div CAGR %</th>
-      <th class="right">Years Grow</th>
-      <th class="right">PE</th>
-      <th class="right">Fair PE</th>
-      <th class="right">Fair Value</th>
-      <th class="right">Upside %</th>
-      <th class="center">Class</th>
-      <th class="center">Signal</th>
-      <th class="center">Confidence</th>
+      <th>Price</th>
+      <th>Yield %</th>
+      <th>Payout %</th>
+      <th>5Y Div CAGR %</th>
+      <th>Years Grow</th>
+      <th>PE</th>
+      <th>Fair PE</th>
+      <th>Fair Value</th>
+      <th>Upside %</th>
+      <th>Class</th>
+      <th>Signal</th>
+      <th>Confidence</th>
       <th>Why</th>
       <th>Flags</th>
     </tr>
   </thead>
 </table>
 
-<div class="footer">
-  Data: <code>/data/screener_results.csv</code> · Phase 2a
-</div>
+<div class="footer">Data: <code>/data/screener_results.csv</code></div>
 
-<!-- Scripts -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
@@ -104,80 +92,66 @@
 <script>
 $(document).ready(function () {
 
-  $('#screener').DataTable({
-    ajax: {
-      url: 'data/screener_results.csv',   // ✅ KORREKT STI
-      dataType: 'text',
-      dataSrc: function (csv) {
-        const lines = csv.split('\n');
-        const headers = lines[0].split(',');
-        const data = [];
+  fetch('data/screener_results.csv')
+    .then(r => r.text())
+    .then(csv => {
+      const lines = csv.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim());
 
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
-          const row = lines[i].split(',');
-          const obj = {};
-          headers.forEach((h, idx) => {
-            obj[h.trim()] = row[idx];
-          });
-          data.push(obj);
-        }
-        return data;
+      const rows = lines.slice(1).map(line => {
+        const values = line.split(',');
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = values[i]);
+        return obj;
+      });
+
+      function col(name) {
+        return headers.includes(name) ? name : null;
       }
-    },
 
-    pageLength: 25,
-    order: [[15, 'asc'], [13, 'desc']],  // Signal → Upside
+      $('#screener').DataTable({
+        data: rows,
+        pageLength: 25,
+        order: [[15, 'asc'], [13, 'desc']],
+        columns: [
+          { data: col('Ticker') },
+          { data: col('Name') },
+          { data: col('Country') },
+          { data: col('Currency') },
+          { data: col('Sector') },
 
-    columns: [
-      { data: 'Ticker' },
-      { data: 'Name' },
-      { data: 'Country' },
-      { data: 'Currency' },
-      { data: 'Sector' },
+          { data: col('Price'), className: 'right' },
+          { data: col('DividendYield_%'), className: 'right' },
+          { data: col('PayoutRatio_%'), className: 'right' },
+          { data: col('DivCAGR_5Y_%'), className: 'right' },
+          { data: col('YearsGrowing'), className: 'right' },
 
-      { data: 'Price', className: 'right' },
-      { data: 'DividendYield_%', className: 'right' },
-      { data: 'PayoutRatio_%', className: 'right' },
-      { data: 'DivCAGR_5Y_%', className: 'right' },
-      { data: 'YearsGrowing', className: 'right' },
+          { data: col('PE'), className: 'right' },
+          { data: col('FairPE'), className: 'right' },
+          { data: col('FairValue'), className: 'right' },
+          { data: col('Upside_%'), className: 'right' },
 
-      { data: 'PE', className: 'right' },
-      { data: 'FairPE', className: 'right' },
-      { data: 'FairValue', className: 'right' },
-      { data: 'Upside_%', className: 'right' },
+          { data: col('DividendClass'), className: 'center' },
 
-      { data: 'DividendClass', className: 'center' },
+          {
+            data: col('Signal'),
+            className: 'center',
+            render: d => d ? `<span class="badge badge-${d}">${d}</span>` : ''
+          },
 
-      {
-        data: 'Signal',
-        className: 'center',
-        render: function (data) {
-          return data
-            ? `<span class="badge badge-${data}">${data}</span>`
-            : '';
-        }
-      },
+          {
+            data: col('Confidence'),
+            className: 'center',
+            render: d => d ? `<span class="confidence-${d}">${d}</span>` : ''
+          },
 
-      {
-        data: 'Confidence',
-        className: 'center',
-        render: function (data) {
-          return data
-            ? `<span class="confidence-${data}">${data}</span>`
-            : '';
-        }
-      },
-
-      { data: 'Why' },
-      { data: 'Flags' }
-    ],
-
-    dom: 'Bfrtip',
-    buttons: [
-      { extend: 'csvHtml5', text: 'Export CSV' }
-    ]
-  });
+          { data: col('Why') },
+          { data: col('Flags') }
+        ],
+        dom: 'Bfrtip',
+        buttons: [{ extend: 'csvHtml5', text: 'Export CSV' }]
+      });
+    });
 
 });
 </script>

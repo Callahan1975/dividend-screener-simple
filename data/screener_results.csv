@@ -1,6 +1,6 @@
 GeneratedUTC,Ticker,Name,Country,Sector,Industry,Price,DividendYield_%,PayoutRatio_%,DivCAGR_5Y_%,YearsGrowing,DividendClass,PE,FairPE,FairValue,Upside_%,Signal,Confidence,Flags
-2026-01-30 14:03:22,AAPL,Apple Inc.,United States,Technology,Consumer Electronics,258.28,,0.13,,,,32.6937,22,173.8,-32.71,HOLD,Medium,YieldMissingOrInvalid
-2026-01-30 14:03:22,JNJ,Johnson & Johnson,United States,Healthcare,Drug Manufacturers - General,227.29,2.29,0.47,,,,20.6252,20,220.4,-3.03,HOLD,Medium,
-2026-01-30 14:03:22,MSFT,Microsoft Corporation,United States,Technology,Software - Infrastructure,433.5,,0.21,,,,27.0938,22,352.0,-18.8,HOLD,Medium,YieldMissingOrInvalid
-2026-01-30 14:03:22,KO,Coca-Cola Company (The),United States,Consumer Defensive,Beverages - Non-Alcoholic,73.43,2.78,0.67,,,,24.3146,20,60.4,-17.74,HOLD,Medium,
-2026-01-30 14:03:22,PG,Procter & Gamble Company (The),United States,Consumer Defensive,Household & Personal Products,149.9,2.82,0.62,,,,22.2074,20,135.0,-9.94,HOLD,Medium,
+2026-01-30 14:03:50,AAPL,Apple Inc.,United States,Technology,Consumer Electronics,258.28,,0.13,,,,32.6937,22,173.8,-32.71,HOLD,Medium,YieldMissingOrInvalid
+2026-01-30 14:03:50,JNJ,Johnson & Johnson,United States,Healthcare,Drug Manufacturers - General,227.29,2.29,0.47,,,,20.6252,20,220.4,-3.03,HOLD,Medium,
+2026-01-30 14:03:50,MSFT,Microsoft Corporation,United States,Technology,Software - Infrastructure,433.5,,0.21,,,,27.0938,22,352.0,-18.8,HOLD,Medium,YieldMissingOrInvalid
+2026-01-30 14:03:50,KO,Coca-Cola Company (The),United States,Consumer Defensive,Beverages - Non-Alcoholic,73.43,2.78,0.67,,,,24.3146,20,60.4,-17.74,HOLD,Medium,
+2026-01-30 14:03:50,PG,Procter & Gamble Company (The),United States,Consumer Defensive,Household & Personal Products,149.9,2.82,0.62,,,,22.2074,20,135.0,-9.94,HOLD,Medium,

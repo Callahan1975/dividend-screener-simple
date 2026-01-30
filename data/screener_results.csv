@@ -1,6 +1,6 @@
-GeneratedUTC,Ticker,Name,Country,Sector,Industry,Price,DividendYield_%,PayoutRatio_%,PE
-2026-01-29 09:12:01,AAPL,Apple Inc.,United States,Technology,Consumer Electronics,256.44,41.0,13.669999999999998,34.375336
-2026-01-29 09:12:01,JNJ,Johnson & Johnson,United States,Healthcare,Drug Manufacturers - General,227.72,227.99999999999997,46.6,20.664246
-2026-01-29 09:12:02,MSFT,Microsoft Corporation,United States,Technology,Software - Infrastructure,481.63,76.0,21.280001000000002,30.1207
-2026-01-29 09:12:02,KO,Coca-Cola Company (The),United States,Consumer Defensive,Beverages - Non-Alcoholic,73.06,279.0,66.72,24.192053
-2026-01-29 09:12:02,PG,Procter & Gamble Company (The),United States,Consumer Defensive,Household & Personal Products,147.34,287.0,61.88,21.828148
+GeneratedUTC,Ticker,Name,Country,Sector,Industry,Price,DividendYield_%,PayoutRatio_%,PE,Flags
+2026-01-30 12:23:40,AAPL,Apple Inc.,United States,Technology,Consumer Electronics,258.28,,0.13,32.6937,YieldMissingOrInvalid
+2026-01-30 12:23:40,JNJ,Johnson & Johnson,United States,Healthcare,Drug Manufacturers - General,227.29,2.29,0.47,20.6252,
+2026-01-30 12:23:40,MSFT,Microsoft Corporation,United States,Technology,Software - Infrastructure,433.5,,0.21,27.0938,YieldMissingOrInvalid
+2026-01-30 12:23:40,KO,Coca-Cola Company (The),United States,Consumer Defensive,Beverages - Non-Alcoholic,73.43,2.78,0.67,24.3146,
+2026-01-30 12:23:40,PG,Procter & Gamble Company (The),United States,Consumer Defensive,Household & Personal Products,149.9,2.82,0.62,22.2074,

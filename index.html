@@ -13,10 +13,22 @@
       margin: 20px;
       background: #fafafa;
     }
-    h1 { margin-bottom: 4px; }
-    .sub { color: #555; margin-bottom: 12px; }
-    table.dataTable tbody td {
-      font-size: 13px;
+
+    h1 {
+      margin-bottom: 4px;
+    }
+
+    .sub {
+      color: #555;
+      margin-bottom: 8px;
+    }
+
+    table.dataTable {
+      font-size: 12px;
+    }
+
+    table.dataTable th,
+    table.dataTable td {
       white-space: nowrap;
     }
   </style>
@@ -39,6 +51,7 @@
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <script>
@@ -56,6 +69,7 @@ $(document).ready(function () {
       }
 
       const headers = results.meta.fields;
+
       const data = results.data.map(row => {
         const clean = {};
         headers.forEach(h => {
@@ -67,19 +81,51 @@ $(document).ready(function () {
         return clean;
       });
 
-      // build header
+      // Build table header dynamically
       const head = $('#table-head');
       headers.forEach(h => head.append(`<th>${h}</th>`));
 
-      // build column config
+      // Build column config
       const columns = headers.map(h => ({ data: h }));
+
+      // Columns hidden by default (Finviz-style)
+      const hiddenColumns = [
+        "GeneratedUTC",
+        "Country",
+        "Industry",
+        "DivCAGR_5Y_%",
+        "YearsGrowing",
+        "DividendClass",
+        "FairPE",
+        "ForwardPE",
+        "PriceToFCF",
+        "ROE_%",
+        "ROA_%",
+        "Value_LowPE",
+        "Value_LowForwardPE",
+        "Value_LowFCF",
+        "Quality_ROE_10p",
+        "Flags"
+      ];
+
+      const columnDefs = headers
+        .map((h, idx) => hiddenColumns.includes(h)
+          ? { targets: idx, visible: false }
+          : null
+        )
+        .filter(Boolean);
 
       $('#screener').DataTable({
         data: data,
         columns: columns,
+        columnDefs: columnDefs,
         pageLength: 25,
+        scrollX: true,
         dom: 'Bfrtip',
-        buttons: [{ extend: 'csvHtml5', text: 'Export CSV' }]
+        buttons: [
+          { extend: 'csvHtml5', text: 'Export CSV' },
+          { extend: 'colvis', text: 'Columns' }
+        ]
       });
     }
   });

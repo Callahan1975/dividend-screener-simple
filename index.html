@@ -8,30 +8,29 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
 
 <style>
-body { font-family: Arial, sans-serif; margin: 20px; }
-h1 { margin-bottom: 4px; }
-.sub { color: #666; margin-bottom: 12px; }
+body { font-family: Arial, sans-serif; margin:20px; }
+h1 { margin-bottom:4px; }
+.sub { color:#666; margin-bottom:12px; }
 
 .filter-bar {
-  background: #f4f6f8;
-  padding: 12px;
-  border-radius: 6px;
-  margin-bottom: 14px;
+  background:#f4f6f8;
+  padding:12px;
+  border-radius:6px;
+  margin-bottom:14px;
 }
 
-label { margin-right: 14px; font-weight: bold; }
+label { margin-right:12px; font-weight:bold; }
 
 .pass { background:#d4edda !important; }
 .fail { background:#f8d7da !important; }
 
 .signal-buy {
   background:#2ecc71;
-  color:#fff;
+  color:white;
   font-weight:bold;
   padding:4px 8px;
   border-radius:4px;
 }
-
 .signal-hold {
   background:#ccc;
   padding:4px 8px;
@@ -47,27 +46,28 @@ label { margin-right: 14px; font-weight: bold; }
 
 <div class="filter-bar">
   <strong>Købs-kriterier:</strong><br>
-  <label><input type="checkbox" class="flt" id="f_yield" checked> Yield ≥ 2.5%</label>
-  <label><input type="checkbox" class="flt" id="f_payout" checked> Payout ≤ 75%</label>
-  <label><input type="checkbox" class="flt" id="f_roe" checked> ROE ≥ 10%</label>
-  <label><input type="checkbox" class="flt" id="f_upside" checked> Upside ≥ 10%</label>
-  <label><input type="checkbox" class="flt" id="f_quality" checked> Quality</label>
+  <label><input type="checkbox" class="flt" id="f_yield"> Yield ≥ 2.5%</label>
+  <label><input type="checkbox" class="flt" id="f_payout"> Payout ≤ 75%</label>
+  <label><input type="checkbox" class="flt" id="f_roe"> ROE ≥ 10%</label>
+  <label><input type="checkbox" class="flt" id="f_upside"> Upside ≥ 10%</label>
+  <label><input type="checkbox" class="flt" id="f_quality"> Quality</label>
+
   <br><br>
 
   <strong>Country:</strong>
-  <select id="countryFilter" multiple>
-    <option value="United States" selected>United States</option>
-    <option value="Canada" selected>Canada</option>
+  <select id="countryFilter" multiple size="2">
+    <option value="United States">United States</option>
+    <option value="Canada">Canada</option>
   </select>
 
   <strong style="margin-left:20px;">Sector:</strong>
-  <select id="sectorFilter" multiple>
-    <option value="Technology" selected>Technology</option>
-    <option value="Healthcare" selected>Healthcare</option>
-    <option value="Consumer Defensive" selected>Consumer Defensive</option>
-    <option value="Consumer Cyclical" selected>Consumer Cyclical</option>
-    <option value="Financial Services" selected>Financial Services</option>
-    <option value="Energy" selected>Energy</option>
+  <select id="sectorFilter" multiple size="4">
+    <option value="Technology">Technology</option>
+    <option value="Healthcare">Healthcare</option>
+    <option value="Consumer Defensive">Consumer Defensive</option>
+    <option value="Consumer Cyclical">Consumer Cyclical</option>
+    <option value="Financial Services">Financial Services</option>
+    <option value="Energy">Energy</option>
   </select>
 </div>
 
@@ -96,70 +96,73 @@ label { margin-right: 14px; font-weight: bold; }
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <script>
-let tableData = [];
+$.fn.dataTable.ext.search.push(function(settings, data) {
 
-function applyFilters(settings, data) {
   const y = parseFloat(data[5]) || 0;
   const p = parseFloat(data[6]) || 999;
   const r = parseFloat(data[7]) || 0;
   const u = parseFloat(data[8]) || 0;
   const q = data[9] === "True";
-  const c = data[2];
-  const s = data[3];
 
-  if ($("#f_yield").is(":checked") && y < 2.5) return false;
-  if ($("#f_payout").is(":checked") && p > 75) return false;
-  if ($("#f_roe").is(":checked") && r < 10) return false;
-  if ($("#f_upside").is(":checked") && u < 10) return false;
-  if ($("#f_quality").is(":checked") && !q) return false;
+  const country = data[2];
+  const sector  = data[3];
 
-  if ($("#countryFilter").val().length && !$("#countryFilter").val().includes(c)) return false;
-  if ($("#sectorFilter").val().length && !$("#sectorFilter").val().includes(s)) return false;
+  if ($('#f_yield').is(':checked') && y < 2.5) return false;
+  if ($('#f_payout').is(':checked') && p > 75) return false;
+  if ($('#f_roe').is(':checked') && r < 10) return false;
+  if ($('#f_upside').is(':checked') && u < 10) return false;
+  if ($('#f_quality').is(':checked') && !q) return false;
+
+  const cSel = $('#countryFilter').val();
+  if (cSel && cSel.length && !cSel.includes(country)) return false;
+
+  const sSel = $('#sectorFilter').val();
+  if (sSel && sSel.length && !sSel.includes(sector)) return false;
 
   return true;
-}
+});
 
-$.fn.dataTable.ext.search.push(applyFilters);
+Papa.parse('/data/screener_results.csv', {
+  download:true,
+  header:true,
+  dynamicTyping:true,
+  complete:function(res){
 
-Papa.parse("/data/screener_results.csv", {
-  download: true,
-  header: true,
-  dynamicTyping: true,
-  complete: function(results) {
-    tableData = results.data;
-
-    $('#screener').DataTable({
-      data: tableData,
-      dom: 'Bfrtip',
-      buttons: ['csv'],
-      order: [[8,'desc']],
-      columns: [
-        { data: 'Ticker' },
-        { data: 'Name' },
-        { data: 'Country' },
-        { data: 'Sector' },
-        { data: 'Price' },
-        { data: 'DividendYield_%' },
-        { data: 'PayoutRatio_%' },
-        { data: 'ROE_%' },
-        { data: 'Upside_%' },
-        { data: 'Quality_ROE_10p' },
-        { data: 'Signal', render: d =>
-            d === "BUY"
-              ? '<span class="signal-buy">BUY</span>'
-              : '<span class="signal-hold">HOLD</span>'
+    const table = $('#screener').DataTable({
+      data: res.data,
+      dom:'Bfrtip',
+      buttons:['csv'],
+      order:[[8,'desc']],
+      columns:[
+        {data:'Ticker'},
+        {data:'Name'},
+        {data:'Country'},
+        {data:'Sector'},
+        {data:'Price'},
+        {data:'DividendYield_%'},
+        {data:'PayoutRatio_%'},
+        {data:'ROE_%'},
+        {data:'Upside_%'},
+        {data:'Quality_ROE_10p'},
+        {data:'Signal', render:d =>
+          d === 'BUY'
+            ? '<span class="signal-buy">BUY</span>'
+            : '<span class="signal-hold">HOLD</span>'
         }
       ],
-      createdRow: function(row, d) {
-        if (d.DividendYield_% >= 2.5) $('td:eq(5)',row).addClass('pass'); else $('td:eq(5)',row).addClass('fail');
-        if (d.PayoutRatio_% <= 75) $('td:eq(6)',row).addClass('pass'); else $('td:eq(6)',row).addClass('fail');
-        if (d.ROE_% >= 10) $('td:eq(7)',row).addClass('pass'); else $('td:eq(7)',row).addClass('fail');
-        if (d.Upside_% >= 10) $('td:eq(8)',row).addClass('pass'); else $('td:eq(8)',row).addClass('fail');
+      createdRow:function(row,d){
+        if (d.DividendYield_% >= 2.5) $('td:eq(5)',row).addClass('pass');
+        if (d.PayoutRatio_% <= 75)   $('td:eq(6)',row).addClass('pass');
+        if (d.ROE_% >= 10)           $('td:eq(7)',row).addClass('pass');
+        if (d.Upside_% >= 10)        $('td:eq(8)',row).addClass('pass');
+      },
+      language:{
+        emptyTable:'Ingen aktier matcher dine filtre – prøv at løsne kriterierne.'
       }
     });
 
-    $('.flt, #countryFilter, #sectorFilter').on('change', function () {
-      $('#screener').DataTable().draw();
+    $('.flt, #countryFilter, #sectorFilter').on('change', function(){
+      table.draw();
     });
   }
 });

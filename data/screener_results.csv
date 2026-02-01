@@ -1,31 +1,31 @@
 GeneratedUTC,Ticker,Name,Country,Sector,Industry,Price,DividendYield_%,PayoutRatio_%,DivCAGR_5Y_%,YearsGrowing,DividendClass,PE,ForwardPE,PriceToFCF,ROE_%,ROA_%,FairPE,FairValue,Upside_%,Value_LowPE,Value_LowForwardPE,Value_LowFCF,Quality_ROE_10p,Signal,Confidence,Flags
-2026-02-01 18:50:42,AAPL,Apple Inc.,United States,Technology,Consumer Electronics,259.48,,0.13,,,,32.89,27.96,35.83,152.02,24.38,22,173.58,-33.1,False,False,False,True,HOLD,Medium,YieldMissingOrInvalid
-2026-02-01 18:50:42,MSFT,Microsoft Corporation,United States,Technology,Software - Infrastructure,430.29,,0.21,,,,26.96,22.76,59.57,34.39,14.86,22,351.12,-18.4,False,False,False,True,HOLD,Medium,YieldMissingOrInvalid
-2026-02-01 18:50:42,JNJ,Johnson & Johnson,United States,Healthcare,Drug Manufacturers - General,227.25,2.29,0.47,,,,20.62,18.12,,35.56,,20,220.4,-3.01,False,False,False,True,HOLD,Medium,
-2026-02-01 18:50:42,PG,Procter & Gamble Company (The),United States,Consumer Defensive,Household & Personal Products,151.77,2.82,0.62,,,,22.22,20.74,26.76,31.56,10.9,20,136.6,-10.0,False,False,False,True,HOLD,Medium,
-2026-02-01 18:50:42,KO,Coca-Cola Company (The),United States,Consumer Defensive,Beverages - Non-Alcoholic,74.81,2.78,0.67,,,,24.37,23.23,227.76,42.44,8.96,20,61.4,-17.93,False,False,False,True,HOLD,Medium,
-2026-02-01 18:50:42,PEP,"Pepsico, Inc.",United States,Consumer Defensive,Beverages - Non-Alcoholic,153.63,3.83,1.06,,,,28.24,17.96,29.43,37.16,8.37,20,108.8,-29.18,False,False,False,True,HOLD,Medium,
-2026-02-01 18:50:42,MCD,McDonald's Corporation,United States,Consumer Cyclical,Restaurants,315.0,2.36,0.6,,,,26.95,23.77,51.05,,12.97,20,233.8,-25.78,False,False,False,False,HOLD,Medium,
-2026-02-01 18:50:42,HD,"Home Depot, Inc. (The)",United States,Consumer Cyclical,Home Improvement Retail,374.59,2.47,0.62,,,,25.38,24.9,38.31,162.91,13.23,20,295.2,-21.19,False,False,False,True,HOLD,Medium,
-2026-02-01 18:50:42,LOW,"Lowe's Companies, Inc.",United States,Consumer Cyclical,Home Improvement Retail,267.06,1.8,0.39,,,,22.07,20.56,31.46,,13.18,20,242.0,-9.38,False,False,False,False,HOLD,Medium,
-2026-02-01 18:50:42,UNH,UnitedHealth Group Incorporated,United States,Healthcare,Healthcare Plans,286.93,3.02,0.45,,,,15.22,14.27,16.32,12.54,3.9,20,377.0,31.39,False,True,False,True,BUY,Medium,
-2026-02-01 18:50:42,ABBV,AbbVie Inc.,United States,Healthcare,Drug Manufacturers - General,223.01,3.02,4.9,,,,166.43,15.68,18.95,137.96,9.59,20,26.8,-87.98,False,False,False,True,HOLD,Medium,
-2026-02-01 18:50:42,MRK,"Merck & Company, Inc.",United States,Healthcare,Drug Manufacturers - General,110.27,3.14,0.43,,,,14.32,19.47,18.84,39.49,13.76,20,154.0,39.66,True,False,False,True,BUY,Medium,
-2026-02-01 18:50:42,CVX,Chevron Corporation,United States,Energy,Oil & Gas Integrated,176.9,3.87,1.03,,,,26.68,19.78,,28.64,,12,79.56,-55.03,False,False,False,True,HOLD,Medium,
-2026-02-01 18:50:42,XOM,Exxon Mobil Corporation,United States,Energy,Oil & Gas Integrated,141.4,2.91,0.6,,,,21.1,17.25,43.57,11.08,4.81,12,80.4,-43.14,False,False,False,True,HOLD,Medium,
-2026-02-01 18:50:42,V,Visa Inc.,United States,Financial Services,Credit Services,321.83,,0.23,,,,30.22,22.21,24.58,53.95,18.36,12,127.8,-60.29,False,False,False,True,HOLD,Medium,YieldMissingOrInvalid
-2026-02-01 18:50:42,MA,Mastercard Incorporated,United States,Financial Services,Credit Services,538.79,,0.18,,,,32.57,23.92,29.37,209.91,23.72,12,198.48,-63.16,False,False,False,True,HOLD,Medium,YieldMissingOrInvalid
-2026-02-01 18:50:42,TXN,Texas Instruments Incorporated,United States,Technology,Semiconductors,215.55,2.59,1.01,,,,40.14,27.5,-1130.9,30.15,10.95,22,118.14,-45.19,False,False,True,True,HOLD,Medium,
-2026-02-01 18:50:42,AVGO,Broadcom Inc.,United States,Technology,Semiconductors,331.3,,0.49,,,,69.45,23.08,62.72,31.05,9.79,22,104.94,-68.32,False,False,False,True,HOLD,Medium,YieldMissingOrInvalid
-2026-02-01 18:50:42,COST,Costco Wholesale Corporation,United States,Consumer Defensive,Discount Stores,940.25,,0.27,,,,51.02,42.33,58.21,30.33,8.52,20,368.6,-60.8,False,False,False,True,HOLD,Medium,YieldMissingOrInvalid
-2026-02-01 18:50:42,RY,Royal Bank Of Canada,Canada,Financial Services,Banks - Diversified,166.23,2.83,0.43,,,,16.31,13.07,,15.29,0.91,12,122.28,-26.44,False,True,False,True,HOLD,Medium,
-2026-02-01 18:50:42,TD,Toronto Dominion Bank (The),Canada,Financial Services,Banks - Diversified,93.49,3.27,0.36,,,,11.16,12.53,,16.91,0.99,12,100.56,7.56,True,True,False,True,BUY,Medium,
-2026-02-01 18:50:42,BMO,Bank Of Montreal,Canada,Financial Services,Banks - Diversified,136.15,3.39,0.56,,,,16.81,11.84,,10.12,0.6,12,97.2,-28.61,False,True,False,True,HOLD,Medium,
-2026-02-01 18:50:42,BNS,Bank Nova Scotia Halifax Pfd 3,Canada,Financial Services,Banks - Diversified,74.72,4.24,0.76,,,,18.31,11.24,,8.99,0.54,12,48.96,-34.48,False,True,False,False,HOLD,Medium,
-2026-02-01 18:50:42,ENB,Enbridge Inc,Canada,Energy,Oil & Gas Midstream,48.84,5.63,1.47,,,,26.26,21.55,82.28,9.12,3.39,12,22.32,-54.3,False,False,False,False,HOLD,Medium,
-2026-02-01 18:50:42,CNQ,Canadian Natural Resources Limi,Canada,Energy,Oil & Gas E&P,37.21,4.51,0.73,,,,16.25,18.72,12.43,16.56,6.9,12,27.48,-26.15,False,False,True,True,HOLD,Medium,
-2026-02-01 18:50:42,FTS,Fortis Inc.,Canada,Utilities,Utilities - Regulated Electric,53.33,3.38,0.73,,,,21.68,20.5,-8.89,7.61,3.09,16,39.36,-26.2,False,False,True,False,HOLD,Medium,
-2026-02-01 18:50:42,UL,Unilever PLC,United Kingdom,Consumer Defensive,Household & Personal Products,68.36,3.39,0.8,,,,22.34,18.49,27.26,28.7,8.66,20,61.2,-10.47,False,False,False,True,HOLD,Medium,
-2026-02-01 18:50:42,BP,BP p.l.c.,United Kingdom,Energy,Oil & Gas Integrated,37.88,5.27,3.15,,,,61.1,13.45,8.11,3.55,2.62,12,7.44,-80.36,False,True,True,False,HOLD,Medium,
-2026-02-01 18:50:42,AZN,Astrazeneca PLC,United Kingdom,Healthcare,Drug Manufacturers - General,92.77,1.69,0.52,,,,30.82,18.1,28.82,21.67,9.06,20,60.2,-35.11,False,False,False,True,HOLD,Medium,
-2026-02-01 18:50:42,NVS,Novartis AG,Switzerland,Healthcare,Drug Manufacturers - General,148.68,2.68,0.55,,,,20.37,16.11,17.82,32.62,12.13,20,146.0,-1.8,False,False,False,True,HOLD,Medium,
+2026-02-01 18:57:27,AAPL,Apple Inc.,United States,Technology,Consumer Electronics,259.48,,0.13,,,,32.89,27.96,35.83,152.02,24.38,22,173.58,-33.1,False,False,False,True,HOLD,Medium,YieldMissingOrInvalid
+2026-02-01 18:57:27,MSFT,Microsoft Corporation,United States,Technology,Software - Infrastructure,430.29,,0.21,,,,26.96,22.76,59.57,34.39,14.86,22,351.12,-18.4,False,False,False,True,HOLD,Medium,YieldMissingOrInvalid
+2026-02-01 18:57:27,JNJ,Johnson & Johnson,United States,Healthcare,Drug Manufacturers - General,227.25,2.29,0.47,,,,20.62,18.12,,35.56,,20,220.4,-3.01,False,False,False,True,HOLD,Medium,
+2026-02-01 18:57:27,PG,Procter & Gamble Company (The),United States,Consumer Defensive,Household & Personal Products,151.77,2.82,0.62,,,,22.22,20.74,26.61,31.56,10.9,20,136.6,-10.0,False,False,False,True,HOLD,Medium,
+2026-02-01 18:57:27,KO,Coca-Cola Company (The),United States,Consumer Defensive,Beverages - Non-Alcoholic,74.81,2.78,0.67,,,,24.37,23.23,227.76,42.44,8.96,20,61.4,-17.93,False,False,False,True,HOLD,Medium,
+2026-02-01 18:57:27,PEP,"Pepsico, Inc.",United States,Consumer Defensive,Beverages - Non-Alcoholic,153.63,3.83,1.06,,,,28.24,17.96,29.43,37.16,8.37,20,108.8,-29.18,False,False,False,True,HOLD,Medium,
+2026-02-01 18:57:27,MCD,McDonald's Corporation,United States,Consumer Cyclical,Restaurants,315.0,2.36,0.6,,,,26.95,23.77,51.05,,12.97,20,233.8,-25.78,False,False,False,False,HOLD,Medium,
+2026-02-01 18:57:27,HD,"Home Depot, Inc. (The)",United States,Consumer Cyclical,Home Improvement Retail,374.59,2.47,0.62,,,,25.38,24.9,38.31,162.91,13.23,20,295.2,-21.19,False,False,False,True,HOLD,Medium,
+2026-02-01 18:57:27,LOW,"Lowe's Companies, Inc.",United States,Consumer Cyclical,Home Improvement Retail,267.06,1.8,0.39,,,,22.07,20.56,31.46,,13.18,20,242.0,-9.38,False,False,False,False,HOLD,Medium,
+2026-02-01 18:57:27,UNH,UnitedHealth Group Incorporated,United States,Healthcare,Healthcare Plans,286.93,3.02,0.45,,,,15.22,14.27,16.32,12.54,3.9,20,377.0,31.39,False,True,False,True,BUY,Medium,
+2026-02-01 18:57:27,ABBV,AbbVie Inc.,United States,Healthcare,Drug Manufacturers - General,223.01,3.02,4.9,,,,166.43,15.68,18.95,137.96,9.59,20,26.8,-87.98,False,False,False,True,HOLD,Medium,
+2026-02-01 18:57:27,MRK,"Merck & Company, Inc.",United States,Healthcare,Drug Manufacturers - General,110.27,3.14,0.43,,,,14.32,19.47,18.84,39.49,13.76,20,154.0,39.66,True,False,False,True,BUY,Medium,
+2026-02-01 18:57:27,CVX,Chevron Corporation,United States,Energy,Oil & Gas Integrated,176.9,3.87,1.03,,,,26.68,19.78,,28.64,,12,79.56,-55.03,False,False,False,True,HOLD,Medium,
+2026-02-01 18:57:27,XOM,Exxon Mobil Corporation,United States,Energy,Oil & Gas Integrated,141.4,2.91,0.6,,,,21.1,17.25,43.57,11.08,4.81,12,80.4,-43.14,False,False,False,True,HOLD,Medium,
+2026-02-01 18:57:27,V,Visa Inc.,United States,Financial Services,Credit Services,321.83,,0.23,,,,30.22,22.21,24.58,53.95,18.36,12,127.8,-60.29,False,False,False,True,HOLD,Medium,YieldMissingOrInvalid
+2026-02-01 18:57:27,MA,Mastercard Incorporated,United States,Financial Services,Credit Services,538.79,,0.18,,,,32.57,23.92,29.37,209.91,23.72,12,198.48,-63.16,False,False,False,True,HOLD,Medium,YieldMissingOrInvalid
+2026-02-01 18:57:27,TXN,Texas Instruments Incorporated,United States,Technology,Semiconductors,215.55,2.59,1.01,,,,40.14,27.5,-1130.9,30.15,10.95,22,118.14,-45.19,False,False,True,True,HOLD,Medium,
+2026-02-01 18:57:27,AVGO,Broadcom Inc.,United States,Technology,Semiconductors,331.3,,0.49,,,,69.45,23.08,62.72,31.05,9.79,22,104.94,-68.32,False,False,False,True,HOLD,Medium,YieldMissingOrInvalid
+2026-02-01 18:57:27,COST,Costco Wholesale Corporation,United States,Consumer Defensive,Discount Stores,940.25,,0.27,,,,51.02,42.33,58.21,30.33,8.52,20,368.6,-60.8,False,False,False,True,HOLD,Medium,YieldMissingOrInvalid
+2026-02-01 18:57:27,RY,Royal Bank Of Canada,Canada,Financial Services,Banks - Diversified,166.23,2.83,0.43,,,,16.31,13.07,,15.29,0.91,12,122.28,-26.44,False,True,False,True,HOLD,Medium,
+2026-02-01 18:57:27,TD,Toronto Dominion Bank (The),Canada,Financial Services,Banks - Diversified,93.49,3.27,0.36,,,,11.16,12.53,,16.91,0.99,12,100.56,7.56,True,True,False,True,BUY,Medium,
+2026-02-01 18:57:27,BMO,Bank Of Montreal,Canada,Financial Services,Banks - Diversified,136.15,3.39,0.56,,,,16.81,11.84,,10.12,0.6,12,97.2,-28.61,False,True,False,True,HOLD,Medium,
+2026-02-01 18:57:27,BNS,Bank Nova Scotia Halifax Pfd 3,Canada,Financial Services,Banks - Diversified,74.72,4.24,0.76,,,,18.31,11.24,,8.99,0.54,12,48.96,-34.48,False,True,False,False,HOLD,Medium,
+2026-02-01 18:57:27,ENB,Enbridge Inc,Canada,Energy,Oil & Gas Midstream,48.84,5.63,1.47,,,,26.26,21.55,82.28,9.12,3.39,12,22.32,-54.3,False,False,False,False,HOLD,Medium,
+2026-02-01 18:57:27,CNQ,Canadian Natural Resources Limi,Canada,Energy,Oil & Gas E&P,37.21,4.51,0.73,,,,16.25,18.72,12.43,16.56,6.9,12,27.48,-26.15,False,False,True,True,HOLD,Medium,
+2026-02-01 18:57:27,FTS,Fortis Inc.,Canada,Utilities,Utilities - Regulated Electric,53.33,3.38,0.73,,,,21.68,20.5,-8.89,7.61,3.09,16,39.36,-26.2,False,False,True,False,HOLD,Medium,
+2026-02-01 18:57:27,UL,Unilever PLC,United Kingdom,Consumer Defensive,Household & Personal Products,68.36,3.39,0.8,,,,22.34,18.49,27.26,28.7,8.66,20,61.2,-10.47,False,False,False,True,HOLD,Medium,
+2026-02-01 18:57:27,BP,BP p.l.c.,United Kingdom,Energy,Oil & Gas Integrated,37.88,5.27,3.15,,,,61.1,13.45,8.11,3.55,2.62,12,7.44,-80.36,False,True,True,False,HOLD,Medium,
+2026-02-01 18:57:27,AZN,Astrazeneca PLC,United Kingdom,Healthcare,Drug Manufacturers - General,92.77,1.69,0.52,,,,30.82,18.1,28.82,21.67,9.06,20,60.2,-35.11,False,False,False,True,HOLD,Medium,
+2026-02-01 18:57:27,NVS,Novartis AG,Switzerland,Healthcare,Drug Manufacturers - General,148.68,2.68,0.55,,,,20.37,16.11,17.82,32.62,12.13,20,146.0,-1.8,False,False,False,True,HOLD,Medium,

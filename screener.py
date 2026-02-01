@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 
 # =========================
-# Ticker univers
+# Ticker-univers
 # =========================
 
 US_TICKERS = [
@@ -47,9 +47,6 @@ TICKERS = US_TICKERS + CA_TICKERS + NORDIC_TICKERS
 # Hjælpefunktioner
 # =========================
 
-def safe(v):
-    return None if v in [None, float("nan")] else v
-
 def pct(v):
     try:
         return round(float(v), 2)
@@ -68,16 +65,32 @@ for ticker in TICKERS:
         t = yf.Ticker(ticker)
         info = t.info
 
-        price = safe(info.get("currentPrice"))
-        dividend_yield = pct((info.get("dividendYield") or 0) * 100)
-        payout = pct(info.get("payoutRatio") * 100 if info.get("payoutRatio") else 0)
-        roe = pct(info.get("returnOnEquity") * 100 if info.get("returnOnEquity") else 0)
+        price = info.get("currentPrice")
+        if not price:
+            continue
 
-        pe = safe(info.get("trailingPE"))
-        eps = safe(info.get("trailingEps"))
+        # ---------- Dividend Yield (TTM – robust) ----------
+        dividend_yield = 0.0
+        try:
+            dividends = t.dividends
+            if dividends is not None and len(dividends) > 0:
+                ttm_div = dividends[
+                    dividends.index >= (dividends.index.max() - pd.Timedelta(days=365))
+                ].sum()
+                dividend_yield = pct((ttm_div / price) * 100)
+        except:
+            dividend_yield = 0.0
 
-        # Fair PE (simpel sektor-heuristik)
+        # ---------- Payout / ROE ----------
+        payout = pct((info.get("payoutRatio") or 0) * 100)
+        roe = pct((info.get("returnOnEquity") or 0) * 100)
+
+        pe = info.get("trailingPE")
+        eps = info.get("trailingEps")
+
         sector = info.get("sector") or ""
+
+        # Fair PE (samme logik som før)
         fair_pe_map = {
             "Technology": 22,
             "Consumer Defensive": 20,
@@ -92,16 +105,17 @@ for ticker in TICKERS:
         }
         fair_pe = fair_pe_map.get(sector, 18)
 
-        fair_value = eps * fair_pe if eps and price else None
-        upside = pct(((fair_value / price) - 1) * 100) if fair_value and price else 0.0
+        fair_value = eps * fair_pe if eps else None
+        upside = pct(((fair_value / price) - 1) * 100) if fair_value else 0.0
 
+        # ---------- Flags ----------
         flags = []
         if payout > 90:
             flags.append("Payout high")
         if payout > 110:
             flags.append("Payout extreme")
 
-        # Signal logik (samme som før)
+        # ---------- Signal ----------
         if upside >= 20 and payout <= 75:
             signal = "GOLD"
         elif upside >= 10 and payout <= 85:
@@ -117,7 +131,7 @@ for ticker in TICKERS:
             "Country": info.get("country"),
             "Sector": sector,
             "Industry": info.get("industry"),
-            "Price": price,
+            "Price": round(price, 2),
             "DividendYield_%": dividend_yield,
             "PayoutRatio_%": payout,
             "ROE_%": roe,
@@ -131,7 +145,7 @@ for ticker in TICKERS:
         print(f"Error on {ticker}: {e}")
 
 # =========================
-# Output CSV
+# Output
 # =========================
 
 df = pd.DataFrame(rows)

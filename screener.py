@@ -44,7 +44,7 @@ TICKERS = US_TICKERS + CA_TICKERS + NORDIC_TICKERS
 
 
 # =========================
-# Hjælpefunktioner
+# Helpers
 # =========================
 
 def pct(v):
@@ -52,6 +52,44 @@ def pct(v):
         return round(float(v), 2)
     except:
         return 0.0
+
+
+def dividend_growth_metrics(divs: pd.Series):
+    """
+    Returns (cagr_5y, years_growing)
+    """
+    if divs is None or len(divs) < 5:
+        return 0.0, 0
+
+    # yearly totals
+    yearly = divs.resample("Y").sum()
+    yearly.index = yearly.index.year
+
+    # drop current year (often incomplete)
+    current_year = datetime.utcnow().year
+    yearly = yearly[yearly.index < current_year]
+
+    if len(yearly) < 5:
+        return 0.0, 0
+
+    # Years growing
+    years = list(yearly.values)
+    growing = 0
+    for i in range(len(years) - 1, 0, -1):
+        if years[i] > years[i - 1]:
+            growing += 1
+        else:
+            break
+
+    # 5Y CAGR
+    try:
+        start = yearly.iloc[-5]
+        end = yearly.iloc[-1]
+        cagr = ((end / start) ** (1 / 4) - 1) * 100 if start > 0 else 0.0
+    except:
+        cagr = 0.0
+
+    return pct(cagr), growing
 
 
 # =========================
@@ -69,24 +107,19 @@ for ticker in TICKERS:
         if not price:
             continue
 
-        # ---------- Dividend Yield (ROBUST) ----------
+        # ---------- Dividend Yield (TTM approx) ----------
         dividend_yield = 0.0
-        try:
-            divs = t.dividends
-            if divs is not None and len(divs) > 0:
-                # Brug seneste udbetalinger (TTM-approximation)
-                last_divs = divs.tail(4)
-                ttm_div = last_divs.sum()
-                dividend_yield = pct((ttm_div / price) * 100)
-        except:
-            dividend_yield = 0.0
+        divs = t.dividends
+        if divs is not None and len(divs) > 0:
+            dividend_yield = pct((divs.tail(4).sum() / price) * 100)
+
+        # ---------- Dividend Growth ----------
+        div_cagr_5y, years_growing = dividend_growth_metrics(divs)
 
         payout = pct((info.get("payoutRatio") or 0) * 100)
         roe = pct((info.get("returnOnEquity") or 0) * 100)
 
-        pe = info.get("trailingPE")
         eps = info.get("trailingEps")
-
         sector = info.get("sector") or ""
 
         fair_pe_map = {
@@ -129,6 +162,8 @@ for ticker in TICKERS:
             "Industry": info.get("industry"),
             "Price": round(price, 2),
             "DividendYield_%": dividend_yield,
+            "DivCAGR_5Y_%": div_cagr_5y,
+            "YearsGrowing": years_growing,
             "PayoutRatio_%": payout,
             "ROE_%": roe,
             "Upside_%": upside,

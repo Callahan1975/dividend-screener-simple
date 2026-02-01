@@ -69,19 +69,18 @@ for ticker in TICKERS:
         if not price:
             continue
 
-        # ---------- Dividend Yield (TTM – robust) ----------
+        # ---------- Dividend Yield (ROBUST) ----------
         dividend_yield = 0.0
         try:
-            dividends = t.dividends
-            if dividends is not None and len(dividends) > 0:
-                ttm_div = dividends[
-                    dividends.index >= (dividends.index.max() - pd.Timedelta(days=365))
-                ].sum()
+            divs = t.dividends
+            if divs is not None and len(divs) > 0:
+                # Brug seneste udbetalinger (TTM-approximation)
+                last_divs = divs.tail(4)
+                ttm_div = last_divs.sum()
                 dividend_yield = pct((ttm_div / price) * 100)
         except:
             dividend_yield = 0.0
 
-        # ---------- Payout / ROE ----------
         payout = pct((info.get("payoutRatio") or 0) * 100)
         roe = pct((info.get("returnOnEquity") or 0) * 100)
 
@@ -90,7 +89,6 @@ for ticker in TICKERS:
 
         sector = info.get("sector") or ""
 
-        # Fair PE (samme logik som før)
         fair_pe_map = {
             "Technology": 22,
             "Consumer Defensive": 20,
@@ -108,14 +106,12 @@ for ticker in TICKERS:
         fair_value = eps * fair_pe if eps else None
         upside = pct(((fair_value / price) - 1) * 100) if fair_value else 0.0
 
-        # ---------- Flags ----------
         flags = []
         if payout > 90:
             flags.append("Payout high")
         if payout > 110:
             flags.append("Payout extreme")
 
-        # ---------- Signal ----------
         if upside >= 20 and payout <= 75:
             signal = "GOLD"
         elif upside >= 10 and payout <= 85:
@@ -143,10 +139,6 @@ for ticker in TICKERS:
 
     except Exception as e:
         print(f"Error on {ticker}: {e}")
-
-# =========================
-# Output
-# =========================
 
 df = pd.DataFrame(rows)
 df["GeneratedUTC"] = datetime.utcnow().isoformat()

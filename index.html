@@ -1,133 +1,335 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="da">
 <head>
-<meta charset="UTF-8">
-<title>Dividend Screener</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Dividend Screener</title>
 
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <!-- DataTables core -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
-<style>
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial;
-  margin: 24px;
-}
+  <!-- DataTables Buttons (for Columns / ColVis) -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
 
-h1 { margin-bottom: 4px; }
-.subtitle { color:#666; margin-bottom:16px; }
+  <!-- PapaParse (robust CSV parsing incl. quoted commas) -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-.controls {
-  background:#f4f6f8;
-  padding:12px;
-  border-radius:8px;
-  margin-bottom:16px;
-}
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial;
+      margin: 24px;
+      color: #111;
+    }
+    h1 { margin: 0 0 6px 0; }
+    .subtitle { color:#666; margin: 0 0 14px 0; }
 
-.badge-buy {
-  background:#2ecc71;
-  color:#fff;
-  padding:4px 10px;
-  border-radius:6px;
-  font-weight:600;
-}
+    .panel {
+      background: #f4f6f8;
+      border: 1px solid #e6e8ea;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
 
-.badge-hold {
-  background:#ccc;
-  color:#333;
-  padding:4px 10px;
-  border-radius:6px;
-  font-weight:600;
-}
-</style>
+    .row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .group {
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap: wrap;
+    }
+
+    label { font-weight: 600; }
+    .muted { color:#666; font-weight: 500; }
+
+    select[multiple]{
+      min-width: 220px;
+      min-height: 70px;
+      padding: 6px;
+      border-radius: 8px;
+      border: 1px solid #d7dade;
+      background: #fff;
+    }
+
+    .toggle {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 10px;
+      background: #fff;
+      border: 1px solid #d7dade;
+      border-radius: 10px;
+    }
+
+    .criteria {
+      display:flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .criteria .toggle {
+      border-color: #cfe9d9;
+    }
+
+    .badge {
+      display:inline-block;
+      padding: 4px 10px;
+      border-radius: 7px;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: .2px;
+    }
+    .buy { background:#2ecc71; color:#fff; }
+    .hold { background:#cfcfcf; color:#333; }
+    .watch { background:#ffe08a; color:#5a4200; }
+
+    /* subtle highlight for "buy-driving" columns */
+    th.buy-col { background: #f0fbf4 !important; }
+
+    /* keep table readable */
+    table.dataTable thead th { white-space: nowrap; }
+  </style>
 </head>
 
 <body>
 
-<h1>Dividend Screener</h1>
-<div class="subtitle">Phase 4 · Buy-focused · CSV fra GitHub Actions</div>
+  <h1>Dividend Screener</h1>
+  <div class="subtitle">Phase 4 · Buy-focused · CSV fra GitHub Actions</div>
+  <div class="muted" style="margin-bottom:10px;">Data: <code>/data/screener_results.csv</code></div>
 
-<div class="controls">
-  <label>
-    <input type="checkbox" id="buyOnlyToggle">
-    <strong>Vis kun BUY</strong>
-  </label>
-</div>
+  <div class="panel">
+    <div class="row">
+      <div class="toggle">
+        <input type="checkbox" id="buyOnly">
+        <label for="buyOnly">Vis kun BUY</label>
+      </div>
 
-<table id="screener" class="display" style="width:100%">
-  <thead>
-    <tr>
-      <th>Ticker</th>
-      <th>Name</th>
-      <th>Country</th>
-      <th>Sector</th>
-      <th>Price</th>
-      <th>DividendYield_%</th>
-      <th>PayoutRatio_%</th>
-      <th>ROE_%</th>
-      <th>Upside_%</th>
-      <th>Quality_ROE_10p</th>
-      <th>Signal</th>
-    </tr>
-  </thead>
-</table>
+      <div class="muted">Filtre:</div>
+
+      <div class="group">
+        <label for="countryFilter">Country</label>
+        <select id="countryFilter" multiple></select>
+      </div>
+
+      <div class="group">
+        <label for="sectorFilter">Sector</label>
+        <select id="sectorFilter" multiple></select>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <div class="muted"><strong>Købs-kriterier</strong> (slå til/fra):</div>
+    </div>
+
+    <div class="row criteria">
+      <div class="toggle"><input type="checkbox" id="cYield" checked><label for="cYield">Yield ≥ 2.5%</label></div>
+      <div class="toggle"><input type="checkbox" id="cPayout" checked><label for="cPayout">Payout ≤ 75%</label></div>
+      <div class="toggle"><input type="checkbox" id="cROE" checked><label for="cROE">ROE ≥ 10%</label></div>
+      <div class="toggle"><input type="checkbox" id="cUpside" checked><label for="cUpside">Upside ≥ 10%</label></div>
+      <div class="toggle"><input type="checkbox" id="cQuality" checked><label for="cQuality">Quality = True</label></div>
+      <div class="muted" style="margin-left:auto;">Tip: Slå alle kriterier fra → du får “normal” visning.</div>
+    </div>
+  </div>
+
+  <table id="screener" class="display" style="width:100%">
+    <thead>
+      <tr>
+        <th>Ticker</th>
+        <th>Name</th>
+        <th>Country</th>
+        <th>Sector</th>
+        <th class="buy-col">Price</th>
+        <th class="buy-col">DividendYield_%</th>
+        <th class="buy-col">PayoutRatio_%</th>
+        <th class="buy-col">ROE_%</th>
+        <th class="buy-col">Upside_%</th>
+        <th class="buy-col">Quality_ROE_10p</th>
+        <th>Signal</th>
+      </tr>
+    </thead>
+  </table>
 
 <script>
-let table;
+  let table;
+  let rawRows = [];
 
-$(document).ready(function () {
+  function toNum(v) {
+    if (v === null || v === undefined) return null;
+    const s = String(v).trim();
+    if (s === "" || s.toLowerCase() === "nan") return null;
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? n : null;
+  }
 
-  table = $('#screener').DataTable({
-    ajax: {
-      url: 'data/screener_results.csv',
-      dataType: 'text',
-      dataSrc: function (csv) {
-        const lines = csv.trim().split('\n');
-        const headers = lines[0].split(',');
-        return lines.slice(1).map(line => {
-          const values = line.split(',');
-          let obj = {};
-          headers.forEach((h, i) => obj[h] = values[i]);
-          return obj;
-        });
-      }
-    },
-    columns: [
-      { data: 'Ticker' },
-      { data: 'Name' },
-      { data: 'Country' },
-      { data: 'Sector' },
-      { data: 'Price' },
-      { data: 'DividendYield_%' },
-      { data: 'PayoutRatio_%' },
-      { data: 'ROE_%' },
-      { data: 'Upside_%' },
-      { data: 'Quality_ROE_10p' },
-      {
-        data: 'Signal',
-        render: function (data) {
-          if (data === 'BUY') return '<span class="badge-buy">BUY</span>';
-          return '<span class="badge-hold">HOLD</span>';
+  function toBool(v) {
+    const s = String(v).trim().toLowerCase();
+    if (s === "true" || s === "1" || s === "yes") return true;
+    if (s === "false" || s === "0" || s === "no" || s === "") return false;
+    return false;
+  }
+
+  function getSelectedValues(selectEl) {
+    return Array.from(selectEl.selectedOptions).map(o => o.value);
+  }
+
+  function uniqueSorted(values) {
+    return Array.from(new Set(values.filter(v => v && String(v).trim() !== "")))
+      .sort((a,b) => String(a).localeCompare(String(b)));
+  }
+
+  function populateMultiSelect(selectEl, values) {
+    selectEl.innerHTML = "";
+    values.forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      selectEl.appendChild(opt);
+    });
+  }
+
+  function rebuildFiltersFromData(rows) {
+    const countries = uniqueSorted(rows.map(r => r.Country));
+    const sectors = uniqueSorted(rows.map(r => r.Sector));
+    populateMultiSelect(document.getElementById("countryFilter"), countries);
+    populateMultiSelect(document.getElementById("sectorFilter"), sectors);
+  }
+
+  // Custom filtering (BUY toggle + Country/Sector + criteria)
+  $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+    if (settings.nTable.id !== "screener") return true;
+
+    const row = table.row(dataIndex).data();
+    if (!row) return true;
+
+    // BUY-only
+    const buyOnly = document.getElementById("buyOnly").checked;
+    if (buyOnly && String(row.Signal || "").toUpperCase() !== "BUY") return false;
+
+    // Country/Sector multi-select
+    const selectedCountries = getSelectedValues(document.getElementById("countryFilter"));
+    const selectedSectors = getSelectedValues(document.getElementById("sectorFilter"));
+
+    if (selectedCountries.length > 0 && !selectedCountries.includes(row.Country)) return false;
+    if (selectedSectors.length > 0 && !selectedSectors.includes(row.Sector)) return false;
+
+    // Criteria toggles
+    const useYield   = document.getElementById("cYield").checked;
+    const usePayout  = document.getElementById("cPayout").checked;
+    const useROE     = document.getElementById("cROE").checked;
+    const useUpside  = document.getElementById("cUpside").checked;
+    const useQuality = document.getElementById("cQuality").checked;
+
+    const y = toNum(row.DividendYield_%) ?? toNum(row["DividendYield_%"]);
+    const p = toNum(row.PayoutRatio_%) ?? toNum(row["PayoutRatio_%"]);
+    const r = toNum(row.ROE_%) ?? toNum(row["ROE_%"]);
+    const u = toNum(row.Upside_%) ?? toNum(row["Upside_%"]);
+    const q = toBool(row.Quality_ROE_10p);
+
+    if (useYield   && (y === null || y < 2.5)) return false;
+    if (usePayout  && (p === null || p > 0.75)) return false;      // note: your CSV seems 0.xx (ratio) in your screenshot
+    if (useROE     && (r === null || r < 10)) return false;
+    if (useUpside  && (u === null || u < 10)) return false;
+    if (useQuality && q !== true) return false;
+
+    return true;
+  });
+
+  async function loadCSV() {
+    const res = await fetch("data/screener_results.csv", { cache: "no-store" });
+    const text = await res.text();
+
+    const parsed = Papa.parse(text, {
+      header: true,
+      skipEmptyLines: true
+    });
+
+    if (parsed.errors && parsed.errors.length) {
+      console.warn("CSV parse errors:", parsed.errors);
+    }
+
+    // Keep rows as objects with headers -> values
+    rawRows = (parsed.data || []).map(r => ({
+      "Ticker": r["Ticker"] ?? "",
+      "Name": r["Name"] ?? "",
+      "Country": r["Country"] ?? "",
+      "Sector": r["Sector"] ?? "",
+      "Price": r["Price"] ?? "",
+      "DividendYield_%": r["DividendYield_%"] ?? "",
+      "PayoutRatio_%": r["PayoutRatio_%"] ?? showAlt(r, ["PayoutRatio_%","PayoutRatio","Payout_%","Payout"]),
+      "ROE_%": r["ROE_%"] ?? showAlt(r, ["ROE_%","ROE"]),
+      "Upside_%": r["Upside_%"] ?? showAlt(r, ["Upside_%","Upside"]),
+      "Quality_ROE_10p": r["Quality_ROE_10p"] ?? showAlt(r, ["Quality_ROE_10p","Quality"]),
+      "Signal": r["Signal"] ?? ""
+    }));
+
+    function showAlt(row, keys){
+      for (const k of keys) if (row[k] !== undefined && row[k] !== null) return row[k];
+      return "";
+    }
+
+    rebuildFiltersFromData(rawRows);
+    initTable(rawRows);
+  }
+
+  function initTable(rows) {
+    if (table) {
+      table.clear().rows.add(rows).draw();
+      return;
+    }
+
+    table = $("#screener").DataTable({
+      data: rows,
+      dom: "Bfrtip",
+      buttons: [
+        { extend: "colvis", text: "Columns" }
+      ],
+      columns: [
+        { data: "Ticker", defaultContent: "" },
+        { data: "Name", defaultContent: "" },
+        { data: "Country", defaultContent: "" },
+        { data: "Sector", defaultContent: "" },
+        { data: "Price", defaultContent: "" },
+        { data: "DividendYield_%", defaultContent: "" },
+        { data: "PayoutRatio_%", defaultContent: "" },
+        { data: "ROE_%", defaultContent: "" },
+        { data: "Upside_%", defaultContent: "" },
+        { data: "Quality_ROE_10p", defaultContent: "" },
+        {
+          data: "Signal",
+          defaultContent: "",
+          render: function (data) {
+            const s = String(data || "").toUpperCase();
+            if (s === "BUY") return '<span class="badge buy">BUY</span>';
+            if (s === "WATCH") return '<span class="badge watch">WATCH</span>';
+            return '<span class="badge hold">HOLD</span>';
+          }
         }
-      }
-    ],
-    pageLength: 10,
-    order: [[8, 'desc']]
-  });
+      ],
+      pageLength: 10,
+      order: [[8, "desc"]],   // Upside desc
+      deferRender: true
+    });
 
-  // BUY-only filter
-  $.fn.dataTable.ext.search.push(function (settings, data) {
-    const buyOnly = $('#buyOnlyToggle').is(':checked');
-    const signal = data[10]; // Signal column
-    if (!buyOnly) return true;
-    return signal.includes('BUY');
-  });
+    // redraw on UI changes
+    $("#buyOnly, #cYield, #cPayout, #cROE, #cUpside, #cQuality").on("change", () => table.draw());
+    $("#countryFilter, #sectorFilter").on("change", () => table.draw());
+  }
 
-  $('#buyOnlyToggle').on('change', function () {
-    table.draw();
+  // Kick off
+  loadCSV().catch(err => {
+    console.error(err);
+    alert("Kunne ikke loade CSV. Tjek at data/screener_results.csv findes og at GitHub Pages serverer den.");
   });
-
-});
 </script>
 
 </body>

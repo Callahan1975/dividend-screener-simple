@@ -15,14 +15,12 @@ body {
   margin:0;
   background:#f7f7f7;
 }
-
 h1 { padding:16px 20px 8px; margin:0; }
 
 .filter-bar {
   position:sticky; top:0; z-index:10;
   background:#fff; border-bottom:1px solid #ddd;
-  padding:12px 20px;
-  display:flex; gap:16px; flex-wrap:wrap;
+  padding:12px 20px; display:flex; gap:16px; flex-wrap:wrap;
 }
 
 .filter-group { font-size:12px; display:flex; flex-direction:column; }
@@ -31,7 +29,14 @@ h1 { padding:16px 20px 8px; margin:0; }
 
 .preset { background:#eef3ff; border:1px solid #c9d6ff; }
 
-.table-wrapper { padding:16px 20px 40px; }
+.table-wrapper {
+  padding:16px 20px 40px;
+  overflow-x:auto;
+}
+
+table.dataTable {
+  width:100% !important;
+}
 
 tr.buy-row td { background:#eafaf1 !important; }
 .upside-capped { font-weight:600; }
@@ -71,7 +76,7 @@ tr.buy-row td { background:#eafaf1 !important; }
 </div>
 
 <div class="table-wrapper">
-  <table id="screener" class="display" style="width:100%">
+  <table id="screener" class="display nowrap">
     <thead><tr></tr></thead>
     <tbody></tbody>
   </table>
@@ -113,6 +118,7 @@ Papa.parse(CSV_URL, {
       columns,
       pageLength:25,
       order:[],
+      scrollX:true,
       createdRow:function(row,d){
         if(
           (d.Signal==="BUY"||d.Signal==="GOLD") &&

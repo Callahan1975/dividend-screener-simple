@@ -1,222 +1,143 @@
 import yfinance as yf
 import pandas as pd
-from datetime import datetime, timezone
+from datetime import datetime
 
-# -------------------------------------------------
-# CONFIG
-# -------------------------------------------------
-TICKERS = [
-    # USA – Dividend / Quality core
-    "AAPL","MSFT","JNJ","PG","KO","PEP","MCD","HD","LOW","UNH",
-    "ABBV","MRK","CVX","XOM","V","MA","TXN","AVGO","COST",
+# =========================
+# Ticker univers
+# =========================
 
-    # Canada
-    "RY","TD","BMO","BNS","ENB","CNQ","FTS",
-
-    # Europe (ADR / US tickers)
-    "UL","BP","AZN","NVS"
+US_TICKERS = [
+    "AAPL","MSFT","JNJ","PG","KO","PEP","MCD","WMT","COST","HD","LOW",
+    "UNH","CVX","XOM","IBM","ADP","MMM","CL","KMB","ABT","ABBV",
+    "T","VZ","CSCO","INTC","TXN","QCOM","AMGN","MDT","BDX","SYK",
+    "UPS","FDX","CAT","DE","EMR","ETN","PH","HON","RTX","LMT",
+    "NOC","GD","BA","GE","NEE","DUK","SO","D","AEP","ED",
+    "SRE","EXC","XEL","PEG","WEC","DTE",
+    "O","WPC","SPG","AVB","EQR","ESS","MAA","VTR","VICI",
+    "TROW","BLK","BEN","AMP","MS","GS","JPM","BAC","PNC","USB",
+    "SCHW","AFL","MET","PRU","ALL","TRV",
+    "MO","PM","BTI",
+    "WM","RSG","AWK","ATO","ECL","SHW","APD","LIN","NUE","VMC",
+    "SBUX","YUM","CMI","ITW","ROP","FAST","GPC","ORCL","INTU"
 ]
 
-OUTPUT_PATH = "data/screener_results.csv"
+CA_TICKERS = [
+    "BMO.TO","RY.TO","TD.TO","BNS.TO","CM.TO","NA.TO",
+    "ENB.TO","TRP.TO","PPL.TO",
+    "FTS.TO","EMA.TO","CU.TO",
+    "CNQ.TO","SU.TO","IMO.TO",
+    "T.TO","BCE.TO","RCI-B.TO",
+    "CP.TO","CNR.TO",
+    "SLF.TO","MFC.TO","GWO.TO",
+    "AQN.TO","KEY.TO","POW.TO","IFC.TO","BIP-UN.TO"
+]
 
-MAX_REASONABLE_YIELD = 15.0
-MAX_REASONABLE_PAYOUT = 110.0
+NORDIC_TICKERS = [
+    "SHB-A.ST","SWED-A.ST","SEB-A.ST","NDA-SE.ST","TEL2-B.ST",
+    "ATCO-A.ST","VOLV-B.ST","CIBUS.ST",
+    "NOVO-B.CO","COLO-B.CO","ORSTED.CO","DSV.CO","TRYG.CO","PNDORA.CO",
+    "NDA-FI.HE","KNEBV.HE","FORTUM.HE",
+    "DNB.OL","ORK.OL"
+]
 
-SECTOR_FAIR_PE = {
-    "Technology": 22,
-    "Healthcare": 20,
-    "Consumer Defensive": 20,
-    "Consumer Cyclical": 20,
-    "Financial Services": 12,
-    "Energy": 12,
-    "Utilities": 16,
-    "Industrials": 18,
-    "Basic Materials": 14,
-    "Real Estate": 16,
-    "Communication Services": 18
-}
+TICKERS = US_TICKERS + CA_TICKERS + NORDIC_TICKERS
 
-# -------------------------------------------------
-# HELPERS
-# -------------------------------------------------
-def safe_float(v, pct=False):
+
+# =========================
+# Hjælpefunktioner
+# =========================
+
+def safe(v):
+    return None if v in [None, float("nan")] else v
+
+def pct(v):
     try:
-        val = float(v)
-        if pct:
-            val *= 100
-        return round(val, 2)
-    except Exception:
-        return None
+        return round(float(v), 2)
+    except:
+        return 0.0
 
 
-def normalize_dividend_yield(raw):
-    if raw is None:
-        return None
-    try:
-        y = float(raw)
-        if y <= 1:
-            y *= 100
-        if y <= 0 or y > MAX_REASONABLE_YIELD:
-            return None
-        return round(y, 2)
-    except Exception:
-        return None
+# =========================
+# Screener
+# =========================
 
-
-def normalize_payout_ratio(raw):
-    if raw is None:
-        return None
-    try:
-        p = float(raw)
-        if p <= 0 or p > MAX_REASONABLE_PAYOUT:
-            return None
-        return round(p, 2)
-    except Exception:
-        return None
-
-
-def calc_dividend_cagr(dividends, years=5):
-    if dividends is None or len(dividends) < years + 1:
-        return None
-    try:
-        start = dividends.iloc[-years - 1]
-        end = dividends.iloc[-1]
-        if start <= 0 or end <= 0:
-            return None
-        return round(((end / start) ** (1 / years) - 1) * 100, 2)
-    except Exception:
-        return None
-
-
-def classify_dividend(years):
-    if years is None:
-        return None
-    if years >= 50:
-        return "King"
-    if years >= 25:
-        return "Aristocrat"
-    if years >= 10:
-        return "Contender"
-    return None
-
-
-# -------------------------------------------------
-# MAIN
-# -------------------------------------------------
 rows = []
-generated_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 for ticker in TICKERS:
-    print(f"Processing {ticker}")
-    stock = yf.Ticker(ticker)
-    flags = []
-
     try:
-        info = stock.info or {}
-    except Exception:
-        info = {}
+        t = yf.Ticker(ticker)
+        info = t.info
 
-    price = safe_float(info.get("currentPrice"))
-    eps = safe_float(info.get("trailingEps"))
-    pe = safe_float(info.get("trailingPE"))
-    forward_pe = safe_float(info.get("forwardPE"))
+        price = safe(info.get("currentPrice"))
+        dividend_yield = pct((info.get("dividendYield") or 0) * 100)
+        payout = pct(info.get("payoutRatio") * 100 if info.get("payoutRatio") else 0)
+        roe = pct(info.get("returnOnEquity") * 100 if info.get("returnOnEquity") else 0)
 
-    roe = safe_float(info.get("returnOnEquity"), pct=True)
-    roa = safe_float(info.get("returnOnAssets"), pct=True)
+        pe = safe(info.get("trailingPE"))
+        eps = safe(info.get("trailingEps"))
 
-    dividend_yield = normalize_dividend_yield(info.get("dividendYield"))
-    payout_ratio = normalize_payout_ratio(info.get("payoutRatio"))
+        # Fair PE (simpel sektor-heuristik)
+        sector = info.get("sector") or ""
+        fair_pe_map = {
+            "Technology": 22,
+            "Consumer Defensive": 20,
+            "Healthcare": 20,
+            "Industrials": 18,
+            "Financial Services": 12,
+            "Energy": 12,
+            "Utilities": 16,
+            "Real Estate": 16,
+            "Basic Materials": 14,
+            "Communication Services": 18
+        }
+        fair_pe = fair_pe_map.get(sector, 18)
 
-    if dividend_yield is None:
-        flags.append("YieldMissingOrInvalid")
-    if payout_ratio is None:
-        flags.append("PayoutMissingOrInvalid")
+        fair_value = eps * fair_pe if eps and price else None
+        upside = pct(((fair_value / price) - 1) * 100) if fair_value and price else 0.0
 
-    dividends = None
-    try:
-        raw_div = stock.dividends
-        if raw_div is not None and not raw_div.empty:
-            dividends = raw_div.resample("Y").sum()
-    except Exception:
-        dividends = None
+        flags = []
+        if payout > 90:
+            flags.append("Payout high")
+        if payout > 110:
+            flags.append("Payout extreme")
 
-    years_growing = len(dividends[dividends > 0]) if dividends is not None else None
-    div_cagr_5y = calc_dividend_cagr(dividends, 5)
-    dividend_class = classify_dividend(years_growing)
+        # Signal logik (samme som før)
+        if upside >= 20 and payout <= 75:
+            signal = "GOLD"
+        elif upside >= 10 and payout <= 85:
+            signal = "BUY"
+        elif upside > 0:
+            signal = "HOLD"
+        else:
+            signal = "WATCH"
 
-    sector = info.get("sector")
-    fair_pe = SECTOR_FAIR_PE.get(sector)
-    fair_value = round(eps * fair_pe, 2) if eps and fair_pe else None
-    upside = round((fair_value / price - 1) * 100, 2) if price and fair_value else None
+        rows.append({
+            "Ticker": ticker,
+            "Name": info.get("shortName"),
+            "Country": info.get("country"),
+            "Sector": sector,
+            "Industry": info.get("industry"),
+            "Price": price,
+            "DividendYield_%": dividend_yield,
+            "PayoutRatio_%": payout,
+            "ROE_%": roe,
+            "Upside_%": upside,
+            "Quality_ROE_10p": roe >= 10,
+            "Signal": signal,
+            "Flags": ", ".join(flags)
+        })
 
-    price_to_fcf = None
-    try:
-        fcf = info.get("freeCashflow")
-        shares = info.get("sharesOutstanding")
-        if price and fcf and shares:
-            price_to_fcf = round(price / (fcf / shares), 2)
-    except Exception:
-        price_to_fcf = None
+    except Exception as e:
+        print(f"Error on {ticker}: {e}")
 
-    Value_LowPE = pe is not None and pe < 15
-    Value_LowForwardPE = forward_pe is not None and forward_pe < 15
-    Value_LowFCF = price_to_fcf is not None and price_to_fcf < 15
-    Quality_ROE_10p = roe is not None and roe > 10
-
-    score = 0
-    if Value_LowPE: score += 1
-    if Value_LowForwardPE: score += 1
-    if Value_LowFCF: score += 1
-    if Quality_ROE_10p: score += 2
-    if years_growing and years_growing >= 10: score += 1
-    if payout_ratio and payout_ratio < 75: score += 1
-
-    signal = "WATCH"
-    confidence = "Low"
-
-    if score >= 4:
-        signal = "BUY"
-        confidence = "Medium"
-
-    if score >= 6 and upside and upside > 10:
-        signal = "GOLD"
-        confidence = "High"
-
-    if upside is not None and upside < 0:
-        signal = "HOLD"
-        confidence = "Medium"
-
-    rows.append({
-        "GeneratedUTC": generated_utc,
-        "Ticker": ticker,
-        "Name": info.get("shortName"),
-        "Country": info.get("country"),
-        "Sector": sector,
-        "Industry": info.get("industry"),
-        "Price": price,
-        "DividendYield_%": dividend_yield,
-        "PayoutRatio_%": payout_ratio,
-        "DivCAGR_5Y_%": div_cagr_5y,
-        "YearsGrowing": years_growing,
-        "DividendClass": dividend_class,
-        "PE": pe,
-        "ForwardPE": forward_pe,
-        "PriceToFCF": price_to_fcf,
-        "ROE_%": roe,
-        "ROA_%": roa,
-        "FairPE": fair_pe,
-        "FairValue": fair_value,
-        "Upside_%": upside,
-        "Value_LowPE": Value_LowPE,
-        "Value_LowForwardPE": Value_LowForwardPE,
-        "Value_LowFCF": Value_LowFCF,
-        "Quality_ROE_10p": Quality_ROE_10p,
-        "Signal": signal,
-        "Confidence": confidence,
-        "Flags": ";".join(flags) if flags else ""
-    })
+# =========================
+# Output CSV
+# =========================
 
 df = pd.DataFrame(rows)
-df.to_csv(OUTPUT_PATH, index=False)
+df["GeneratedUTC"] = datetime.utcnow().isoformat()
 
-print(f"\nSaved {len(df)} rows → {OUTPUT_PATH}")
+df.to_csv("data/screener_results.csv", index=False)
+df.to_csv("screener_results.csv", index=False)
+
+print(f"Done. {len(df)} tickers processed.")

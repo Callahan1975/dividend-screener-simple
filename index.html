@@ -10,20 +10,27 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <style>
-body { font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto; margin:0; background:#f7f7f7; }
+body {
+  font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto;
+  margin:0;
+  background:#f7f7f7;
+}
+
 h1 { padding:16px 20px 8px; margin:0; }
 
 .filter-bar {
-  position: sticky; top: 0; z-index: 10;
-  background: #fff; border-bottom: 1px solid #ddd;
-  padding: 12px 20px; display: flex; gap: 16px; flex-wrap: wrap;
+  position:sticky; top:0; z-index:10;
+  background:#fff; border-bottom:1px solid #ddd;
+  padding:12px 20px;
+  display:flex; gap:16px; flex-wrap:wrap;
 }
 
 .filter-group { font-size:12px; display:flex; flex-direction:column; }
 .filter-group label { font-weight:600; margin-bottom:4px; }
-.filter-group select { padding:6px 8px; min-width:160px; }
+.filter-group select { padding:6px 8px; min-width:170px; }
 
 .preset { background:#eef3ff; border:1px solid #c9d6ff; }
+
 .table-wrapper { padding:16px 20px 40px; }
 
 tr.buy-row td { background:#eafaf1 !important; }
@@ -43,6 +50,7 @@ tr.buy-row td { background:#eafaf1 !important; }
       <option value="buy">BUY & GOLD (Mine køb)</option>
       <option value="yield">High Yield ≥ 3%</option>
       <option value="quality">Quality Watchlist</option>
+      <option value="growth">Dividend Growth</option>
     </select>
   </div>
 
@@ -74,9 +82,9 @@ const CSV_URL = "data/screener_results.csv";
 let table, col = {};
 
 Papa.parse(CSV_URL, {
-  download: true,
-  header: true,
-  skipEmptyLines: true,
+  download:true,
+  header:true,
+  skipEmptyLines:true,
   complete: function(res) {
 
     const data = res.data;
@@ -84,14 +92,14 @@ Papa.parse(CSV_URL, {
     const columns = Object.keys(data[0]).map(k => {
       if (k === "Upside_%") {
         return {
-          title: k,
-          data: k,
-          render: function(val, type) {
-            const raw = parseFloat(val) || 0;
-            if (type === "display") {
+          title:k,
+          data:k,
+          render:function(val,type){
+            const raw = parseFloat(val)||0;
+            if(type==="display"){
               return `<span class="upside-capped">${Math.min(raw,100).toFixed(2)}</span>`;
             }
-            return raw; // IMPORTANT: raw value for filter/sort
+            return raw;
           }
         };
       }
@@ -103,10 +111,13 @@ Papa.parse(CSV_URL, {
     table = $('#screener').DataTable({
       data,
       columns,
-      pageLength: 25,
-      order: [],
-      createdRow: function(row, d) {
-        if ((d.Signal==="BUY"||d.Signal==="GOLD") && parseFloat(d["Upside_%"])>=10) {
+      pageLength:25,
+      order:[],
+      createdRow:function(row,d){
+        if(
+          (d.Signal==="BUY"||d.Signal==="GOLD") &&
+          parseFloat(d["Upside_%"])>=10
+        ){
           row.classList.add("buy-row");
         }
       }
@@ -114,7 +125,8 @@ Papa.parse(CSV_URL, {
 
     function fill(id,key){
       [...new Set(data.map(r=>r[key]).filter(Boolean))]
-        .sort().forEach(v=>$('#'+id).append(`<option>${v}</option>`));
+        .sort()
+        .forEach(v=>$('#'+id).append(`<option>${v}</option>`));
     }
 
     fill("filter-signal","Signal");
@@ -141,6 +153,12 @@ Papa.parse(CSV_URL, {
 
       if(this.value==="quality"){
         table.column(col["ROE_%"]).search('^(1[0-9]|[2-9][0-9])',true,false);
+      }
+
+      if(this.value==="growth"){
+        table.column(col["DivCAGR_5Y_%"]).search('^(5|[6-9]|[1-9][0-9])',true,false);
+        table.column(col["YearsGrowing"]).search('^[5-9]|[1-9][0-9]',true,false);
+        table.column(col.Flags).search('extreme',true,false).search('',true,false);
       }
 
       table.draw();

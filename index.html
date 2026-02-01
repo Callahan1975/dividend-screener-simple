@@ -122,7 +122,7 @@ $.fn.dataTable.ext.search.push(function(settings, data) {
   return true;
 });
 
-Papa.parse('/data/screener_results.csv', {
+Papa.parse('data/screener_results.csv', {
   download:true,
   header:true,
   dynamicTyping:true,
@@ -130,8 +130,6 @@ Papa.parse('/data/screener_results.csv', {
 
     const table = $('#screener').DataTable({
       data: res.data,
-      dom:'Bfrtip',
-      buttons:['csv'],
       order:[[8,'desc']],
       columns:[
         {data:'Ticker'},
@@ -150,12 +148,6 @@ Papa.parse('/data/screener_results.csv', {
             : '<span class="signal-hold">HOLD</span>'
         }
       ],
-      createdRow:function(row,d){
-        if (d.DividendYield_% >= 2.5) $('td:eq(5)',row).addClass('pass');
-        if (d.PayoutRatio_% <= 75)   $('td:eq(6)',row).addClass('pass');
-        if (d.ROE_% >= 10)           $('td:eq(7)',row).addClass('pass');
-        if (d.Upside_% >= 10)        $('td:eq(8)',row).addClass('pass');
-      },
       language:{
         emptyTable:'Ingen aktier matcher dine filtre – prøv at løsne kriterierne.'
       }

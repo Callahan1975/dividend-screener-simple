@@ -1,135 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Dividend Screener</title>
+<meta charset="UTF-8">
+<title>Dividend Screener</title>
 
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
 
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      margin: 20px;
-      background: #fafafa;
-    }
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+}
 
-    h1 {
-      margin-bottom: 4px;
-    }
+h1 {
+    margin-bottom: 5px;
+}
 
-    .sub {
-      color: #555;
-      margin-bottom: 8px;
-    }
+.sub {
+    color: #666;
+    margin-bottom: 15px;
+}
 
-    table.dataTable {
-      font-size: 12px;
-    }
+.filter-bar {
+    background: #f4f6f8;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
 
-    table.dataTable th,
-    table.dataTable td {
-      white-space: nowrap;
-    }
-  </style>
+.filter-group {
+    margin-bottom: 8px;
+}
+
+label {
+    margin-right: 15px;
+    font-weight: bold;
+}
+
+.pass {
+    background-color: #d4edda !important;
+}
+
+.fail {
+    background-color: #f8d7da !important;
+}
+
+.signal-buy {
+    background-color: #2ecc71;
+    color: #fff;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.signal-hold {
+    background-color: #ccc;
+    color: #000;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+</style>
 </head>
 
 <body>
 
 <h1>Dividend Screener</h1>
-<div class="sub">Phase 3 · Stabil core · CSV fra GitHub Actions</div>
-<div class="sub">Data: <code>/data/screener_results.csv</code></div>
+<div class="sub">Phase 4 · Buy-focused · CSV fra GitHub Actions</div>
 
-<table id="screener" class="display stripe compact" style="width:100%">
-  <thead>
-    <tr id="table-head"></tr>
-  </thead>
-  <tbody></tbody>
+<div class="filter-bar">
+    <div class="filter-group">
+        <strong>Købs-kriterier:</strong><br>
+        <label><input type="checkbox" class="flt" id="f_yield" checked> Yield ≥ 2.5%</label>
+        <label><input type="checkbox" class="flt" id="f_payout" checked> Payout ≤ 75%</label>
+        <label><input type="checkbox" class="flt" id="f_roe" checked> ROE ≥ 10%</label>
+        <label><input type="checkbox" class="flt" id="f_upside" checked> Upside ≥ 10%</label>
+        <label><input type="checkbox" class="flt" id="f_quality" checked> Quality</label>
+    </div>
+
+    <div class="filter-group">
+        <strong>Country:</strong>
+        <select id="countryFilter" multiple>
+            <option value="United States" selected>United States</option>
+            <option value="Canada" selected>Canada</option>
+        </select>
+    </div>
+
+    <div class="filter-group">
+        <strong>Sector:</strong>
+        <select id="sectorFilter" multiple>
+            <option value="Technology" selected>Technology</option>
+            <option value="Healthcare" selected>Healthcare</option>
+            <option value="Consumer Defensive" selected>Consumer Defensive</option>
+            <option value="Consumer Cyclical" selected>Consumer Cyclical</option>
+            <option value="Financial Services" selected>Financial Services</option>
+            <option value="Energy" selected>Energy</option>
+        </select>
+    </div>
+</div>
+
+<table id="screener" class="display" style="width:100%">
+<thead>
+<tr>
+    <th>Ticker</th>
+    <th>Name</th>
+    <th>Country</th>
+    <th>Sector</th>
+    <th>Price</th>
+    <th>DividendYield_%</th>
+    <th>PayoutRatio_%</th>
+    <th>ROE_%</th>
+    <th>Upside_%</th>
+    <th>Quality_ROE_10p</th>
+    <th>Signal</th>
+</tr>
+</thead>
 </table>
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <script>
-$(document).ready(function () {
+let table;
 
-  Papa.parse('data/screener_results.csv', {
-    download: true,
-    header: true,
-    skipEmptyLines: true,
-    complete: function (results) {
+$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+    const yieldVal = parseFloat(data[5]) || 0;
+    const payout = parseFloat(data[6]) || 999;
+    const roe = parseFloat(data[7]) || 0;
+    const upside = parseFloat(data[8]) || 0;
+    const quality = data[9] === "True";
+    const country = data[2];
+    const sector = data[3];
 
-      if (!results.data || results.data.length === 0) {
-        console.error("CSV loaded but contains no rows");
-        return;
-      }
+    if ($("#f_yield").is(":checked") && yieldVal < 2.5) return false;
+    if ($("#f_payout").is(":checked") && payout > 75) return false;
+    if ($("#f_roe").is(":checked") && roe < 10) return false;
+    if ($("#f_upside").is(":checked") && upside < 10) return false;
+    if ($("#f_quality").is(":checked") && !quality) return false;
 
-      const headers = results.meta.fields;
+    if ($("#countryFilter").val()?.length && !$("#countryFilter").val().includes(country)) return false;
+    if ($("#sectorFilter").val()?.length && !$("#sectorFilter").val().includes(sector)) return false;
 
-      const data = results.data.map(row => {
-        const clean = {};
-        headers.forEach(h => {
-          const v = row[h];
-          clean[h] = (v === null || v === undefined)
-            ? ''
-            : (typeof v === 'object' ? JSON.stringify(v) : v);
-        });
-        return clean;
-      });
+    return true;
+});
 
-      // Build table header dynamically
-      const head = $('#table-head');
-      headers.forEach(h => head.append(`<th>${h}</th>`));
-
-      // Build column config
-      const columns = headers.map(h => ({ data: h }));
-
-      // Columns hidden by default (Finviz-style)
-      const hiddenColumns = [
-        "GeneratedUTC",
-        "Country",
-        "Industry",
-        "DivCAGR_5Y_%",
-        "YearsGrowing",
-        "DividendClass",
-        "FairPE",
-        "ForwardPE",
-        "PriceToFCF",
-        "ROE_%",
-        "ROA_%",
-        "Value_LowPE",
-        "Value_LowForwardPE",
-        "Value_LowFCF",
-        "Quality_ROE_10p",
-        "Flags"
-      ];
-
-      const columnDefs = headers
-        .map((h, idx) => hiddenColumns.includes(h)
-          ? { targets: idx, visible: false }
-          : null
-        )
-        .filter(Boolean);
-
-      $('#screener').DataTable({
-        data: data,
-        columns: columns,
-        columnDefs: columnDefs,
-        pageLength: 25,
-        scrollX: true,
+$(document).ready(function() {
+    table = $('#screener').DataTable({
+        ajax: '/data/screener_results.csv',
         dom: 'Bfrtip',
-        buttons: [
-          { extend: 'csvHtml5', text: 'Export CSV' },
-          { extend: 'colvis', text: 'Columns' }
-        ]
-      });
-    }
-  });
+        buttons: ['csv'],
+        order: [[8, 'desc']],
+        columns: [
+            { data: 'Ticker' },
+            { data: 'Name' },
+            { data: 'Country' },
+            { data: 'Sector' },
+            { data: 'Price' },
+            { data: 'DividendYield_%' },
+            { data: 'PayoutRatio_%' },
+            { data: 'ROE_%' },
+            { data: 'Upside_%' },
+            { data: 'Quality_ROE_10p' },
+            { data: 'Signal', render: d =>
+                d === "BUY" ? `<span class="signal-buy">BUY</span>` : `<span class="signal-hold">${d}</span>`
+            }
+        ],
+        createdRow: function(row, data) {
+            if (parseFloat(data.DividendYield_%) >= 2.5) $('td:eq(5)', row).addClass('pass'); else $('td:eq(5)', row).addClass('fail');
+            if (parseFloat(data.PayoutRatio_%) <= 75) $('td:eq(6)', row).addClass('pass'); else $('td:eq(6)', row).addClass('fail');
+            if (parseFloat(data.ROE_%) >= 10) $('td:eq(7)', row).addClass('pass'); else $('td:eq(7)', row).addClass('fail');
+            if (parseFloat(data.Upside_%) >= 10) $('td:eq(8)', row).addClass('pass'); else $('td:eq(8)', row).addClass('fail');
+        }
+    });
 
+    $('.flt, #countryFilter, #sectorFilter').on('change', function() {
+        table.draw();
+    });
 });
 </script>
 

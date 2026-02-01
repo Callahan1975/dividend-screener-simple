@@ -1,152 +1,152 @@
 Ticker,Name,Country,Sector,Industry,Price,DividendYield_%,PayoutRatio_%,ROE_%,Upside_%,Quality_ROE_10p,Signal,Flags,GeneratedUTC
-AAPL,Apple Inc.,United States,Technology,Consumer Electronics,259.48,0.4,13.04,152.02,-33.1,True,WATCH,,2026-02-01T20:49:45.213549
-MSFT,Microsoft Corporation,United States,Technology,Software - Infrastructure,430.29,0.79,21.28,34.39,-18.4,True,WATCH,,2026-02-01T20:49:45.213549
-JNJ,Johnson & Johnson,United States,Healthcare,Drug Manufacturers - General,227.25,2.26,46.6,35.56,-3.01,True,WATCH,,2026-02-01T20:49:45.213549
-PG,Procter & Gamble Company (The),United States,Consumer Defensive,Household & Personal Products,151.77,2.79,61.88,31.56,-10.0,True,WATCH,,2026-02-01T20:49:45.213549
-KO,Coca-Cola Company (The),United States,Consumer Defensive,Beverages - Non-Alcoholic,74.81,2.73,66.72,42.44,-17.93,True,WATCH,,2026-02-01T20:49:45.213549
-PEP,"Pepsico, Inc.",United States,Consumer Defensive,Beverages - Non-Alcoholic,153.63,3.66,105.61,37.16,-29.18,True,WATCH,Payout high,2026-02-01T20:49:45.213549
-MCD,McDonald's Corporation,United States,Consumer Cyclical,Restaurants,315.0,2.28,60.41,0.0,-33.2,False,WATCH,,2026-02-01T20:49:45.213549
-WMT,Walmart Inc.,United States,Consumer Defensive,Discount Stores,119.14,0.79,31.91,23.66,-51.15,True,WATCH,,2026-02-01T20:49:45.213549
-COST,Costco Wholesale Corporation,United States,Consumer Defensive,Discount Stores,940.25,0.55,27.1,30.33,-60.8,True,WATCH,,2026-02-01T20:49:45.213549
-HD,"Home Depot, Inc. (The)",United States,Consumer Cyclical,Home Improvement Retail,374.59,2.46,62.41,162.91,-29.07,True,WATCH,,2026-02-01T20:49:45.213549
-LOW,"Lowe's Companies, Inc.",United States,Consumer Cyclical,Home Improvement Retail,267.06,1.78,38.91,0.0,-18.45,False,WATCH,,2026-02-01T20:49:45.213549
-UNH,UnitedHealth Group Incorporated,United States,Healthcare,Healthcare Plans,286.93,3.04,44.92,12.54,31.39,True,GOLD,,2026-02-01T20:49:45.213549
-CVX,Chevron Corporation,United States,Energy,Oil & Gas Integrated,176.9,3.87,103.17,28.64,-55.03,True,WATCH,Payout high,2026-02-01T20:49:45.213549
-XOM,Exxon Mobil Corporation,United States,Energy,Oil & Gas Integrated,141.4,2.83,59.7,11.08,-43.14,True,WATCH,,2026-02-01T20:49:45.213549
-IBM,International Business Machines,United States,Technology,Information Technology Services,306.7,2.19,60.23,35.16,-20.81,True,WATCH,,2026-02-01T20:49:45.213549
-ADP,"Automatic Data Processing, Inc.",United States,Technology,Software - Application,246.82,2.56,60.71,73.84,-7.12,True,WATCH,,2026-02-01T20:49:45.213549
-MMM,3M Company,United States,Industrials,Conglomerates,153.16,1.91,48.67,75.5,-30.9,True,WATCH,,2026-02-01T20:49:45.213549
-CL,Colgate-Palmolive Company,United States,Consumer Defensive,Household & Personal Products,90.29,2.3,78.33,497.47,-41.74,True,WATCH,,2026-02-01T20:49:45.213549
-KMB,Kimberly-Clark Corporation,United States,Consumer Defensive,Household & Personal Products,99.99,5.04,103.7,126.6,-1.39,True,WATCH,Payout high,2026-02-01T20:49:45.213549
-ABT,Abbott Laboratories,United States,Healthcare,Medical Devices,109.3,2.2,63.44,13.16,-29.73,True,WATCH,,2026-02-01T20:49:45.213549
-ABBV,AbbVie Inc.,United States,Healthcare,Drug Manufacturers - General,223.01,2.98,490.15,137.96,-87.98,True,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-T,AT&T Inc.,United States,Communication Services,Telecom Services,26.21,4.24,27.38,18.8,108.78,True,GOLD,,2026-02-01T20:49:45.213549
-VZ,Verizon Communications Inc.,United States,Communication Services,Telecom Services,44.52,6.15,50.37,17.07,64.15,True,GOLD,,2026-02-01T20:49:45.213549
-CSCO,"Cisco Systems, Inc.",United States,Technology,Communication Equipment,78.32,2.09,62.93,22.42,-27.53,True,WATCH,,2026-02-01T20:49:45.213549
-INTC,Intel Corporation,United States,Technology,Semiconductors,46.47,1.08,0.0,0.02,-102.84,False,WATCH,,2026-02-01T20:49:45.213549
-TXN,Texas Instruments Incorporated,United States,Technology,Semiconductors,215.55,2.58,100.92,30.15,-45.19,True,WATCH,Payout high,2026-02-01T20:49:45.213549
-QCOM,QUALCOMM Incorporated,United States,Technology,Semiconductors,151.59,2.32,69.46,23.34,-27.58,True,WATCH,,2026-02-01T20:49:45.213549
-AMGN,Amgen Inc.,United States,Healthcare,Drug Manufacturers - General,341.88,2.78,72.62,81.71,-24.59,True,WATCH,,2026-02-01T20:49:45.213549
-MDT,Medtronic plc.,Ireland,Healthcare,Medical Devices,102.96,2.74,76.42,9.82,-26.96,False,WATCH,,2026-02-01T20:49:45.213549
-BDX,"Becton, Dickinson and Company",United States,Healthcare,Medical Instruments & Supplies,203.48,2.05,71.48,6.54,-42.21,False,WATCH,,2026-02-01T20:49:45.213549
-SYK,Stryker Corporation,United States,Healthcare,Medical Devices,369.56,0.92,40.48,15.08,-54.59,True,WATCH,,2026-02-01T20:49:45.213549
-UPS,"United Parcel Service, Inc.",United States,Industrials,Integrated Freight & Logistics,106.22,6.18,100.0,33.77,11.5,True,HOLD,Payout high,2026-02-01T20:49:45.213549
-FDX,FedEx Corporation,United States,Industrials,Integrated Freight & Logistics,322.25,1.78,31.32,15.89,1.72,True,HOLD,,2026-02-01T20:49:45.213549
-CAT,"Caterpillar, Inc.",United States,Industrials,Farm & Heavy Construction Machinery,657.36,0.9,31.05,43.53,-48.52,True,WATCH,,2026-02-01T20:49:45.213549
-DE,Deere & Company,United States,Industrials,Farm & Heavy Construction Machinery,528.0,1.23,35.03,20.43,-37.17,True,WATCH,,2026-02-01T20:49:45.213549
-EMR,Emerson Electric Company,United States,Industrials,Specialty Industrial Machinery,146.96,1.46,52.36,9.36,-51.99,False,WATCH,,2026-02-01T20:49:45.213549
-ETN,"Eaton Corporation, PLC",Ireland,Industrials,Specialty Industrial Machinery,351.42,1.16,40.64,20.65,-49.24,True,WATCH,,2026-02-01T20:49:45.213549
-PH,Parker-Hannifin Corporation,United States,Industrials,Specialty Industrial Machinery,935.84,0.75,25.65,25.78,-47.26,True,WATCH,,2026-02-01T20:49:45.213549
-HON,Honeywell International Inc.,United States,Industrials,Conglomerates,227.52,1.93,60.5,28.2,-40.03,True,WATCH,,2026-02-01T20:49:45.213549
-RTX,RTX Corporation,United States,Industrials,Aerospace & Defense,200.93,1.33,53.83,10.95,-55.39,True,WATCH,,2026-02-01T20:49:45.213549
-LMT,Lockheed Martin Corporation,United States,Industrials,Aerospace & Defense,634.22,2.1,62.12,76.87,-38.98,True,WATCH,,2026-02-01T20:49:45.213549
-NOC,Northrop Grumman Corporation,United States,Industrials,Aerospace & Defense,692.26,1.3,30.91,26.17,-24.75,True,WATCH,,2026-02-01T20:49:45.213549
-GD,General Dynamics Corporation,United States,Industrials,Aerospace & Defense,351.09,1.71,38.83,17.66,-20.79,True,WATCH,,2026-02-01T20:49:45.213549
-BA,Boeing Company (The),United States,Industrials,Aerospace & Defense,233.72,3.52,0.0,290.08,-80.9,True,WATCH,,2026-02-01T20:49:45.213549
-GE,GE Aerospace,United States,Industrials,Aerospace & Defense,306.79,0.47,17.89,44.69,-51.6,True,WATCH,,2026-02-01T20:49:45.213549
-NEE,"NextEra Energy, Inc.",United States,Utilities,Utilities - Regulated Electric,87.9,2.58,69.04,8.37,-40.48,False,WATCH,,2026-02-01T20:49:45.213549
-DUK,Duke Energy Corporation (Holdin,United States,Utilities,Utilities - Regulated Electric,121.35,3.48,66.14,9.9,-16.01,False,WATCH,,2026-02-01T20:49:45.213549
-SO,Southern Company (The),United States,Utilities,Utilities - Regulated Electric,89.31,3.29,72.64,11.43,-27.8,True,WATCH,,2026-02-01T20:49:45.213549
-D,"Dominion Energy, Inc.",United States,Utilities,Utilities - Regulated Electric,60.17,4.44,87.25,9.2,-19.43,False,WATCH,,2026-02-01T20:49:45.213549
-AEP,American Electric Power Company,United States,Utilities,Utilities - Regulated Electric,119.78,3.12,54.47,12.92,-8.36,True,WATCH,,2026-02-01T20:49:45.213549
-ED,"Consolidated Edison, Inc.",United States,Utilities,Utilities - Regulated Electric,106.63,3.19,59.09,8.84,-13.57,False,WATCH,,2026-02-01T20:49:45.213549
-SRE,DBA Sempra,United States,Utilities,Utilities - Diversified,87.01,2.97,78.62,6.77,-40.24,False,WATCH,,2026-02-01T20:49:45.213549
-EXC,Exelon Corporation,United States,Utilities,Utilities - Regulated Electric,44.78,3.57,56.63,10.31,0.4,True,HOLD,,2026-02-01T20:49:45.213549
-XEL,Xcel Energy Inc.,United States,Utilities,Utilities - Regulated Electric,76.06,3.0,68.83,9.45,-30.79,False,WATCH,,2026-02-01T20:49:45.213549
-PEG,Public Service Enterprise Group,United States,Utilities,Utilities - Regulated Electric,82.36,3.06,59.86,12.58,-18.8,True,WATCH,,2026-02-01T20:49:45.213549
-WEC,"WEC Energy Group, Inc.",United States,Utilities,Utilities - Regulated Electric,110.67,3.23,66.52,12.81,-23.52,True,WATCH,,2026-02-01T20:49:45.213549
-DTE,DTE Energy Company,United States,Utilities,Utilities - Regulated Electric,134.38,3.3,65.37,11.66,-20.58,True,WATCH,,2026-02-01T20:49:45.213549
-O,Realty Income Corporation,United States,Real Estate,REIT - Retail,61.16,1.77,299.53,2.49,-71.75,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-WPC,W. P. Carey Inc. REIT,United States,Real Estate,REIT - Diversified,69.75,5.19,216.97,4.36,-61.69,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-SPG,"Simon Property Group, Inc.",United States,Real Estate,REIT - Retail,191.31,4.47,123.0,82.46,-42.04,True,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-AVB,"AvalonBay Communities, Inc.",United States,Real Estate,REIT - Residential,177.67,3.94,84.76,9.75,-24.98,False,WATCH,,2026-02-01T20:49:45.213549
-EQR,Equity Residential,United States,Real Estate,REIT - Residential,62.32,4.45,90.63,10.44,-21.44,True,WATCH,Payout high,2026-02-01T20:49:45.213549
-ESS,"Essex Property Trust, Inc.",United States,Real Estate,REIT - Residential,251.87,4.08,77.26,15.99,-15.83,True,WATCH,,2026-02-01T20:49:45.213549
-MAA,Mid-America Apartment Communiti,United States,Real Estate,REIT - Residential,134.3,4.52,127.44,9.41,-43.53,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-VTR,"Ventas, Inc.",United States,Real Estate,REIT - Healthcare Facilities,77.67,2.47,356.6,2.16,-88.88,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-VICI,VICI Properties Inc.,United States,Real Estate,REIT - Diversified,28.08,6.29,66.44,10.36,49.86,True,GOLD,,2026-02-01T20:49:45.213549
-TROW,"T. Rowe Price Group, Inc.",United States,Financial Services,Asset Management,105.68,4.81,55.07,18.67,5.03,True,HOLD,,2026-02-01T20:49:45.213549
-BLK,"BlackRock, Inc.",United States,Financial Services,Asset Management,1118.94,1.86,59.02,10.69,-62.44,True,WATCH,,2026-02-01T20:49:45.213549
-BEN,"Franklin Resources, Inc.",United States,Financial Services,Asset Management,26.62,4.85,119.44,0.0,-51.31,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-AMP,"Ameriprise Financial, Inc.",United States,Financial Services,Asset Management,527.19,1.19,17.3,59.59,-16.49,True,WATCH,,2026-02-01T20:49:45.213549
-MS,Morgan Stanley,United States,Financial Services,Capital Markets,182.8,2.15,37.71,15.73,-32.78,True,WATCH,,2026-02-01T20:49:45.213549
-GS,"Goldman Sachs Group, Inc. (The)",United States,Financial Services,Capital Markets,935.41,1.5,27.28,13.88,-34.48,True,WATCH,,2026-02-01T20:49:45.213549
-JPM,JP Morgan Chase & Co.,United States,Financial Services,Banks - Diversified,305.89,1.9,28.97,16.13,-21.66,True,WATCH,,2026-02-01T20:49:45.213549
-BAC,Bank of America Corporation,United States,Financial Services,Banks - Diversified,53.2,2.03,28.35,10.19,-13.83,True,WATCH,,2026-02-01T20:49:45.213549
-PNC,"PNC Financial Services Group, I",United States,Financial Services,Banks - Regional,223.3,3.0,39.78,12.16,-11.33,True,WATCH,,2026-02-01T20:49:45.213549
-USB,U.S. Bancorp,United States,Financial Services,Banks - Regional,56.11,3.64,44.16,12.18,-1.62,True,WATCH,,2026-02-01T20:49:45.213549
-SCHW,Charles Schwab Corporation (The,United States,Financial Services,Capital Markets,103.92,1.04,23.23,18.11,-46.07,True,WATCH,,2026-02-01T20:49:45.213549
-AFL,AFLAC Incorporated,United States,Financial Services,Insurance - Life,110.95,2.09,29.43,15.58,-17.37,True,WATCH,,2026-02-01T20:49:45.213549
-MET,"MetLife, Inc.",United States,Financial Services,Insurance - Life,78.88,2.85,41.9,12.8,-18.46,True,WATCH,,2026-02-01T20:49:45.213549
-PRU,"Prudential Financial, Inc.",United States,Financial Services,Insurance - Life,111.11,4.86,73.29,8.5,-20.3,False,WATCH,,2026-02-01T20:49:45.213549
-ALL,Allstate Corporation (The),United States,Financial Services,Insurance - Property & Casualty,198.99,2.01,12.71,34.47,86.58,True,GOLD,,2026-02-01T20:49:45.213549
-TRV,"The Travelers Companies, Inc.",United States,Financial Services,Insurance - Property & Casualty,284.51,1.53,15.86,20.7,15.82,True,BUY,,2026-02-01T20:49:45.213549
-MO,"Altria Group, Inc.",United States,Consumer Defensive,Tobacco,61.99,6.71,100.97,0.0,32.92,False,HOLD,Payout high,2026-02-01T20:49:45.213549
-PM,Philip Morris International Inc,United States,Consumer Defensive,Tobacco,179.44,3.14,78.76,0.0,-21.2,False,WATCH,,2026-02-01T20:49:45.213549
-BTI,British American Tobacco  Indus,United Kingdom,Consumer Defensive,Tobacco,60.68,4.94,168.95,6.27,-36.72,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-WM,"Waste Management, Inc.",United States,Industrials,Waste Management,222.24,1.48,49.25,29.7,-45.98,True,WATCH,,2026-02-01T20:49:45.213549
-RSG,"Republic Services, Inc.",United States,Industrials,Waste Management,215.09,1.12,35.14,18.25,-43.68,True,WATCH,,2026-02-01T20:49:45.213549
-AWK,"American Water Works Company, I",United States,Utilities,Utilities - Regulated Water,129.13,2.52,55.98,10.46,-29.5,True,WATCH,,2026-02-01T20:49:45.213549
-ATO,Atmos Energy Corporation,United States,Utilities,Utilities - Regulated Gas,166.34,2.17,46.65,9.32,-28.15,False,WATCH,,2026-02-01T20:49:45.213549
-ECL,Ecolab Inc.,United States,Basic Materials,Specialty Chemicals,281.99,0.95,37.41,21.87,-65.54,True,WATCH,,2026-02-01T20:49:45.213549
-SHW,Sherwin-Williams Company (The),United States,Basic Materials,Specialty Chemicals,354.64,0.89,30.8,59.39,-59.54,True,WATCH,,2026-02-01T20:49:45.213549
-APD,"Air Products and Chemicals, Inc",United States,Basic Materials,Specialty Chemicals,272.5,2.63,100.99,-1.67,-107.55,False,WATCH,Payout high,2026-02-01T20:49:45.213549
-LIN,Linde plc,United Kingdom,Basic Materials,Specialty Chemicals,456.97,1.31,39.42,17.98,-54.23,True,WATCH,,2026-02-01T20:49:45.213549
-NUE,Nucor Corporation,United States,Basic Materials,Steel,177.72,1.24,29.39,9.36,-41.47,False,WATCH,,2026-02-01T20:49:45.213549
-VMC,Vulcan Materials Company (Holdi,United States,Basic Materials,Building Materials,300.54,0.65,22.79,13.52,-60.36,True,WATCH,,2026-02-01T20:49:45.213549
-SBUX,Starbucks Corporation,United States,Consumer Cyclical,Restaurants,91.95,2.66,204.17,0.0,-76.9,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-YUM,"Yum! Brands, Inc.",United States,Consumer Cyclical,Restaurants,155.5,1.83,54.58,0.0,-40.62,False,WATCH,,2026-02-01T20:49:45.213549
-CMI,Cummins Inc.,United States,Industrials,Specialty Industrial Machinery,578.82,1.32,38.67,22.77,-40.6,True,WATCH,,2026-02-01T20:49:45.213549
-ITW,Illinois Tool Works Inc.,United States,Industrials,Specialty Industrial Machinery,261.26,2.38,59.26,91.68,-29.04,True,WATCH,,2026-02-01T20:49:45.213549
-ROP,"Roper Technologies, Inc.",United States,Technology,Software - Application,371.23,0.91,23.24,7.93,-14.43,False,WATCH,,2026-02-01T20:49:45.213549
-FAST,Fastenal Company,United States,Industrials,Industrial Distribution,43.36,2.08,80.28,33.29,-54.75,True,WATCH,,2026-02-01T20:49:45.213549
-GPC,Genuine Parts Company,United States,Consumer Cyclical,Auto Parts,138.99,2.96,70.4,16.99,-24.76,True,WATCH,,2026-02-01T20:49:45.213549
-ORCL,Oracle Corporation,United States,Technology,Software - Infrastructure,164.58,1.22,35.71,69.03,-30.76,True,WATCH,,2026-02-01T20:49:45.213549
-INTU,Intuit Inc.,United States,Technology,Software - Application,498.92,0.9,29.67,21.99,-35.75,True,WATCH,,2026-02-01T20:49:45.213549
-BMO.TO,BANK OF MONTREAL,Canada,Financial Services,Banks - Diversified,185.37,3.52,56.29,10.12,-26.01,True,WATCH,,2026-02-01T20:49:45.213549
-RY.TO,ROYAL BANK OF CANADA,Canada,Financial Services,Banks - Diversified,226.72,2.73,42.93,15.29,-25.58,True,WATCH,,2026-02-01T20:49:45.213549
-TD.TO,TORONTO-DOMINION BANK,Canada,Financial Services,Banks - Diversified,127.26,3.32,36.33,16.91,9.01,True,HOLD,,2026-02-01T20:49:45.213549
-BNS.TO,BANK OF NOVA SCOTIA,Canada,Financial Services,Banks - Diversified,101.8,4.28,76.19,8.99,-33.16,False,WATCH,,2026-02-01T20:49:45.213549
-CM.TO,CANADIAN IMPERIAL BANK OF COMME,Canada,Financial Services,Banks - Diversified,125.84,3.16,45.27,13.7,-18.28,True,WATCH,,2026-02-01T20:49:45.213549
-NA.TO,NATIONAL BANK OF CANADA,Canada,Financial Services,Banks - Diversified,162.25,2.92,46.08,13.54,-25.52,True,WATCH,,2026-02-01T20:49:45.213549
-ENB.TO,ENBRIDGE INC,Canada,Energy,Oil & Gas Midstream,66.47,5.67,146.76,9.12,-53.96,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-TRP.TO,TC ENERGY CORP.,Canada,Energy,Oil & Gas Midstream,79.84,4.26,94.2,11.34,-46.19,True,WATCH,Payout high,2026-02-01T20:49:45.213549
-PPL.TO,PEMBINA PIPELINE CORPORATION,Canada,Energy,Oil & Gas Midstream,56.58,4.98,100.0,10.45,-40.62,True,WATCH,Payout high,2026-02-01T20:49:45.213549
-FTS.TO,FORTIS INC,Canada,Utilities,Utilities - Regulated Electric,72.6,3.42,73.21,7.61,-25.95,False,WATCH,,2026-02-01T20:49:45.213549
-EMA.TO,EMERA INCORPORATED,Canada,Utilities,Utilities - Regulated Electric,67.49,4.32,79.47,9.07,-13.47,False,WATCH,,2026-02-01T20:49:45.213549
-CU.TO,"CANADIAN UTILITIES LTD., CL.A, ",Canada,Utilities,Utilities - Diversified,44.07,4.16,93.17,8.73,-28.84,False,WATCH,Payout high,2026-02-01T20:49:45.213549
-CNQ.TO,CDN NATURAL RES,Canada,Energy,Oil & Gas E&P,50.63,4.65,73.34,16.56,-24.87,True,WATCH,,2026-02-01T20:49:45.213549
-SU.TO,SUNCOR ENERGY INC.,Canada,Energy,Oil & Gas Integrated,71.97,3.21,53.15,11.66,-28.47,True,WATCH,,2026-02-01T20:49:45.213549
-IMO.TO,IMPERIAL OIL,Canada,Energy,Oil & Gas Integrated,137.57,2.09,35.25,13.86,-31.7,True,WATCH,,2026-02-01T20:49:45.213549
-T.TO,TELUS CORPORATION,Canada,Communication Services,Telecom Services,19.0,8.69,209.9,4.69,-26.11,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-BCE.TO,BCE INC.,Canada,Communication Services,Telecom Services,35.2,6.57,43.09,31.36,240.57,True,GOLD,,2026-02-01T20:49:45.213549
-RCI-B.TO,"ROGERS COMMUNICATIONS INC., CL.",Canada,Communication Services,Telecom Services,51.4,3.89,15.7,39.82,346.15,True,GOLD,,2026-02-01T20:49:45.213549
-CP.TO,CANADIAN PACIFIC KANSAS CITY LI,Canada,Industrials,Railroads,101.22,0.86,19.38,8.64,-19.8,False,WATCH,,2026-02-01T20:49:45.213549
-CNR.TO,CANADIAN NATIONAL RAILWAY CO.,Canada,Industrials,Railroads,130.99,2.71,47.66,22.15,1.27,True,HOLD,,2026-02-01T20:49:45.213549
-SLF.TO,SUN LIFE FINANCIAL INC.,Canada,Financial Services,Insurance - Diversified,85.8,4.1,65.15,12.18,-26.15,True,WATCH,,2026-02-01T20:49:45.213549
-MFC.TO,MANULIFE FIN,Canada,Financial Services,Insurance - Life,51.87,3.39,55.13,11.8,-27.82,True,WATCH,,2026-02-01T20:49:45.213549
-GWO.TO,GREAT-WEST LIFECO INC,Canada,Financial Services,Insurance - Life,63.74,3.83,55.34,13.03,-18.86,True,WATCH,,2026-02-01T20:49:45.213549
-AQN.TO,ALGONQUIN POWER AND UTILITIES C,Canada,Utilities,Utilities - Diversified,8.94,4.05,368.23,0.15,-82.1,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-KEY.TO,KEYERA CORP,Canada,Energy,Oil & Gas Midstream,46.11,4.6,112.3,15.28,-51.33,True,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-POW.TO,"POWER CORPORATION OF CANADA, SV",Canada,Financial Services,Insurance - Life,68.67,3.57,50.63,11.26,-17.17,True,WATCH,,2026-02-01T20:49:45.213549
-IFC.TO,INTACT FINANCIAL CORPORATION,Canada,Financial Services,Insurance - Property & Casualty,247.91,2.15,31.16,16.27,-19.26,True,WATCH,,2026-02-01T20:49:45.213549
-BIP-UN.TO,BROOKFIELD INFRA PARTNERS LP UN,Bermuda,Utilities,Utilities - Diversified,49.29,4.72,191.11,7.74,-60.4,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-SHB-A.ST,Svenska Handelsbanken ser. A,Sweden,Financial Services,Banks - Diversified,140.6,29.16,59.16,12.68,8.22,True,HOLD,,2026-02-01T20:49:45.213549
-SWED-A.ST,Swedbank AB ser A,Sweden,Financial Services,Banks - Regional,346.7,16.69,74.88,14.73,0.27,True,HOLD,,2026-02-01T20:49:45.213549
-SEB-A.ST,Skandinaviska Enskilda Banken s,Sweden,Financial Services,Banks - Regional,191.35,18.68,55.09,13.46,-3.3,True,WATCH,,2026-02-01T20:49:45.213549
-NDA-SE.ST,Nordea Bank Abp,Finland,Financial Services,Banks - Regional,171.9,20.55,67.63,14.93,2.55,True,HOLD,,2026-02-01T20:49:45.213549
-TEL2-B.ST,Tele2 AB ser. B,Sweden,Communication Services,Telecom Services,162.95,8.13,96.65,20.65,-27.54,True,WATCH,Payout high,2026-02-01T20:49:45.213549
-ATCO-A.ST,Atlas Copco AB ser. A,Sweden,Industrials,Specialty Industrial Machinery,183.75,3.16,55.35,23.58,-47.0,True,WATCH,,2026-02-01T20:49:45.213549
-VOLV-B.ST,"Volvo, AB ser. B",Sweden,Industrials,Farm & Heavy Construction Machinery,324.0,19.6,47.23,18.47,-5.94,True,WATCH,,2026-02-01T20:49:45.213549
-CIBUS.ST,Cibus Nordic Real Estate AB,Sweden,Real Estate,Real Estate - Diversified,154.3,2.05,105.88,7.83,-6.88,False,WATCH,Payout high,2026-02-01T20:49:45.213549
-NOVO-B.CO,Novo Nordisk B A/S,Denmark,Healthcare,Drug Manufacturers - General,369.55,5.83,49.94,71.47,26.32,True,GOLD,,2026-02-01T20:49:45.213549
-COLO-B.CO,Coloplast B A/S,Denmark,Healthcare,Medical Instruments & Supplies,536.0,8.4,136.39,21.35,-39.81,True,WATCH,"Payout high, Payout extreme",2026-02-01T20:49:45.213549
-ORSTED.CO,ORSTED A/S,Denmark,Utilities,Utilities - Renewable,141.6,18.84,0.0,0.49,-112.66,False,WATCH,,2026-02-01T20:49:45.213549
-DSV.CO,DSV A/S,Denmark,Industrials,Integrated Freight & Logistics,1769.0,1.47,17.5,10.17,-59.34,True,WATCH,,2026-02-01T20:49:45.213549
-TRYG.CO,Tryg A/S,Denmark,Financial Services,Insurance - Diversified,153.1,5.36,92.05,13.77,-31.03,True,WATCH,Payout high,2026-02-01T20:49:45.213549
-PNDORA.CO,Pandora A/S,Denmark,Consumer Cyclical,Luxury Goods,509.0,13.75,30.12,163.52,134.81,True,GOLD,,2026-02-01T20:49:45.213549
-NDA-FI.HE,Nordea Bank Abp,Finland,Financial Services,Banks - Regional,16.32,20.53,67.63,14.93,1.5,True,HOLD,,2026-02-01T20:49:45.213549
-KNEBV.HE,KONE Corporation,Finland,Industrials,Specialty Industrial Machinery,60.62,12.21,97.83,37.52,-45.36,True,WATCH,Payout high,2026-02-01T20:49:45.213549
-FORTUM.HE,Fortum Corporation,Finland,Utilities,Utilities - Renewable,19.91,15.06,92.83,10.23,-22.07,True,WATCH,Payout high,2026-02-01T20:49:45.213549
-DNB.OL,DNB BANK ASA,Norway,Financial Services,Banks - Regional,276.7,19.88,57.79,15.82,25.25,True,GOLD,,2026-02-01T20:49:45.213549
-ORK.OL,ORKLA,Norway,Consumer Defensive,Packaged Foods,114.2,19.26,62.4,14.0,12.26,True,BUY,,2026-02-01T20:49:45.213549
+AAPL,Apple Inc.,United States,Technology,Consumer Electronics,259.48,0.4,13.04,152.02,-33.1,True,WATCH,,2026-02-01T20:54:33.093201
+MSFT,Microsoft Corporation,United States,Technology,Software - Infrastructure,430.29,0.79,21.28,34.39,-18.4,True,WATCH,,2026-02-01T20:54:33.093201
+JNJ,Johnson & Johnson,United States,Healthcare,Drug Manufacturers - General,227.25,2.26,46.6,35.56,-3.01,True,WATCH,,2026-02-01T20:54:33.093201
+PG,Procter & Gamble Company (The),United States,Consumer Defensive,Household & Personal Products,151.77,2.79,61.88,31.56,-10.0,True,WATCH,,2026-02-01T20:54:33.093201
+KO,Coca-Cola Company (The),United States,Consumer Defensive,Beverages - Non-Alcoholic,74.81,2.73,66.72,42.44,-17.93,True,WATCH,,2026-02-01T20:54:33.093201
+PEP,"Pepsico, Inc.",United States,Consumer Defensive,Beverages - Non-Alcoholic,153.63,3.66,105.61,37.16,-29.18,True,WATCH,Payout high,2026-02-01T20:54:33.093201
+MCD,McDonald's Corporation,United States,Consumer Cyclical,Restaurants,315.0,2.28,60.41,0.0,-33.2,False,WATCH,,2026-02-01T20:54:33.093201
+WMT,Walmart Inc.,United States,Consumer Defensive,Discount Stores,119.14,0.79,31.91,23.66,-51.15,True,WATCH,,2026-02-01T20:54:33.093201
+COST,Costco Wholesale Corporation,United States,Consumer Defensive,Discount Stores,940.25,0.55,27.1,30.33,-60.8,True,WATCH,,2026-02-01T20:54:33.093201
+HD,"Home Depot, Inc. (The)",United States,Consumer Cyclical,Home Improvement Retail,374.59,2.46,62.41,162.91,-29.07,True,WATCH,,2026-02-01T20:54:33.093201
+LOW,"Lowe's Companies, Inc.",United States,Consumer Cyclical,Home Improvement Retail,267.06,1.78,38.91,0.0,-18.45,False,WATCH,,2026-02-01T20:54:33.093201
+UNH,UnitedHealth Group Incorporated,United States,Healthcare,Healthcare Plans,286.93,3.04,44.92,12.54,31.39,True,GOLD,,2026-02-01T20:54:33.093201
+CVX,Chevron Corporation,United States,Energy,Oil & Gas Integrated,176.9,3.87,103.17,28.64,-55.03,True,WATCH,Payout high,2026-02-01T20:54:33.093201
+XOM,Exxon Mobil Corporation,United States,Energy,Oil & Gas Integrated,141.4,2.83,59.7,11.08,-43.14,True,WATCH,,2026-02-01T20:54:33.093201
+IBM,International Business Machines,United States,Technology,Information Technology Services,306.7,2.19,60.23,35.16,-20.81,True,WATCH,,2026-02-01T20:54:33.093201
+ADP,"Automatic Data Processing, Inc.",United States,Technology,Software - Application,246.82,2.56,60.71,73.84,-7.12,True,WATCH,,2026-02-01T20:54:33.093201
+MMM,3M Company,United States,Industrials,Conglomerates,153.16,1.91,48.67,75.5,-30.9,True,WATCH,,2026-02-01T20:54:33.093201
+CL,Colgate-Palmolive Company,United States,Consumer Defensive,Household & Personal Products,90.29,2.3,78.33,497.47,-41.74,True,WATCH,,2026-02-01T20:54:33.093201
+KMB,Kimberly-Clark Corporation,United States,Consumer Defensive,Household & Personal Products,99.99,5.04,103.7,126.6,-1.39,True,WATCH,Payout high,2026-02-01T20:54:33.093201
+ABT,Abbott Laboratories,United States,Healthcare,Medical Devices,109.3,2.2,63.44,13.16,-29.73,True,WATCH,,2026-02-01T20:54:33.093201
+ABBV,AbbVie Inc.,United States,Healthcare,Drug Manufacturers - General,223.01,2.98,490.15,137.96,-87.98,True,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+T,AT&T Inc.,United States,Communication Services,Telecom Services,26.21,4.24,27.38,18.8,108.78,True,GOLD,,2026-02-01T20:54:33.093201
+VZ,Verizon Communications Inc.,United States,Communication Services,Telecom Services,44.52,6.15,50.37,17.07,64.15,True,GOLD,,2026-02-01T20:54:33.093201
+CSCO,"Cisco Systems, Inc.",United States,Technology,Communication Equipment,78.32,2.09,62.93,22.42,-27.53,True,WATCH,,2026-02-01T20:54:33.093201
+INTC,Intel Corporation,United States,Technology,Semiconductors,46.47,1.08,0.0,0.02,-102.84,False,WATCH,,2026-02-01T20:54:33.093201
+TXN,Texas Instruments Incorporated,United States,Technology,Semiconductors,215.55,2.58,100.92,30.15,-45.19,True,WATCH,Payout high,2026-02-01T20:54:33.093201
+QCOM,QUALCOMM Incorporated,United States,Technology,Semiconductors,151.59,2.32,69.46,23.34,-27.58,True,WATCH,,2026-02-01T20:54:33.093201
+AMGN,Amgen Inc.,United States,Healthcare,Drug Manufacturers - General,341.88,2.78,72.62,81.71,-24.59,True,WATCH,,2026-02-01T20:54:33.093201
+MDT,Medtronic plc.,Ireland,Healthcare,Medical Devices,102.96,2.74,76.42,9.82,-26.96,False,WATCH,,2026-02-01T20:54:33.093201
+BDX,"Becton, Dickinson and Company",United States,Healthcare,Medical Instruments & Supplies,203.48,2.05,71.48,6.54,-42.21,False,WATCH,,2026-02-01T20:54:33.093201
+SYK,Stryker Corporation,United States,Healthcare,Medical Devices,369.56,0.92,40.48,15.08,-54.59,True,WATCH,,2026-02-01T20:54:33.093201
+UPS,"United Parcel Service, Inc.",United States,Industrials,Integrated Freight & Logistics,106.22,6.18,100.0,33.77,11.5,True,HOLD,Payout high,2026-02-01T20:54:33.093201
+FDX,FedEx Corporation,United States,Industrials,Integrated Freight & Logistics,322.25,1.78,31.32,15.89,1.72,True,HOLD,,2026-02-01T20:54:33.093201
+CAT,"Caterpillar, Inc.",United States,Industrials,Farm & Heavy Construction Machinery,657.36,0.9,31.05,43.53,-48.52,True,WATCH,,2026-02-01T20:54:33.093201
+DE,Deere & Company,United States,Industrials,Farm & Heavy Construction Machinery,528.0,1.23,35.03,20.43,-37.17,True,WATCH,,2026-02-01T20:54:33.093201
+EMR,Emerson Electric Company,United States,Industrials,Specialty Industrial Machinery,146.96,1.46,52.36,9.36,-51.99,False,WATCH,,2026-02-01T20:54:33.093201
+ETN,"Eaton Corporation, PLC",Ireland,Industrials,Specialty Industrial Machinery,351.42,1.16,40.64,20.65,-49.24,True,WATCH,,2026-02-01T20:54:33.093201
+PH,Parker-Hannifin Corporation,United States,Industrials,Specialty Industrial Machinery,935.84,0.75,25.65,25.78,-47.26,True,WATCH,,2026-02-01T20:54:33.093201
+HON,Honeywell International Inc.,United States,Industrials,Conglomerates,227.52,1.93,60.5,28.2,-40.03,True,WATCH,,2026-02-01T20:54:33.093201
+RTX,RTX Corporation,United States,Industrials,Aerospace & Defense,200.93,1.33,53.83,10.95,-55.39,True,WATCH,,2026-02-01T20:54:33.093201
+LMT,Lockheed Martin Corporation,United States,Industrials,Aerospace & Defense,634.22,2.1,62.12,76.87,-38.98,True,WATCH,,2026-02-01T20:54:33.093201
+NOC,Northrop Grumman Corporation,United States,Industrials,Aerospace & Defense,692.26,1.3,30.91,26.17,-24.75,True,WATCH,,2026-02-01T20:54:33.093201
+GD,General Dynamics Corporation,United States,Industrials,Aerospace & Defense,351.09,1.71,38.83,17.66,-20.79,True,WATCH,,2026-02-01T20:54:33.093201
+BA,Boeing Company (The),United States,Industrials,Aerospace & Defense,233.72,3.52,0.0,290.08,-80.9,True,WATCH,,2026-02-01T20:54:33.093201
+GE,GE Aerospace,United States,Industrials,Aerospace & Defense,306.79,0.47,17.89,44.69,-51.6,True,WATCH,,2026-02-01T20:54:33.093201
+NEE,"NextEra Energy, Inc.",United States,Utilities,Utilities - Regulated Electric,87.9,2.58,69.04,8.37,-40.48,False,WATCH,,2026-02-01T20:54:33.093201
+DUK,Duke Energy Corporation (Holdin,United States,Utilities,Utilities - Regulated Electric,121.35,3.48,66.14,9.9,-16.01,False,WATCH,,2026-02-01T20:54:33.093201
+SO,Southern Company (The),United States,Utilities,Utilities - Regulated Electric,89.31,3.29,72.64,11.43,-27.8,True,WATCH,,2026-02-01T20:54:33.093201
+D,"Dominion Energy, Inc.",United States,Utilities,Utilities - Regulated Electric,60.17,4.44,87.25,9.2,-19.43,False,WATCH,,2026-02-01T20:54:33.093201
+AEP,American Electric Power Company,United States,Utilities,Utilities - Regulated Electric,119.78,3.12,54.47,12.92,-8.36,True,WATCH,,2026-02-01T20:54:33.093201
+ED,"Consolidated Edison, Inc.",United States,Utilities,Utilities - Regulated Electric,106.63,3.19,59.09,8.84,-13.57,False,WATCH,,2026-02-01T20:54:33.093201
+SRE,DBA Sempra,United States,Utilities,Utilities - Diversified,87.01,2.97,78.62,6.77,-40.24,False,WATCH,,2026-02-01T20:54:33.093201
+EXC,Exelon Corporation,United States,Utilities,Utilities - Regulated Electric,44.78,3.57,56.63,10.31,0.4,True,HOLD,,2026-02-01T20:54:33.093201
+XEL,Xcel Energy Inc.,United States,Utilities,Utilities - Regulated Electric,76.06,3.0,68.83,9.45,-30.79,False,WATCH,,2026-02-01T20:54:33.093201
+PEG,Public Service Enterprise Group,United States,Utilities,Utilities - Regulated Electric,82.36,3.06,59.86,12.58,-18.8,True,WATCH,,2026-02-01T20:54:33.093201
+WEC,"WEC Energy Group, Inc.",United States,Utilities,Utilities - Regulated Electric,110.67,3.23,66.52,12.81,-23.52,True,WATCH,,2026-02-01T20:54:33.093201
+DTE,DTE Energy Company,United States,Utilities,Utilities - Regulated Electric,134.38,3.3,65.37,11.66,-20.58,True,WATCH,,2026-02-01T20:54:33.093201
+O,Realty Income Corporation,United States,Real Estate,REIT - Retail,61.16,1.77,299.53,2.49,-71.75,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+WPC,W. P. Carey Inc. REIT,United States,Real Estate,REIT - Diversified,69.75,5.19,216.97,4.36,-61.69,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+SPG,"Simon Property Group, Inc.",United States,Real Estate,REIT - Retail,191.31,4.47,123.0,82.46,-42.04,True,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+AVB,"AvalonBay Communities, Inc.",United States,Real Estate,REIT - Residential,177.67,3.94,84.76,9.75,-24.98,False,WATCH,,2026-02-01T20:54:33.093201
+EQR,Equity Residential,United States,Real Estate,REIT - Residential,62.32,4.45,90.63,10.44,-21.44,True,WATCH,Payout high,2026-02-01T20:54:33.093201
+ESS,"Essex Property Trust, Inc.",United States,Real Estate,REIT - Residential,251.87,4.08,77.26,15.99,-15.83,True,WATCH,,2026-02-01T20:54:33.093201
+MAA,Mid-America Apartment Communiti,United States,Real Estate,REIT - Residential,134.3,4.52,127.44,9.41,-43.53,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+VTR,"Ventas, Inc.",United States,Real Estate,REIT - Healthcare Facilities,77.67,2.47,356.6,2.16,-88.88,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+VICI,VICI Properties Inc.,United States,Real Estate,REIT - Diversified,28.08,6.29,66.44,10.36,49.86,True,GOLD,,2026-02-01T20:54:33.093201
+TROW,"T. Rowe Price Group, Inc.",United States,Financial Services,Asset Management,105.68,4.81,55.07,18.67,5.03,True,HOLD,,2026-02-01T20:54:33.093201
+BLK,"BlackRock, Inc.",United States,Financial Services,Asset Management,1118.94,1.86,59.02,10.69,-62.44,True,WATCH,,2026-02-01T20:54:33.093201
+BEN,"Franklin Resources, Inc.",United States,Financial Services,Asset Management,26.62,4.85,119.44,0.0,-51.31,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+AMP,"Ameriprise Financial, Inc.",United States,Financial Services,Asset Management,527.19,1.19,17.3,59.59,-16.49,True,WATCH,,2026-02-01T20:54:33.093201
+MS,Morgan Stanley,United States,Financial Services,Capital Markets,182.8,2.15,37.71,15.73,-32.78,True,WATCH,,2026-02-01T20:54:33.093201
+GS,"Goldman Sachs Group, Inc. (The)",United States,Financial Services,Capital Markets,935.41,1.5,27.28,13.88,-34.48,True,WATCH,,2026-02-01T20:54:33.093201
+JPM,JP Morgan Chase & Co.,United States,Financial Services,Banks - Diversified,305.89,1.9,28.97,16.13,-21.66,True,WATCH,,2026-02-01T20:54:33.093201
+BAC,Bank of America Corporation,United States,Financial Services,Banks - Diversified,53.2,2.03,28.35,10.19,-13.83,True,WATCH,,2026-02-01T20:54:33.093201
+PNC,"PNC Financial Services Group, I",United States,Financial Services,Banks - Regional,223.3,3.0,39.78,12.16,-11.33,True,WATCH,,2026-02-01T20:54:33.093201
+USB,U.S. Bancorp,United States,Financial Services,Banks - Regional,56.11,3.64,44.16,12.18,-1.62,True,WATCH,,2026-02-01T20:54:33.093201
+SCHW,Charles Schwab Corporation (The,United States,Financial Services,Capital Markets,103.92,1.04,23.23,18.11,-46.07,True,WATCH,,2026-02-01T20:54:33.093201
+AFL,AFLAC Incorporated,United States,Financial Services,Insurance - Life,110.95,2.09,29.43,15.58,-17.37,True,WATCH,,2026-02-01T20:54:33.093201
+MET,"MetLife, Inc.",United States,Financial Services,Insurance - Life,78.88,2.85,41.9,12.8,-18.46,True,WATCH,,2026-02-01T20:54:33.093201
+PRU,"Prudential Financial, Inc.",United States,Financial Services,Insurance - Life,111.11,4.86,73.29,8.5,-20.3,False,WATCH,,2026-02-01T20:54:33.093201
+ALL,Allstate Corporation (The),United States,Financial Services,Insurance - Property & Casualty,198.99,2.01,12.71,34.47,86.58,True,GOLD,,2026-02-01T20:54:33.093201
+TRV,"The Travelers Companies, Inc.",United States,Financial Services,Insurance - Property & Casualty,284.51,1.53,15.86,20.7,15.82,True,BUY,,2026-02-01T20:54:33.093201
+MO,"Altria Group, Inc.",United States,Consumer Defensive,Tobacco,61.99,6.71,100.97,0.0,32.92,False,HOLD,Payout high,2026-02-01T20:54:33.093201
+PM,Philip Morris International Inc,United States,Consumer Defensive,Tobacco,179.44,3.14,78.76,0.0,-21.2,False,WATCH,,2026-02-01T20:54:33.093201
+BTI,British American Tobacco  Indus,United Kingdom,Consumer Defensive,Tobacco,60.68,4.94,168.95,6.27,-36.72,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+WM,"Waste Management, Inc.",United States,Industrials,Waste Management,222.24,1.48,49.25,29.7,-45.98,True,WATCH,,2026-02-01T20:54:33.093201
+RSG,"Republic Services, Inc.",United States,Industrials,Waste Management,215.09,1.12,35.14,18.25,-43.68,True,WATCH,,2026-02-01T20:54:33.093201
+AWK,"American Water Works Company, I",United States,Utilities,Utilities - Regulated Water,129.13,2.52,55.98,10.46,-29.5,True,WATCH,,2026-02-01T20:54:33.093201
+ATO,Atmos Energy Corporation,United States,Utilities,Utilities - Regulated Gas,166.34,2.17,46.65,9.32,-28.15,False,WATCH,,2026-02-01T20:54:33.093201
+ECL,Ecolab Inc.,United States,Basic Materials,Specialty Chemicals,281.99,0.95,37.41,21.87,-65.54,True,WATCH,,2026-02-01T20:54:33.093201
+SHW,Sherwin-Williams Company (The),United States,Basic Materials,Specialty Chemicals,354.64,0.89,30.8,59.39,-59.54,True,WATCH,,2026-02-01T20:54:33.093201
+APD,"Air Products and Chemicals, Inc",United States,Basic Materials,Specialty Chemicals,272.5,2.63,100.99,-1.67,-107.55,False,WATCH,Payout high,2026-02-01T20:54:33.093201
+LIN,Linde plc,United Kingdom,Basic Materials,Specialty Chemicals,456.97,1.31,39.42,17.98,-54.23,True,WATCH,,2026-02-01T20:54:33.093201
+NUE,Nucor Corporation,United States,Basic Materials,Steel,177.72,1.24,29.39,9.36,-41.47,False,WATCH,,2026-02-01T20:54:33.093201
+VMC,Vulcan Materials Company (Holdi,United States,Basic Materials,Building Materials,300.54,0.65,22.79,13.52,-60.36,True,WATCH,,2026-02-01T20:54:33.093201
+SBUX,Starbucks Corporation,United States,Consumer Cyclical,Restaurants,91.95,2.66,204.17,0.0,-76.9,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+YUM,"Yum! Brands, Inc.",United States,Consumer Cyclical,Restaurants,155.5,1.83,54.58,0.0,-40.62,False,WATCH,,2026-02-01T20:54:33.093201
+CMI,Cummins Inc.,United States,Industrials,Specialty Industrial Machinery,578.82,1.32,38.67,22.77,-40.6,True,WATCH,,2026-02-01T20:54:33.093201
+ITW,Illinois Tool Works Inc.,United States,Industrials,Specialty Industrial Machinery,261.26,2.38,59.26,91.68,-29.04,True,WATCH,,2026-02-01T20:54:33.093201
+ROP,"Roper Technologies, Inc.",United States,Technology,Software - Application,371.23,0.91,23.24,7.93,-14.43,False,WATCH,,2026-02-01T20:54:33.093201
+FAST,Fastenal Company,United States,Industrials,Industrial Distribution,43.36,2.08,80.28,33.29,-54.75,True,WATCH,,2026-02-01T20:54:33.093201
+GPC,Genuine Parts Company,United States,Consumer Cyclical,Auto Parts,138.99,2.96,70.4,16.99,-24.76,True,WATCH,,2026-02-01T20:54:33.093201
+ORCL,Oracle Corporation,United States,Technology,Software - Infrastructure,164.58,1.22,35.71,69.03,-30.76,True,WATCH,,2026-02-01T20:54:33.093201
+INTU,Intuit Inc.,United States,Technology,Software - Application,498.92,0.9,29.67,21.99,-35.75,True,WATCH,,2026-02-01T20:54:33.093201
+BMO.TO,BANK OF MONTREAL,Canada,Financial Services,Banks - Diversified,185.37,3.52,56.29,10.12,-26.01,True,WATCH,,2026-02-01T20:54:33.093201
+RY.TO,ROYAL BANK OF CANADA,Canada,Financial Services,Banks - Diversified,226.72,2.73,42.93,15.29,-25.58,True,WATCH,,2026-02-01T20:54:33.093201
+TD.TO,TORONTO-DOMINION BANK,Canada,Financial Services,Banks - Diversified,127.26,3.32,36.33,16.91,9.01,True,HOLD,,2026-02-01T20:54:33.093201
+BNS.TO,BANK OF NOVA SCOTIA,Canada,Financial Services,Banks - Diversified,101.8,4.28,76.19,8.99,-33.16,False,WATCH,,2026-02-01T20:54:33.093201
+CM.TO,CANADIAN IMPERIAL BANK OF COMME,Canada,Financial Services,Banks - Diversified,125.84,3.16,45.27,13.7,-18.28,True,WATCH,,2026-02-01T20:54:33.093201
+NA.TO,NATIONAL BANK OF CANADA,Canada,Financial Services,Banks - Diversified,162.25,2.92,46.08,13.54,-25.52,True,WATCH,,2026-02-01T20:54:33.093201
+ENB.TO,ENBRIDGE INC,Canada,Energy,Oil & Gas Midstream,66.47,5.67,146.76,9.12,-53.96,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+TRP.TO,TC ENERGY CORP.,Canada,Energy,Oil & Gas Midstream,79.84,4.26,94.2,11.34,-46.19,True,WATCH,Payout high,2026-02-01T20:54:33.093201
+PPL.TO,PEMBINA PIPELINE CORPORATION,Canada,Energy,Oil & Gas Midstream,56.58,4.98,100.0,10.45,-40.62,True,WATCH,Payout high,2026-02-01T20:54:33.093201
+FTS.TO,FORTIS INC,Canada,Utilities,Utilities - Regulated Electric,72.6,3.42,73.21,7.61,-25.95,False,WATCH,,2026-02-01T20:54:33.093201
+EMA.TO,EMERA INCORPORATED,Canada,Utilities,Utilities - Regulated Electric,67.49,4.32,79.47,9.07,-13.47,False,WATCH,,2026-02-01T20:54:33.093201
+CU.TO,"CANADIAN UTILITIES LTD., CL.A, ",Canada,Utilities,Utilities - Diversified,44.07,4.16,93.17,8.73,-28.84,False,WATCH,Payout high,2026-02-01T20:54:33.093201
+CNQ.TO,CDN NATURAL RES,Canada,Energy,Oil & Gas E&P,50.63,4.65,73.34,16.56,-24.87,True,WATCH,,2026-02-01T20:54:33.093201
+SU.TO,SUNCOR ENERGY INC.,Canada,Energy,Oil & Gas Integrated,71.97,3.21,53.15,11.66,-28.47,True,WATCH,,2026-02-01T20:54:33.093201
+IMO.TO,IMPERIAL OIL,Canada,Energy,Oil & Gas Integrated,137.57,2.09,35.25,13.86,-31.7,True,WATCH,,2026-02-01T20:54:33.093201
+T.TO,TELUS CORPORATION,Canada,Communication Services,Telecom Services,19.0,8.69,209.9,4.69,-26.11,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+BCE.TO,BCE INC.,Canada,Communication Services,Telecom Services,35.2,6.57,43.09,31.36,240.57,True,GOLD,,2026-02-01T20:54:33.093201
+RCI-B.TO,"ROGERS COMMUNICATIONS INC., CL.",Canada,Communication Services,Telecom Services,51.4,3.89,15.7,39.82,346.15,True,GOLD,,2026-02-01T20:54:33.093201
+CP.TO,CANADIAN PACIFIC KANSAS CITY LI,Canada,Industrials,Railroads,101.22,0.86,19.38,8.64,-19.8,False,WATCH,,2026-02-01T20:54:33.093201
+CNR.TO,CANADIAN NATIONAL RAILWAY CO.,Canada,Industrials,Railroads,130.99,2.71,47.66,22.15,1.27,True,HOLD,,2026-02-01T20:54:33.093201
+SLF.TO,SUN LIFE FINANCIAL INC.,Canada,Financial Services,Insurance - Diversified,85.8,4.1,65.15,12.18,-26.15,True,WATCH,,2026-02-01T20:54:33.093201
+MFC.TO,MANULIFE FIN,Canada,Financial Services,Insurance - Life,51.87,3.39,55.13,11.8,-27.82,True,WATCH,,2026-02-01T20:54:33.093201
+GWO.TO,GREAT-WEST LIFECO INC,Canada,Financial Services,Insurance - Life,63.74,3.83,55.34,13.03,-18.86,True,WATCH,,2026-02-01T20:54:33.093201
+AQN.TO,ALGONQUIN POWER AND UTILITIES C,Canada,Utilities,Utilities - Diversified,8.94,4.05,368.23,0.15,-82.1,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+KEY.TO,KEYERA CORP,Canada,Energy,Oil & Gas Midstream,46.11,4.6,112.3,15.28,-51.33,True,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+POW.TO,"POWER CORPORATION OF CANADA, SV",Canada,Financial Services,Insurance - Life,68.67,3.57,50.63,11.26,-17.17,True,WATCH,,2026-02-01T20:54:33.093201
+IFC.TO,INTACT FINANCIAL CORPORATION,Canada,Financial Services,Insurance - Property & Casualty,247.91,2.15,31.16,16.27,-19.26,True,WATCH,,2026-02-01T20:54:33.093201
+BIP-UN.TO,BROOKFIELD INFRA PARTNERS LP UN,Bermuda,Utilities,Utilities - Diversified,49.29,4.72,191.11,7.74,-60.4,False,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+SHB-A.ST,Svenska Handelsbanken ser. A,Sweden,Financial Services,Banks - Diversified,140.6,29.16,59.16,12.68,8.22,True,HOLD,,2026-02-01T20:54:33.093201
+SWED-A.ST,Swedbank AB ser A,Sweden,Financial Services,Banks - Regional,346.7,16.69,74.88,14.73,0.27,True,HOLD,,2026-02-01T20:54:33.093201
+SEB-A.ST,Skandinaviska Enskilda Banken s,Sweden,Financial Services,Banks - Regional,191.35,18.68,55.09,13.46,-3.3,True,WATCH,,2026-02-01T20:54:33.093201
+NDA-SE.ST,Nordea Bank Abp,Finland,Financial Services,Banks - Regional,171.9,20.55,67.63,14.93,2.55,True,HOLD,,2026-02-01T20:54:33.093201
+TEL2-B.ST,Tele2 AB ser. B,Sweden,Communication Services,Telecom Services,162.95,8.13,96.65,20.65,-27.54,True,WATCH,Payout high,2026-02-01T20:54:33.093201
+ATCO-A.ST,Atlas Copco AB ser. A,Sweden,Industrials,Specialty Industrial Machinery,183.75,3.16,55.35,23.58,-47.0,True,WATCH,,2026-02-01T20:54:33.093201
+VOLV-B.ST,"Volvo, AB ser. B",Sweden,Industrials,Farm & Heavy Construction Machinery,324.0,19.6,47.23,18.47,-5.94,True,WATCH,,2026-02-01T20:54:33.093201
+CIBUS.ST,Cibus Nordic Real Estate AB,Sweden,Real Estate,Real Estate - Diversified,154.3,2.05,105.88,7.83,-6.88,False,WATCH,Payout high,2026-02-01T20:54:33.093201
+NOVO-B.CO,Novo Nordisk B A/S,Denmark,Healthcare,Drug Manufacturers - General,369.55,5.83,49.94,71.47,26.32,True,GOLD,,2026-02-01T20:54:33.093201
+COLO-B.CO,Coloplast B A/S,Denmark,Healthcare,Medical Instruments & Supplies,536.0,8.4,136.39,21.35,-39.81,True,WATCH,"Payout high, Payout extreme",2026-02-01T20:54:33.093201
+ORSTED.CO,ORSTED A/S,Denmark,Utilities,Utilities - Renewable,141.6,18.84,0.0,0.49,-112.66,False,WATCH,,2026-02-01T20:54:33.093201
+DSV.CO,DSV A/S,Denmark,Industrials,Integrated Freight & Logistics,1769.0,1.47,17.5,10.17,-59.34,True,WATCH,,2026-02-01T20:54:33.093201
+TRYG.CO,Tryg A/S,Denmark,Financial Services,Insurance - Diversified,153.1,5.36,92.05,13.77,-31.03,True,WATCH,Payout high,2026-02-01T20:54:33.093201
+PNDORA.CO,Pandora A/S,Denmark,Consumer Cyclical,Luxury Goods,509.0,13.75,30.12,163.52,134.81,True,GOLD,,2026-02-01T20:54:33.093201
+NDA-FI.HE,Nordea Bank Abp,Finland,Financial Services,Banks - Regional,16.32,20.53,67.63,14.93,1.5,True,HOLD,,2026-02-01T20:54:33.093201
+KNEBV.HE,KONE Corporation,Finland,Industrials,Specialty Industrial Machinery,60.62,12.21,97.83,37.52,-45.36,True,WATCH,Payout high,2026-02-01T20:54:33.093201
+FORTUM.HE,Fortum Corporation,Finland,Utilities,Utilities - Renewable,19.91,15.06,92.83,10.23,-22.07,True,WATCH,Payout high,2026-02-01T20:54:33.093201
+DNB.OL,DNB BANK ASA,Norway,Financial Services,Banks - Regional,276.7,19.88,57.79,15.82,25.25,True,GOLD,,2026-02-01T20:54:33.093201
+ORK.OL,ORKLA,Norway,Consumer Defensive,Packaged Foods,114.2,19.26,62.4,14.0,12.26,True,BUY,,2026-02-01T20:54:33.093201

@@ -1,5 +1,5 @@
 Ticker,Name,Country,Sector,Price,DividendYield_%,PayoutRatio_%,ROE_%,YearsGrowing,DivCAGR_5Y_%,DividendStreak,DividendClass,Score,Signal
-ABBV,AbbVie Inc.,United States,Healthcare,225.14,2.98,4.9,1.38,5,7.69,0,,1.93,BUY
-JNJ,Johnson & Johnson,United States,Healthcare,229.41,2.29,46.6,35.56,5,5.47,0,,2.12,BUY
-KO,Coca-Cola Company (The),United States,Consumer Defensive,75.11,2.73,66.72,42.44,5,3.71,0,,1.71,BUY
-PG,Procter & Gamble Company (The),United States,Consumer Defensive,152.96,2.79,61.88,31.56,5,5.58,0,,2.04,BUY
+ABBV,AbbVie Inc.,United States,Healthcare,224.87,2.98,4.9,1.38,5,7.69,0,,1.93,BUY
+JNJ,Johnson & Johnson,United States,Healthcare,229.38,2.29,46.6,35.56,5,5.47,0,,2.12,BUY
+KO,Coca-Cola Company (The),United States,Consumer Defensive,75.02,2.73,66.72,42.44,5,3.71,0,,1.71,BUY
+PG,Procter & Gamble Company (The),United States,Consumer Defensive,152.92,2.79,61.88,31.56,5,5.58,0,,2.04,BUY

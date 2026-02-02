@@ -86,4 +86,136 @@ div_streak = load_dividend_streak()
 # =========================
 tickers = set()
 if len(div_hist):
-    tickers |= set(div
+    tickers |= set(div_hist["Ticker"].dropna().unique())
+if len(div_streak):
+    tickers |= set(div_streak["Ticker"].dropna().unique())
+
+tickers = sorted([t for t in tickers if t])
+
+if not tickers:
+    raise ValueError(
+        "No tickers found. Add tickers to data/dividend_history/dividend_history.csv "
+        "and/or data/dividend_streak.csv."
+    )
+
+# =========================
+# METRICS (from local dividend_history.csv)
+# =========================
+def years_growing_window(ticker: str) -> int:
+    df = div_hist[div_hist["Ticker"] == ticker].sort_values("Year")
+    if len(df) < 2:
+        return 0
+    vals = df["Dividend"].values
+    count = 0
+    # Count consecutive increases from the end
+    for i in range(len(vals) - 1, 0, -1):
+        if vals[i] > vals[i - 1]:
+            count += 1
+        else:
+            break
+    return int(count)
+
+def div_cagr_5y(ticker: str) -> float:
+    df = div_hist[div_hist["Ticker"] == ticker].sort_values("Year")
+    if len(df) < 6:
+        return 0.0
+    recent = df.tail(6)
+    start = float(recent.iloc[0]["Dividend"])
+    end = float(recent.iloc[-1]["Dividend"])
+    if start <= 0 or end <= 0:
+        return 0.0
+    cagr = (end / start) ** (1 / 5) - 1
+    return round(cagr * 100, 2)
+
+def dividend_streak_value(ticker: str) -> int:
+    r = div_streak[div_streak["Ticker"] == ticker]
+    return int(r.iloc[0]["DividendStreak"]) if len(r) else 0
+
+def dividend_class(streak: int) -> str:
+    if streak >= 50:
+        return "King"
+    if streak >= 25:
+        return "Aristocrat"
+    if streak >= 10:
+        return "Contender"
+    return ""
+
+# =========================
+# MAIN FETCH
+# =========================
+rows = []
+
+for ticker in tickers:
+    try:
+        t = yf.Ticker(ticker)
+        info = t.info or {}
+
+        rec_key = (info.get("recommendationKey") or "watch").upper()
+
+        rows.append({
+            "Ticker": ticker,
+            "Name": info.get("shortName", "") or info.get("longName", ""),
+            "Country": info.get("country", ""),
+            "Sector": info.get("sector", ""),
+            "Price": normalize_price(info.get("currentPrice") or info.get("regularMarketPrice")),
+
+            # ✅ fixed yield normalization (0.0279 -> 2.79, 2.79 -> 2.79)
+            "DividendYield_%": normalize_percent(info.get("dividendYield")),
+
+            # Normalize these too (Yahoo often provides fractions)
+            "PayoutRatio_%": normalize_percent(info.get("payoutRatio")),
+            "ROE_%": normalize_percent(info.get("returnOnEquity")),
+
+            # Local window metrics
+            "YearsGrowing": years_growing_window(ticker),
+            "DivCAGR_5Y_%": div_cagr_5y(ticker),
+
+            # Authoritative streak + class (from your streak CSV)
+            "DividendStreak": dividend_streak_value(ticker),
+            "DividendClass": dividend_class(dividend_streak_value(ticker)),
+
+            # Leave score/signal simple for now (phase later can replace)
+            "Score": round(_safe_float(info.get("recommendationMean"), 0.0), 2),
+            "Signal": rec_key if rec_key else "WATCH"
+        })
+
+    except Exception as e:
+        # Keep row even if Yahoo fails
+        print(f"Error processing {ticker}: {e}")
+        rows.append({
+            "Ticker": ticker,
+            "Name": "",
+            "Country": "",
+            "Sector": "",
+            "Price": 0.0,
+            "DividendYield_%": 0.0,
+            "PayoutRatio_%": 0.0,
+            "ROE_%": 0.0,
+            "YearsGrowing": years_growing_window(ticker),
+            "DivCAGR_5Y_%": div_cagr_5y(ticker),
+            "DividendStreak": dividend_streak_value(ticker),
+            "DividendClass": dividend_class(dividend_streak_value(ticker)),
+            "Score": 0.0,
+            "Signal": "WATCH"
+        })
+
+df = pd.DataFrame(rows)
+
+# Stable column order (so DataTables never “mixer”)
+cols = [
+    "Ticker","Name","Country","Sector","Price",
+    "DividendYield_%","PayoutRatio_%","ROE_%",
+    "YearsGrowing","DivCAGR_5Y_%",
+    "DividendStreak","DividendClass",
+    "Score","Signal"
+]
+for c in cols:
+    if c not in df.columns:
+        df[c] = ""
+
+df = df[cols]
+
+os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
+df.to_csv(OUTPUT_CSV, index=False)
+
+print(f"Saved: {OUTPUT_CSV} ({len(df)} rows) from CSV-universe ({len(tickers)} tickers).")

@@ -1,35 +1,42 @@
-import yfinance as yf
 import pandas as pd
-import numpy as np
-import os
-from datetime import datetime
+import yfinance as yf
+from pathlib import Path
 
-# -------------------------
+# --------------------
 # CONFIG
-# -------------------------
+# --------------------
+OUTPUT_PATH = Path("data/screener_results.csv")
+
 TICKERS = [
-    "AAPL","ABBV","ADP","AMGN","ARCC","PG","KO","JNJ","PEP","EMR","CL",
-    "ED","D","WM","DUK","MSFT","COST","CVX","XOM",
-    "BMO.TO","BNS.TO","RY.TO","TD.TO","ENB.TO","CNQ.TO","TRP.TO",
+    "AAPL","ABBV","ADP","AMGN","ARCC","CL","CVX","D","DNB.OL","DUK","ED","EMR",
+    "ENB.TO","EQNR.OL","JNJ","KO","MSFT","O","PEP","PG","RY.TO",
+    "BMO.TO","BNS.TO","TD.TO",
+    "ASSA-B.ST","ATCO-A.ST","ATCO-B.ST","SEB-A.ST","SHB-A.ST","SWED-A.ST",
+    "TEL2-B.ST","TELIA.ST","VOLV-B.ST",
     "CARL-B.CO","NOVO-B.CO","ORSTED.CO",
-    "SEB-A.ST","SHB-A.ST","SWED-A.ST","TELIA.ST","TEL2-B.ST",
-    "VOLV-B.ST","ASSA-B.ST","ATCO-A.ST","ATCO-B.ST",
-    "EQNR.OL","DNB.OL"
+    "CNQ.TO","COST","XOM","WM"
 ]
 
-OUTPUT_PATH = "data/screener_results.csv"
-
-# -------------------------
+# --------------------
 # HELPERS
-# -------------------------
-def safe(v):
-    if v is None or (isinstance(v, float) and not np.isfinite(v)):
-        return 0.0
+# --------------------
+def safe(v, default=0):
+    if v is None or pd.isna(v):
+        return default
     return v
 
-# -------------------------
+def dividend_class(streak):
+    if streak >= 50:
+        return "King"
+    if streak >= 25:
+        return "Aristocrat"
+    if streak >= 10:
+        return "Contender"
+    return "None"
+
+# --------------------
 # MAIN
-# -------------------------
+# --------------------
 rows = []
 
 for ticker in TICKERS:
@@ -38,40 +45,34 @@ for ticker in TICKERS:
         info = t.info
 
         price = safe(info.get("currentPrice"))
-        dividend = safe(info.get("trailingAnnualDividendRate"))
+        dividend = safe(info.get("dividendRate"))
+        yield_pct = round((dividend / price) * 100, 2) if price > 0 and dividend > 0 else 0
 
-        dividend_yield = (dividend / price * 100) if price > 0 else 0
+        payout = safe(info.get("payoutRatio")) * 100
+        roe = safe(info.get("returnOnEquity")) * 100
 
         rows.append({
             "Ticker": ticker,
-            "Name": info.get("shortName",""),
-            "Country": info.get("country",""),
-            "Sector": info.get("sector",""),
-            "Price": round(price,2),
-            "DividendYield_%": round(dividend_yield,2),
-            "PayoutRatio_%": round(safe(info.get("payoutRatio"))*100,2),
-            "ROE_%": round(safe(info.get("returnOnEquity"))*100,2),
+            "Name": info.get("shortName", ""),
+            "Country": info.get("country", ""),
+            "Sector": info.get("sector", ""),
+            "Price": round(price, 2),
+            "DividendYield_pct": round(yield_pct, 2),
+            "PayoutRatio_pct": round(payout, 2),
+            "ROE_pct": round(roe, 2),
             "YearsGrowing": 0,
-            "DivCAGR_5Y_%": 0,
             "DividendStreak": 0,
-            "DividendClass": "",
+            "DividendClass": "None",
             "Score": 0,
-            "Signal": ""
+            "Signal": "NONE"
         })
 
     except Exception as e:
-        print("Error:", ticker, e)
+        print(f"Error on {ticker}: {e}")
 
 df = pd.DataFrame(rows)
 
-# -------- CLEAN (CRITICAL FOR DATATABLES) --------
-df = df.fillna(0)
-df = df.replace([np.inf, -np.inf], 0)
-
-# -------------------------
-# SAVE
-# -------------------------
-os.makedirs("data", exist_ok=True)
+OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 df.to_csv(OUTPUT_PATH, index=False)
 
-print("Saved:", OUTPUT_PATH)
+print(f"Saved {len(df)} rows to {OUTPUT_PATH}")

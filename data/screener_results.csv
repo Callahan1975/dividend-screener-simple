@@ -1,2 +1,2 @@
-Ticker,Name,GeneratedUTC
-NO_DATA,No data generated,2026-02-02T11:31:48.648712
+Ticker,Name,Country,Sector,Price,DividendYield_%,PayoutRatio_%,ROE_%,YearsGrowing,DivCAGR_5Y_%,Score,Signal
+ERROR,No data,,,0,0,0,0,0,0,0,WATCH

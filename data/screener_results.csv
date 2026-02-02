@@ -1,1 +1,47 @@
-
+Ticker,Name,Country,Sector,Price,DividendYield_%,PayoutRatio_%,ROE_%,YearsGrowing,DivCAGR_5Y_%,Score,Signal,GeneratedUTC
+AAPL,Apple Inc.,United States,Technology,259.48,0.4,13.04,152.02,0,0,24.6,WATCH,2026-02-02 12:01
+MSFT,Microsoft Corporation,United States,Technology,430.29,0.85,21.28,34.39,0,0,28.5,WATCH,2026-02-02 12:01
+JNJ,Johnson & Johnson,United States,Healthcare,227.25,2.29,46.6,35.56,0,0,40.8,HOLD,2026-02-02 12:01
+PG,Procter & Gamble Company (The),United States,Consumer Defensive,151.77,2.79,61.88,31.56,0,0,41.6,HOLD,2026-02-02 12:01
+KO,Coca-Cola Company (The),United States,Consumer Defensive,74.81,2.73,66.72,42.44,0,0,40.3,HOLD,2026-02-02 12:01
+PEP,"Pepsico, Inc.",United States,Consumer Defensive,153.63,3.7,105.61,37.16,0,0,38.5,WATCH,2026-02-02 12:01
+ADP,"Automatic Data Processing, Inc.",United States,Technology,246.82,2.76,60.71,73.84,0,0,41.7,HOLD,2026-02-02 12:01
+ABBV,AbbVie Inc.,United States,Healthcare,223.01,2.98,490.15,137.96,0,0,34.9,WATCH,2026-02-02 12:01
+AMGN,Amgen Inc.,United States,Healthcare,341.88,2.83,72.62,81.71,0,0,39.6,WATCH,2026-02-02 12:01
+CAT,"Caterpillar, Inc.",United States,Industrials,657.36,0.92,31.05,43.53,0,0,30.8,WATCH,2026-02-02 12:01
+CVX,Chevron Corporation,United States,Energy,176.9,3.87,103.17,28.64,0,0,39.4,WATCH,2026-02-02 12:01
+XOM,Exxon Mobil Corporation,United States,Energy,141.4,2.91,59.7,11.08,0,0,33.7,WATCH,2026-02-02 12:01
+COST,Costco Wholesale Corporation,United States,Consumer Defensive,940.25,0.55,27.1,30.33,0,0,28.2,WATCH,2026-02-02 12:01
+CL,Colgate-Palmolive Company,United States,Consumer Defensive,90.29,2.3,78.33,497.47,0,0,35.8,WATCH,2026-02-02 12:01
+WM,"Waste Management, Inc.",United States,Industrials,222.24,1.48,49.25,29.7,0,0,37.2,WATCH,2026-02-02 12:01
+EMR,Emerson Electric Company,United States,Industrials,146.96,1.51,52.36,9.36,0,0,26.4,WATCH,2026-02-02 12:01
+ED,"Consolidated Edison, Inc.",United States,Utilities,106.63,3.23,59.09,8.84,0,0,33.2,WATCH,2026-02-02 12:01
+DUK,Duke Energy Corporation (Holdin,United States,Utilities,121.35,3.51,66.14,9.9,0,0,34.2,WATCH,2026-02-02 12:01
+D,"Dominion Energy, Inc.",United States,Utilities,60.17,4.44,87.25,9.2,0,0,34.0,WATCH,2026-02-02 12:01
+NEE,"NextEra Energy, Inc.",United States,Utilities,87.9,2.58,69.04,8.37,0,0,27.5,WATCH,2026-02-02 12:01
+O,Realty Income Corporation,United States,Real Estate,61.16,5.3,299.53,2.49,0,0,27.5,WATCH,2026-02-02 12:01
+ARCC,Ares Capital Corporation,United States,Financial Services,19.89,9.65,96.48,10.06,0,0,35.8,WATCH,2026-02-02 12:01
+V,Visa Inc.,United States,Financial Services,321.83,0.83,22.91,53.95,0,0,28.7,WATCH,2026-02-02 12:01
+MA,Mastercard Incorporated,United States,Financial Services,538.79,0.65,18.4,209.91,0,0,26.9,WATCH,2026-02-02 12:01
+ASSA-B.ST,ASSA ABLOY AB ser. B,Sweden,Industrials,362.1,1.63,42.74,14.4,0,0,31.1,WATCH,2026-02-02 12:01
+ATCO-A.ST,Atlas Copco AB ser. A,Sweden,Industrials,183.15,1.64,55.35,23.58,0,0,37.1,WATCH,2026-02-02 12:01
+ATCO-B.ST,Atlas Copco AB ser. B,Sweden,Industrials,159.6,1.88,55.35,23.58,0,0,38.3,WATCH,2026-02-02 12:01
+INVE-B.ST,Investor AB ser. B,Sweden,Financial Services,345.6,1.62,10.12,17.74,0,0,27.9,WATCH,2026-02-02 12:01
+VOLV-B.ST,"Volvo, AB ser. B",Sweden,Industrials,326.0,2.61,47.23,18.47,0,0,41.0,HOLD,2026-02-02 12:01
+SEB-A.ST,Skandinaviska Enskilda Banken s,Sweden,Financial Services,193.9,4.38,55.09,13.46,0,0,44.3,HOLD,2026-02-02 12:01
+SHB-A.ST,Svenska Handelsbanken ser. A,Sweden,Financial Services,142.15,5.28,59.16,12.68,0,0,45.8,HOLD,2026-02-02 12:01
+SWED-A.ST,Swedbank AB ser A,Sweden,Financial Services,350.2,5.84,74.88,14.73,0,0,44.8,HOLD,2026-02-02 12:01
+TEL2-B.ST,Tele2 AB ser. B,Sweden,Communication Services,164.95,3.82,96.65,20.65,0,0,39.8,WATCH,2026-02-02 12:01
+TELIA.ST,Telia Company AB,Sweden,Communication Services,41.21,4.95,155.04,10.22,0,0,35.0,WATCH,2026-02-02 12:01
+EQT.ST,EQT AB,Sweden,Financial Services,338.6,1.27,63.76,9.33,0,0,22.9,WATCH,2026-02-02 12:01
+CARL-B.CO,Carlsberg B A/S,Denmark,Consumer Defensive,871.0,3.1,53.57,30.03,0,0,44.8,HOLD,2026-02-02 12:01
+NOVO-B.CO,Novo Nordisk B A/S,Denmark,Healthcare,367.1,3.17,49.94,71.47,0,0,45.8,HOLD,2026-02-02 12:01
+ORSTED.CO,ORSTED A/S,Denmark,Utilities,141.1,0.0,0.0,0.49,0,0,0.5,WATCH,2026-02-02 12:01
+ENB.TO,ENBRIDGE INC,Canada,Energy,66.47,5.84,146.76,9.12,0,0,34.1,WATCH,2026-02-02 12:01
+BMO.TO,BANK OF MONTREAL,Canada,Financial Services,185.37,3.6,56.29,10.12,0,0,36.9,WATCH,2026-02-02 12:01
+BNS.TO,BANK OF NOVA SCOTIA,Canada,Financial Services,101.8,4.32,76.19,8.99,0,0,35.4,WATCH,2026-02-02 12:01
+TD.TO,TORONTO-DOMINION BANK,Canada,Financial Services,127.26,3.39,36.33,16.91,0,0,41.1,HOLD,2026-02-02 12:01
+RY.TO,ROYAL BANK OF CANADA,Canada,Financial Services,226.72,2.89,42.93,15.29,0,0,38.3,WATCH,2026-02-02 12:01
+TRP.TO,TC ENERGY CORP.,Canada,Energy,79.84,4.26,94.2,11.34,0,0,33.8,WATCH,2026-02-02 12:01
+CNQ.TO,CDN NATURAL RES,Canada,Energy,50.63,4.64,73.34,16.56,0,0,45.1,HOLD,2026-02-02 12:01
+DNB.OL,DNB BANK ASA,Norway,Financial Services,277.4,6.04,57.79,15.82,0,0,49.3,HOLD,2026-02-02 12:01

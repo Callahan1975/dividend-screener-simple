@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Dividend Screener</title>
 
-<!-- Libraries -->
+<!-- Libs -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -16,16 +16,13 @@ body {
   margin: 0;
   background: #f6f6f6;
 }
-
 h1 {
   margin: 0;
   padding: 16px 20px 10px;
 }
-
 .filter-bar {
   position: sticky;
   top: 0;
-  z-index: 10;
   background: #fff;
   border-bottom: 1px solid #ddd;
   padding: 12px 20px;
@@ -33,37 +30,29 @@ h1 {
   gap: 16px;
   flex-wrap: wrap;
 }
-
 .filter {
   display: flex;
   flex-direction: column;
   font-size: 12px;
 }
-
 .filter label {
   font-weight: 600;
   margin-bottom: 4px;
 }
-
 .filter select {
   padding: 6px 8px;
-  min-width: 170px;
+  min-width: 160px;
 }
-
 .preset {
   background: #eef3ff;
   border: 1px solid #c9d6ff;
 }
-
 .wrapper {
   padding: 16px 20px 40px;
-  overflow-x: auto;
 }
-
 .buy-row td {
   background: #eafaf1 !important;
 }
-
 </style>
 </head>
 
@@ -106,19 +95,12 @@ h1 {
 </div>
 
 <script>
-/* ================================
-   STABIL CSV PATH (GitHub Pages)
+/* ===============================
+   ROOT CSV (SOM FØR)
 ================================ */
-const CSV_URL =
-  window.location.origin +
-  window.location.pathname.replace(/\/$/, "") +
-  "/data/screener_results.csv";
-
+const CSV_URL = "/data/screener_results.csv";
 console.log("Loading CSV:", CSV_URL);
 
-/* ================================
-   LOAD CSV
-================================ */
 Papa.parse(CSV_URL, {
   download: true,
   header: true,
@@ -126,7 +108,7 @@ Papa.parse(CSV_URL, {
   complete: function (res) {
 
     if (!res.data || res.data.length === 0) {
-      console.error("CSV loaded but EMPTY");
+      console.error("CSV empty or not loaded");
       return;
     }
 
@@ -154,9 +136,6 @@ Papa.parse(CSV_URL, {
       }
     });
 
-    /* ================================
-       FILL FILTERS
-    ================================ */
     function fill(id, key) {
       [...new Set(data.map(r => r[key]).filter(Boolean))]
         .sort()
@@ -170,18 +149,13 @@ Papa.parse(CSV_URL, {
     $("#signal").on("change", e =>
       table.column(colIndex.Signal).search(e.target.value).draw()
     );
-
     $("#country").on("change", e =>
       table.column(colIndex.Country).search(e.target.value).draw()
     );
-
     $("#sector").on("change", e =>
       table.column(colIndex.Sector).search(e.target.value).draw()
     );
 
-    /* ================================
-       PRESETS
-    ================================ */
     $("#preset").on("change", function () {
       table.search("").columns().search("");
 

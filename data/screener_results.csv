@@ -1,43 +1,5 @@
 Ticker,Name,Country,Sector,Price,DividendYield_%,PayoutRatio_%,ROE_%,YearsGrowing,DivCAGR_5Y_%,DividendStreak,DividendClass,Score,Signal
-AAPL,Apple Inc.,United States,Technology,263.85,40.0,13.04,152.02,0,0.0,0,,2.0,BUY
-ABBV,AbbVie Inc.,United States,Healthcare,225.41,298.0,490.15,137.96,5,7.69,11,Contender,1.92857,BUY
-ADP,"Automatic Data Processing, Inc.",United States,Technology,247.51,276.0,60.71,73.84,0,0.0,49,Aristocrat,2.88235,HOLD
-AMGN,Amgen Inc.,United States,Healthcare,345.485,283.0,72.62,81.71,0,0.0,0,,2.40625,BUY
-ARCC,Ares Capital Corporation,United States,Financial Services,19.48,965.0,96.48,10.06,0,0.0,0,,1.57143,BUY
-ASSA-B.ST,ASSA ABLOY AB ser. B,Sweden,Industrials,364.3,164.0,42.74,14.4,0,0.0,0,,2.21053,BUY
-ATCO-A.ST,Atlas Copco AB ser. A,Sweden,Industrials,187.25,163.0,55.35,23.58,0,0.0,0,,2.05,BUY
-ATCO-B.ST,Atlas Copco AB ser. B,Sweden,Industrials,162.7,188.0,55.35,23.58,0,0.0,0,,0.0,NONE
-BMO.TO,BANK OF MONTREAL,Canada,Financial Services,189.71,360.0,56.29,10.12,0,0.0,0,,2.73333,HOLD
-BNS.TO,BANK OF NOVA SCOTIA,Canada,Financial Services,102.81,432.0,76.19,8.99,0,0.0,0,,0.0,NONE
-CARL-B.CO,Carlsberg B A/S,Denmark,Consumer Defensive,878.6,317.0,53.57,30.03,0,0.0,0,,1.81818,BUY
-CAT,"Caterpillar, Inc.",United States,Industrials,684.55,92.0,31.05,43.53,0,0.0,0,,2.17857,BUY
-CL,Colgate-Palmolive Company,United States,Consumer Defensive,91.71,230.0,78.33,497.47,0,0.0,61,King,2.0,BUY
-CNQ.TO,CDN NATURAL RES,Canada,Energy,49.99,464.0,73.34,16.56,0,0.0,0,,2.08696,BUY
-COST,Costco Wholesale Corporation,United States,Consumer Defensive,964.385,55.0,27.1,30.33,0,0.0,0,,1.88889,BUY
-CVX,Chevron Corporation,United States,Energy,175.42,387.0,103.17,28.64,0,0.0,0,,2.03846,BUY
-D,"Dominion Energy, Inc.",United States,Utilities,60.195,444.0,87.25,9.2,0,0.0,20,Contender,2.8,HOLD
-DNB.OL,DNB BANK ASA,Norway,Financial Services,280.9,605.0,57.79,15.82,0,0.0,0,,3.3125,HOLD
-DUK,Duke Energy Corporation (Holdin,United States,Utilities,120.075,351.0,66.14,9.9,0,0.0,19,Contender,2.13636,BUY
-ED,"Consolidated Edison, Inc.",United States,Utilities,105.34,322.0,59.09,8.84,0,0.0,48,Aristocrat,3.21053,HOLD
-EMR,Emerson Electric Company,United States,Industrials,148.55,151.0,52.36,9.36,0,0.0,67,King,1.89655,BUY
-ENB.TO,ENBRIDGE INC,Canada,Energy,65.88,584.0,146.76,9.12,0,0.0,0,,2.26087,BUY
-EQNR.OL,EQUINOR,Norway,Energy,252.7,584.0,67.64,13.52,0,0.0,0,,3.72,UNDERPERFORM
-JNJ,Johnson & Johnson,United States,Healthcare,229.27,229.0,46.6,35.56,5,5.47,61,King,2.12,BUY
-KO,Coca-Cola Company (The),United States,Consumer Defensive,75.11,273.0,66.72,42.44,5,3.71,62,King,1.70833,BUY
-MSFT,Microsoft Corporation,United States,Technology,424.77,85.0,21.28,34.39,0,0.0,0,,1.22807,STRONG_BUY
-NOVO-B.CO,Novo Nordisk B A/S,Denmark,Healthcare,373.05,315.0,49.94,71.47,0,0.0,0,,2.22727,BUY
-O,Realty Income Corporation,United States,Real Estate,61.11,530.0,299.53,2.49,0,0.0,0,,2.45833,BUY
-ORSTED.CO,ORSTED A/S,Denmark,Utilities,143.55,0.0,0.0,0.49,0,0.0,0,,2.36,BUY
-PEP,"Pepsico, Inc.",United States,Consumer Defensive,155.715,370.0,105.61,37.16,0,0.0,52,King,2.56522,HOLD
-PG,Procter & Gamble Company (The),United States,Consumer Defensive,152.95,279.0,61.88,31.56,5,5.58,68,King,2.04167,BUY
-RY.TO,ROYAL BANK OF CANADA,Canada,Financial Services,230.09,289.0,42.93,15.29,0,0.0,0,,0.0,NONE
-SEB-A.ST,Skandinaviska Enskilda Banken s,Sweden,Financial Services,196.15,450.0,55.09,13.46,0,0.0,0,,3.0,HOLD
-SHB-A.ST,Svenska Handelsbanken ser. A,Sweden,Financial Services,143.0,533.0,59.16,12.68,0,0.0,0,,3.6875,UNDERPERFORM
-SWED-A.ST,Swedbank AB ser A,Sweden,Financial Services,353.1,592.0,74.88,14.73,0,0.0,0,,3.2,HOLD
-TD.TO,TORONTO-DOMINION BANK,Canada,Financial Services,128.98,339.0,36.33,16.91,0,0.0,0,,0.0,NONE
-TEL2-B.ST,Tele2 AB ser. B,Sweden,Communication Services,165.4,394.0,96.65,20.65,0,0.0,0,,2.1,BUY
-TELIA.ST,Telia Company AB,Sweden,Communication Services,41.3,510.0,155.04,10.22,0,0.0,0,,2.47368,BUY
-TRP.TO,TC ENERGY CORP.,Canada,Energy,79.65,426.0,94.2,11.34,0,0.0,0,,2.17391,BUY
-VOLV-B.ST,"Volvo, AB ser. B",Sweden,Industrials,330.4,263.0,47.23,18.47,0,0.0,0,,2.25,BUY
-WM,"Waste Management, Inc.",United States,Industrials,221.895,148.0,49.25,29.7,0,0.0,20,Contender,1.74074,BUY
-XOM,Exxon Mobil Corporation,United States,Energy,140.015,291.0,59.7,11.08,0,0.0,0,,2.24,BUY
+ABBV,AbbVie Inc.,United States,Healthcare,225.14,2.98,4.9,1.38,5,7.69,0,,1.93,BUY
+JNJ,Johnson & Johnson,United States,Healthcare,229.41,2.29,46.6,35.56,5,5.47,0,,2.12,BUY
+KO,Coca-Cola Company (The),United States,Consumer Defensive,75.11,2.73,66.72,42.44,5,3.71,0,,1.71,BUY
+PG,Procter & Gamble Company (The),United States,Consumer Defensive,152.96,2.79,61.88,31.56,5,5.58,0,,2.04,BUY

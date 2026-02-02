@@ -24,14 +24,18 @@ OUTPUT_PATHS = [
 ]
 
 # =========================
-# FUNCTIONS
+# DIVIDEND HELPERS
 # =========================
-def annual_dividends(divs):
-    if divs.empty:
+def get_annual_dividends(ticker):
+    hist = yf.Ticker(ticker).history(period="max", actions=True)
+
+    if "Dividends" not in hist or hist["Dividends"].sum() == 0:
         return pd.Series(dtype=float)
-    df = divs.to_frame("div")
-    df["year"] = df.index.year
-    return df.groupby("year")["div"].sum().sort_index()
+
+    df = hist[hist["Dividends"] > 0][["Dividends"]].copy()
+    df["Year"] = df.index.year
+
+    return df.groupby("Year")["Dividends"].sum().sort_index()
 
 def years_growing(annual):
     current_year = datetime.now().year
@@ -59,8 +63,7 @@ def div_cagr_5y(annual):
         return 0.0
 
     recent = annual.tail(6)
-    start = recent.iloc[0]
-    end = recent.iloc[-1]
+    start, end = recent.iloc[0], recent.iloc[-1]
 
     if start <= 0 or end <= 0:
         return 0.0
@@ -76,9 +79,8 @@ for ticker in TICKERS:
     try:
         stock = yf.Ticker(ticker)
         info = stock.info
-        divs = stock.dividends
 
-        annual = annual_dividends(divs)
+        annual_divs = get_annual_dividends(ticker)
 
         rows.append({
             "Ticker": ticker,
@@ -89,8 +91,8 @@ for ticker in TICKERS:
             "DividendYield_%": round((info.get("dividendYield", 0) or 0) * 100, 2),
             "PayoutRatio_%": round((info.get("payoutRatio", 0) or 0) * 100, 2),
             "ROE_%": round((info.get("returnOnEquity", 0) or 0) * 100, 2),
-            "YearsGrowing": years_growing(annual),
-            "DivCAGR_5Y_%": div_cagr_5y(annual),
+            "YearsGrowing": years_growing(annual_divs),
+            "DivCAGR_5Y_%": div_cagr_5y(annual_divs),
             "Score": 0,
             "Signal": "WATCH"
         })
@@ -107,4 +109,4 @@ for path in OUTPUT_PATHS:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     df.to_csv(path, index=False)
 
-print("Fase 2A finished successfully")
+print("Fase 2A complete – dividends loaded via history()")

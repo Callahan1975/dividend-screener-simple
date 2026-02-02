@@ -1,12 +1,11 @@
 import yfinance as yf
 import pandas as pd
-import numpy as np
 import os
 from datetime import datetime
 
-# -------------------------
+# =========================
 # CONFIG
-# -------------------------
+# =========================
 TICKERS = [
     "AAPL","ABBV","ADP","AMGN","ARCC",
     "ASSA-B.ST","ATCO-A.ST","ATCO-B.ST",
@@ -24,59 +23,88 @@ OUTPUT_PATHS = [
     "docs/data/screener_results/screener_results.csv"
 ]
 
-MIN_YEARS_FOR_CAGR = 5
-
-# -------------------------
-# HELPERS
-# -------------------------
-def annualize_dividends(dividends: pd.Series) -> pd.Series:
-    if dividends.empty:
+# =========================
+# FUNCTIONS
+# =========================
+def annual_dividends(divs):
+    if divs.empty:
         return pd.Series(dtype=float)
-
-    df = dividends.to_frame(name="div")
+    df = divs.to_frame("div")
     df["year"] = df.index.year
-    annual = df.groupby("year")["div"].sum()
-    return annual.sort_index()
+    return df.groupby("year")["div"].sum().sort_index()
 
-def calculate_years_growing(annual_divs: pd.Series) -> int:
+def years_growing(annual):
     current_year = datetime.now().year
-    annual_divs = annual_divs[annual_divs.index < current_year]
+    annual = annual[annual.index < current_year]
 
-    if len(annual_divs) < 2:
+    if len(annual) < 2:
         return 0
 
-    years = 0
-    values = annual_divs.values
+    values = annual.values
+    count = 0
 
     for i in range(len(values) - 1, 0, -1):
         if values[i] > values[i - 1]:
-            years += 1
+            count += 1
         else:
             break
 
-    return years
+    return count
 
-def calculate_div_cagr_5y(annual_divs: pd.Series) -> float:
+def div_cagr_5y(annual):
     current_year = datetime.now().year
-    annual_divs = annual_divs[annual_divs.index < current_year]
+    annual = annual[annual.index < current_year]
 
-    if len(annual_divs) < MIN_YEARS_FOR_CAGR + 1:
+    if len(annual) < 6:
         return 0.0
 
-    recent = annual_divs.tail(MIN_YEARS_FOR_CAGR + 1)
-
+    recent = annual.tail(6)
     start = recent.iloc[0]
     end = recent.iloc[-1]
 
     if start <= 0 or end <= 0:
         return 0.0
 
-    cagr = (end / start) ** (1 / MIN_YEARS_FOR_CAGR) - 1
-    return round(cagr * 100, 2)
+    return round(((end / start) ** (1 / 5) - 1) * 100, 2)
 
-# -------------------------
+# =========================
 # MAIN
-# -------------------------
+# =========================
 rows = []
 
-for ticker in TICKER
+for ticker in TICKERS:
+    try:
+        stock = yf.Ticker(ticker)
+        info = stock.info
+        divs = stock.dividends
+
+        annual = annual_dividends(divs)
+
+        rows.append({
+            "Ticker": ticker,
+            "Name": info.get("shortName", ""),
+            "Country": info.get("country", ""),
+            "Sector": info.get("sector", ""),
+            "Price": info.get("currentPrice", 0),
+            "DividendYield_%": round((info.get("dividendYield", 0) or 0) * 100, 2),
+            "PayoutRatio_%": round((info.get("payoutRatio", 0) or 0) * 100, 2),
+            "ROE_%": round((info.get("returnOnEquity", 0) or 0) * 100, 2),
+            "YearsGrowing": years_growing(annual),
+            "DivCAGR_5Y_%": div_cagr_5y(annual),
+            "Score": 0,
+            "Signal": "WATCH"
+        })
+
+    except Exception as e:
+        print(f"Error processing {ticker}: {e}")
+
+df = pd.DataFrame(rows)
+
+# =========================
+# SAVE (CI SAFE)
+# =========================
+for path in OUTPUT_PATHS:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    df.to_csv(path, index=False)
+
+print("Fase 2A finished successfully")

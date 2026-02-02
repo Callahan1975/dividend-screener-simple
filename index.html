@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <title>Dividend Screener</title>
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
@@ -9,103 +9,52 @@
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
 <style>
-body { font-family: Arial, sans-serif; margin: 20px; }
-.filters { margin-bottom: 10px; }
-.filters select { margin-right: 10px; }
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; }
+h1 { margin-bottom: 20px; }
+.badge-buy { color: white; background: #2ecc71; padding: 4px 8px; border-radius: 6px; }
+.badge-hold { color: white; background: #f1c40f; padding: 4px 8px; border-radius: 6px; }
 </style>
 </head>
 
 <body>
-
-<h2>Dividend Screener</h2>
-
-<div class="filters">
-  Signal:
-  <select id="signalFilter">
-    <option value="">All</option>
-  </select>
-
-  Country:
-  <select id="countryFilter">
-    <option value="">All</option>
-  </select>
-
-  Sector:
-  <select id="sectorFilter">
-    <option value="">All</option>
-  </select>
-</div>
+<h1>📈 Dividend Screener</h1>
 
 <table id="table" class="display" style="width:100%">
 <thead>
 <tr>
-  <th>Ticker</th>
-  <th>Name</th>
-  <th>Country</th>
-  <th>Sector</th>
-  <th>Price</th>
-  <th>DividendYield_%</th>
-  <th>PayoutRatio_%</th>
-  <th>ROE_%</th>
-  <th>YearsGrowing</th>
-  <th>DividendStreak</th>
-  <th>DividendClass</th>
-  <th>Score</th>
-  <th>Signal</th>
+<th>Ticker</th>
+<th>Name</th>
+<th>Sector</th>
+<th>Price</th>
+<th>Yield %</th>
+<th>Payout %</th>
+<th>PE</th>
+<th>Signal</th>
 </tr>
 </thead>
 </table>
 
 <script>
 $(document).ready(function () {
-
-  const table = $('#table').DataTable({
-    ajax: {
-      url: "data/screener_results.csv",
-      dataType: "text",
-      dataSrc: function (csv) {
-        const lines = csv.split('\n');
-        const headers = lines[0].split(',');
-        return lines.slice(1).map(l => {
-          const obj = {};
-          l.split(',').forEach((v,i) => obj[headers[i]] = v);
-          return obj;
-        });
-      }
-    },
-    columns: [
-      { data: "Ticker" },
-      { data: "Name" },
-      { data: "Country" },
-      { data: "Sector" },
-      { data: "Price" },
-      { data: "DividendYield_pct" },
-      { data: "PayoutRatio_pct" },
-      { data: "ROE_pct" },
-      { data: "YearsGrowing" },
-      { data: "DividendStreak" },
-      { data: "DividendClass" },
-      { data: "Score" },
-      { data: "Signal" }
-    ],
-    pageLength: 50
-  });
-
-  function buildFilter(column, selectId) {
-    table.column(column).data().unique().sort().each(function (d) {
-      if (d) $(selectId).append(`<option value="${d}">${d}</option>`);
+    $('#table').DataTable({
+        ajax: 'screener_results.csv',
+        columns: [
+            { data: 'Ticker' },
+            { data: 'Name' },
+            { data: 'Sector' },
+            { data: 'Price' },
+            { data: 'DividendYield_%' },
+            { data: 'PayoutRatio_%' },
+            { data: 'PE' },
+            {
+              data: 'Signal',
+              render: function (data) {
+                if (data === "BUY") return '<span class="badge-buy">BUY</span>';
+                return '<span class="badge-hold">HOLD</span>';
+              }
+            }
+        ]
     });
-    $(selectId).on('change', function () {
-      table.column(column).search(this.value).draw();
-    });
-  }
-
-  table.on('xhr', function () {
-    buildFilter(12, "#signalFilter");
-    buildFilter(2, "#countryFilter");
-    buildFilter(3, "#sectorFilter");
-  });
-
 });
 </script>
 

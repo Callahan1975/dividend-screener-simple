@@ -1,183 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Dividend Screener</title>
+  <meta charset="UTF-8" />
+  <title>Dividend Screener</title>
 
-<!-- Libs -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+  <!-- DataTables CSS -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css"
+  />
 
-<style>
-body {
-  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
-  margin: 0;
-  background: #f6f6f6;
-}
-h1 {
-  margin: 0;
-  padding: 16px 20px 10px;
-}
-.filter-bar {
-  position: sticky;
-  top: 0;
-  background: #fff;
-  border-bottom: 1px solid #ddd;
-  padding: 12px 20px;
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.filter {
-  display: flex;
-  flex-direction: column;
-  font-size: 12px;
-}
-.filter label {
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-.filter select {
-  padding: 6px 8px;
-  min-width: 160px;
-}
-.preset {
-  background: #eef3ff;
-  border: 1px solid #c9d6ff;
-}
-.wrapper {
-  padding: 16px 20px 40px;
-}
-.buy-row td {
-  background: #eafaf1 !important;
-}
-</style>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 20px;
+    }
+    h1 {
+      margin-bottom: 12px;
+    }
+  </style>
 </head>
 
 <body>
+  <h1>Dividend Screener</h1>
 
-<h1>Dividend Screener</h1>
-
-<div class="filter-bar">
-  <div class="filter">
-    <label>Preset</label>
-    <select id="preset" class="preset">
-      <option value="">— Select preset —</option>
-      <option value="buy">BUY & GOLD</option>
-      <option value="growth">Dividend Growth</option>
-      <option value="yield">High Yield ≥ 3%</option>
-    </select>
-  </div>
-
-  <div class="filter">
-    <label>Signal</label>
-    <select id="signal"><option value="">All</option></select>
-  </div>
-
-  <div class="filter">
-    <label>Country</label>
-    <select id="country"><option value="">All</option></select>
-  </div>
-
-  <div class="filter">
-    <label>Sector</label>
-    <select id="sector"><option value="">All</option></select>
-  </div>
-</div>
-
-<div class="wrapper">
-  <table id="table" class="display">
-    <thead></thead>
+  <table id="screener" class="display" style="width:100%">
+    <thead>
+      <tr></tr>
+    </thead>
     <tbody></tbody>
   </table>
-</div>
 
-<script>
-/* ===============================
-   ROOT CSV (SOM FØR)
-================================ */
-const CSV_URL = "/data/screener_results.csv";
-console.log("Loading CSV:", CSV_URL);
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-Papa.parse(CSV_URL, {
-  download: true,
-  header: true,
-  skipEmptyLines: true,
-  complete: function (res) {
+  <!-- PapaParse -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-    if (!res.data || res.data.length === 0) {
-      console.error("CSV empty or not loaded");
-      return;
-    }
+  <!-- DataTables JS -->
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
-    const data = res.data;
-    const cols = Object.keys(data[0]);
-    const colIndex = {};
+  <script>
+    const CSV_URL = "data/screener_results.csv";
 
-    const columns = cols.map((c, i) => {
-      colIndex[c] = i;
-      return { title: c, data: c };
-    });
+    console.log("Loading CSV from:", CSV_URL);
 
-    const table = $("#table").DataTable({
-      data,
-      columns,
-      pageLength: 25,
-      order: [],
-      createdRow: function (row, d) {
-        if (
-          (d.Signal === "BUY" || d.Signal === "GOLD") &&
-          parseFloat(d["Upside_%"]) >= 10
-        ) {
-          row.classList.add("buy-row");
+    Papa.parse(CSV_URL, {
+      download: true,
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      complete: function (results) {
+        console.log("CSV loaded:", results);
+
+        if (!results.data || results.data.length === 0) {
+          alert("CSV loaded, but contains no rows");
+          return;
         }
+
+        const columns = Object.keys(results.data[0]).map(col => ({
+          title: col,
+          data: col
+        }));
+
+        $("#screener").DataTable({
+          data: results.data,
+          columns: columns,
+          pageLength: 25,
+          order: [],
+          deferRender: true
+        });
+      },
+      error: function (err) {
+        console.error("CSV load error:", err);
+        alert("Failed to load CSV – check console");
       }
     });
-
-    function fill(id, key) {
-      [...new Set(data.map(r => r[key]).filter(Boolean))]
-        .sort()
-        .forEach(v => $("#" + id).append(`<option>${v}</option>`));
-    }
-
-    fill("signal", "Signal");
-    fill("country", "Country");
-    fill("sector", "Sector");
-
-    $("#signal").on("change", e =>
-      table.column(colIndex.Signal).search(e.target.value).draw()
-    );
-    $("#country").on("change", e =>
-      table.column(colIndex.Country).search(e.target.value).draw()
-    );
-    $("#sector").on("change", e =>
-      table.column(colIndex.Sector).search(e.target.value).draw()
-    );
-
-    $("#preset").on("change", function () {
-      table.search("").columns().search("");
-
-      if (this.value === "buy") {
-        table.column(colIndex.Signal).search("BUY|GOLD", true, false);
-        table.column(colIndex["Upside_%"]).search("^(1[0-9]|[2-9][0-9])", true, false);
-      }
-
-      if (this.value === "yield") {
-        table.column(colIndex["DividendYield_%"]).search("^(3|4|5|6|7|8|9)", true, false);
-      }
-
-      if (this.value === "growth") {
-        table.column(colIndex["YearsGrowing"]).search("^[5-9]|[1-9][0-9]", true, false);
-        table.column(colIndex["DivCAGR_5Y_%"]).search("^(5|[6-9]|[1-9][0-9])", true, false);
-      }
-
-      table.draw();
-    });
-  }
-});
-</script>
-
+  </script>
 </body>
 </html>

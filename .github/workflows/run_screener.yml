@@ -2,8 +2,6 @@ name: Run Dividend Screener
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 */8 * * *"
 
 jobs:
   run:
@@ -18,7 +16,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install deps
         run: |
           pip install -r requirements.txt
 
@@ -30,6 +28,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add docs/screener_results.csv
-          git commit -m "Update screener results" || echo "No changes"
+          git add data/screener_results.csv
+          git commit -m "Update screener results [skip ci]" || echo "No changes"
           git push

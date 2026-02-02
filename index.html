@@ -7,11 +7,10 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <style>
-body { font-family: -apple-system, BlinkMacSystemFont; padding: 20px; }
-.gold { background:#e6f4ea; font-weight:bold; }
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding:20px; }
+h1 { margin-bottom:15px; }
 </style>
 </head>
 
@@ -21,42 +20,55 @@ body { font-family: -apple-system, BlinkMacSystemFont; padding: 20px; }
 <table id="table" class="display" style="width:100%">
 <thead>
 <tr>
-<th>Ticker</th><th>Name</th><th>Country</th><th>Sector</th>
-<th>Price</th><th>Yield %</th><th>Payout %</th>
-<th>ROE %</th><th>Years Growing</th>
-<th>Div CAGR %</th><th>Score</th><th>Signal</th>
+  <th>Ticker</th>
+  <th>Name</th>
+  <th>Country</th>
+  <th>Sector</th>
+  <th>Price</th>
+  <th>DividendYield_%</th>
+  <th>PayoutRatio_%</th>
+  <th>ROE_%</th>
+  <th>YearsGrowing</th>
+  <th>DivCAGR_5Y_%</th>
+  <th>Score</th>
+  <th>Signal</th>
 </tr>
 </thead>
 </table>
 
 <script>
-Papa.parse("data/screener_results.csv", {
-  download: true,
-  header: true,
-  complete: function(results) {
-    $('#table').DataTable({
-      data: results.data,
-      columns: [
-        {data:"Ticker"},
-        {data:"Name"},
-        {data:"Country"},
-        {data:"Sector"},
-        {data:"Price"},
-        {data:"DividendYield_%"},
-        {data:"PayoutRatio_%"},
-        {data:"ROE_%"},
-        {data:"YearsGrowing"},
-        {data:"DivCAGR_5Y_%"},
-        {data:"Score"},
-        {data:"Signal"}
-      ],
-      createdRow: function(row, data) {
-        if (data.Signal === "GOLD") {
-          $(row).addClass("gold");
-        }
+$(document).ready(function () {
+  $('#table').DataTable({
+    ajax: {
+      url: 'data/screener_results.csv',
+      dataType: 'text',
+      dataSrc: function (csv) {
+        const lines = csv.trim().split('\n');
+        const headers = lines[0].split(',');
+        return lines.slice(1).map(l => {
+          const vals = l.split(',');
+          let obj = {};
+          headers.forEach((h,i)=>obj[h]=vals[i]);
+          return obj;
+        });
       }
-    });
-  }
+    },
+    columns: [
+      { data: 'Ticker' },
+      { data: 'Name' },
+      { data: 'Country' },
+      { data: 'Sector' },
+      { data: 'Price' },
+      { data: 'DividendYield_%' },
+      { data: 'PayoutRatio_%' },
+      { data: 'ROE_%' },
+      { data: 'YearsGrowing' },
+      { data: 'DivCAGR_5Y_%' },
+      { data: 'Score' },
+      { data: 'Signal' }
+    ],
+    pageLength: 25
+  });
 });
 </script>
 </body>

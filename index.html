@@ -10,6 +10,7 @@
 
 <style>
 body { font-family: -apple-system, BlinkMacSystemFont; padding:20px; }
+
 .king { background:#e9f9e9 !important; }
 .aristocrat { background:#e8f1ff !important; }
 .contender { background:#fff3e0 !important; }
@@ -32,10 +33,20 @@ Sector:
 <table id="table" class="display" style="width:100%">
 <thead>
 <tr>
-<th>Ticker</th><th>Name</th><th>Country</th><th>Sector</th>
-<th>Price</th><th>DividendYield_%</th><th>PayoutRatio_%</th><th>ROE_%</th>
-<th>YearsGrowing</th><th>DivCAGR_5Y_%</th><th>DividendStreak</th>
-<th>DividendClass</th><th>Score</th><th>Signal</th>
+<th>Ticker</th>
+<th>Name</th>
+<th>Country</th>
+<th>Sector</th>
+<th>Price</th>
+<th>DividendYield_%</th>
+<th>PayoutRatio_%</th>
+<th>ROE_%</th>
+<th>YearsGrowing</th>
+<th>DivCAGR_5Y_%</th>
+<th>DividendStreak</th>
+<th>DividendClass</th>
+<th>Score</th>
+<th>Signal</th>
 </tr>
 </thead>
 </table>
@@ -43,41 +54,37 @@ Sector:
 <script>
 $(document).ready(function () {
 
-$.getCSV = function(url, callback){
-  $.get(url, function(data){
-    let rows = data.split("\n").slice(1).filter(r => r.trim() !== "");
-    callback(rows.map(r => r.split(",")));
+fetch("data/screener_results.csv")
+  .then(r => r.text())
+  .then(text => {
+    const rows = text.trim().split("\n").slice(1).map(r => r.split(","));
+
+    const table = $('#table').DataTable({
+      data: rows,
+      pageLength: 50,
+      order: [[12, "desc"]],
+      rowCallback: function(row, data) {
+        if (data[11] === "King") $(row).addClass("king");
+        if (data[11] === "Aristocrat") $(row).addClass("aristocrat");
+        if (data[11] === "Contender") $(row).addClass("contender");
+      }
+    });
+
+    function fillFilter(col, selector) {
+      [...new Set(table.column(col).data())]
+        .filter(v => v)
+        .sort()
+        .forEach(v => $(selector).append(`<option value="${v}">${v}</option>`));
+    }
+
+    fillFilter(13, "#signalFilter");
+    fillFilter(2, "#countryFilter");
+    fillFilter(3, "#sectorFilter");
+
+    $('#signalFilter').on('change', () => table.column(13).search($('#signalFilter').val()).draw());
+    $('#countryFilter').on('change', () => table.column(2).search($('#countryFilter').val()).draw());
+    $('#sectorFilter').on('change', () => table.column(3).search($('#sectorFilter').val()).draw());
   });
-};
-
-$.getCSV("data/screener_results.csv", function(data){
-
-  let table = $('#table').DataTable({
-    data: data,
-    pageLength: 50,
-    columns: Array(14).fill({title:""})
-  });
-
-  function unique(col){
-    return [...new Set(table.column(col).data())].filter(v=>v);
-  }
-
-  unique(13).forEach(v=>$('#signalFilter').append(`<option>${v}</option>`));
-  unique(2).forEach(v=>$('#countryFilter').append(`<option>${v}</option>`));
-  unique(3).forEach(v=>$('#sectorFilter').append(`<option>${v}</option>`));
-
-  $('#signalFilter').on('change',()=>table.column(13).search($('#signalFilter').val()).draw());
-  $('#countryFilter').on('change',()=>table.column(2).search($('#countryFilter').val()).draw());
-  $('#sectorFilter').on('change',()=>table.column(3).search($('#sectorFilter').val()).draw());
-
-  table.rows().every(function(){
-    let d = this.data();
-    if(d[11]==="King") $(this.node()).addClass("king");
-    if(d[11]==="Aristocrat") $(this.node()).addClass("aristocrat");
-    if(d[11]==="Contender") $(this.node()).addClass("contender");
-  });
-
-});
 
 });
 </script>

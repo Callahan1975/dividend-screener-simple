@@ -1,112 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Dividend Screener</title>
+<meta charset="UTF-8">
+<title>Dividend Screener</title>
 
-  <!-- DataTables -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 
-  <!-- PapaParse -->
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 30px; }
-    h1 { margin-bottom: 10px; }
-    select { margin-right: 10px; padding: 4px; }
-  </style>
+<style>
+body { font-family: system-ui; margin: 20px; }
+.filters { margin-bottom: 12px; }
+.filters select { margin-right: 10px; }
+</style>
 </head>
 
 <body>
+
 <h1>Dividend Screener</h1>
 
-<div style="margin-bottom:15px;">
-  <label>Signal</label>
-  <select id="filterSignal">
+<div class="filters">
+  Signal:
+  <select id="signalFilter">
+    <option value="">All</option>
+    <option value="BUY">BUY</option>
+    <option value="HOLD">HOLD</option>
+    <option value="WATCH">WATCH</option>
+  </select>
+
+  Country:
+  <select id="countryFilter">
     <option value="">All</option>
   </select>
 
-  <label>Country</label>
-  <select id="filterCountry">
-    <option value="">All</option>
-  </select>
-
-  <label>Sector</label>
-  <select id="filterSector">
+  Sector:
+  <select id="sectorFilter">
     <option value="">All</option>
   </select>
 </div>
 
 <table id="table" class="display" style="width:100%">
-  <thead>
-    <tr>
-      <th>Ticker</th>
-      <th>Name</th>
-      <th>Country</th>
-      <th>Sector</th>
-      <th>Price</th>
-      <th>DividendYield_%</th>
-      <th>PayoutRatio_%</th>
-      <th>ROE_%</th>
-      <th>YearsGrowing</th>
-      <th>DivCAGR_5Y_%</th>
-      <th>Score</th>
-      <th>Signal</th>
-    </tr>
-  </thead>
+<thead>
+<tr>
+  <th>Ticker</th>
+  <th>Name</th>
+  <th>Country</th>
+  <th>Sector</th>
+  <th>Price</th>
+  <th>DividendYield_%</th>
+  <th>PayoutRatio_%</th>
+  <th>ROE_%</th>
+  <th>YearsGrowing</th>
+  <th>DivCAGR_5Y_%</th>
+  <th>Score</th>
+  <th>Signal</th>
+</tr>
+</thead>
 </table>
 
 <script>
-Papa.parse("data/screener_results.csv", {
-  download: true,
-  header: true,
-  dynamicTyping: true,
-  skipEmptyLines: true,
-  complete: function(results) {
+$(document).ready(function () {
 
-    const data = results.data.filter(r => r.Ticker);
+  const table = $('#table').DataTable({
+    ajax: {
+      url: "screener_results.csv",
+      dataType: "text",
+      dataSrc: function (csv) {
+        const lines = csv.split('\n');
+        const headers = lines[0].split(',');
+        return lines.slice(1).filter(l => l.trim()).map(line => {
+          const obj = {};
+          line.split(',').forEach((v,i)=>obj[headers[i]]=v);
+          return obj;
+        });
+      }
+    },
+    columns: [
+      { data: "Ticker" },
+      { data: "Name" },
+      { data: "Country" },
+      { data: "Sector" },
+      { data: "Price" },
+      { data: "DividendYield_%" },
+      { data: "PayoutRatio_%" },
+      { data: "ROE_%" },
+      { data: "YearsGrowing" },
+      { data: "DivCAGR_5Y_%" },
+      { data: "Score" },
+      { data: "Signal" }
+    ],
+    pageLength: 25
+  });
 
-    const table = $('#table').DataTable({
-      data: data,
-      columns: [
-        { data: "Ticker" },
-        { data: "Name" },
-        { data: "Country" },
-        { data: "Sector" },
-        { data: "Price" },
-        { data: "DividendYield_%" },
-        { data: "PayoutRatio_%" },
-        { data: "ROE_%" },
-        { data: "YearsGrowing" },
-        { data: "DivCAGR_5Y_%" },
-        { data: "Score" },
-        { data: "Signal" }
-      ],
-      pageLength: 25
+  function populateFilter(col, selector) {
+    table.column(col).data().unique().sort().each(v => {
+      if (v) $(selector).append(`<option value="${v}">${v}</option>`);
     });
-
-    function populateFilter(id, column) {
-      const values = [...new Set(data.map(r => r[column]).filter(Boolean))].sort();
-      values.forEach(v => {
-        $(id).append(`<option value="${v}">${v}</option>`);
-      });
-      $(id).on("change", function() {
-        table.column(columnIndex[column]).search(this.value).draw();
-      });
-    }
-
-    const columnIndex = {
-      Signal: 11,
-      Country: 2,
-      Sector: 3
-    };
-
-    populateFilter("#filterSignal", "Signal");
-    populateFilter("#filterCountry", "Country");
-    populateFilter("#filterSector", "Sector");
   }
+
+  table.on('xhr', function () {
+    populateFilter(2, "#countryFilter");
+    populateFilter(3, "#sectorFilter");
+  });
+
+  $('#signalFilter').on('change', function () {
+    table.column(11).search(this.value).draw();
+  });
+  $('#countryFilter').on('change', function () {
+    table.column(2).search(this.value).draw();
+  });
+  $('#sectorFilter').on('change', function () {
+    table.column(3).search(this.value).draw();
+  });
 });
 </script>
 

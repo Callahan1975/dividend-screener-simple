@@ -1,176 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Dividend Screener</title>
+<meta charset="UTF-8">
+<title>Dividend Screener</title>
 
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
-  <style>
-    body { font-family: Arial, sans-serif; padding: 18px; }
-    h2 { margin: 0 0 12px 0; }
-
-    .filters {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      margin-bottom: 10px;
-      flex-wrap: wrap;
-    }
-    .filters label { font-size: 12px; color: #222; }
-    .filters select {
-      padding: 4px 6px;
-      font-size: 12px;
-    }
-
-    /* DividendClass row highlight */
-    tr.king td { background: #e9ffe9 !important; font-weight: 600; }
-    tr.aristocrat td { background: #eef6ff !important; }
-    tr.contender td { background: #fff7e6 !important; }
-
-    table.dataTable thead th { font-weight: 600; }
-  </style>
+<style>
+.king { background:#e6f7e6; }
+.aristocrat { background:#e6f0ff; }
+.contender { background:#fff3e6; }
+</style>
 </head>
 
 <body>
-  <h2>Dividend Screener</h2>
 
-  <div class="filters">
-    <label>Signal:
-      <select id="filterSignal">
-        <option value="">All</option>
-      </select>
-    </label>
+<h2>Dividend Screener</h2>
 
-    <label>Country:
-      <select id="filterCountry">
-        <option value="">All</option>
-      </select>
-    </label>
+Signal:
+<select id="signalFilter">
+  <option value="">All</option>
+  <option value="BUY">BUY</option>
+  <option value="HOLD">HOLD</option>
+</select>
 
-    <label>Sector:
-      <select id="filterSector">
-        <option value="">All</option>
-      </select>
-    </label>
-  </div>
+Country:
+<select id="countryFilter"></select>
 
-  <table id="screener" class="display" style="width:100%">
-    <thead>
-      <tr>
-        <th>Ticker</th>
-        <th>Name</th>
-        <th>Country</th>
-        <th>Sector</th>
-        <th>Price</th>
-        <th>DividendYield_%</th>
-        <th>PayoutRatio_%</th>
-        <th>ROE_%</th>
-        <th>YearsGrowing</th>
-        <th>DivCAGR_5Y_%</th>
-        <th>DividendStreak</th>
-        <th>DividendClass</th>
-        <th>Score</th>
-        <th>Signal</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+Sector:
+<select id="sectorFilter"></select>
 
-  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<table id="table" class="display" style="width:100%">
+<thead>
+<tr>
+<th>Ticker</th>
+<th>Name</th>
+<th>Country</th>
+<th>Sector</th>
+<th>Price</th>
+<th>DividendYield_%</th>
+<th>PayoutRatio_%</th>
+<th>ROE_%</th>
+<th>YearsGrowing</th>
+<th>DivCAGR_5Y_%</th>
+<th>DividendStreak</th>
+<th>DividendClass</th>
+<th>Score</th>
+<th>Signal</th>
+</tr>
+</thead>
+</table>
 
-  <script>
-    const CSV_PATH = "data/screener_results.csv"; // ✅ matches your structure
+<script>
+$(function () {
 
-    function safeNum(v) {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : 0;
-    }
+const table = $('#table').DataTable({
+  ajax: "data/screener_results.csv",
+  deferRender: true,
+  columns: [
+    { data: "Ticker" },
+    { data: "Name" },
+    { data: "Country" },
+    { data: "Sector" },
+    { data: "Price" },
+    { data: "DividendYield_%" },
+    { data: "PayoutRatio_%" },
+    { data: "ROE_%" },
+    { data: "YearsGrowing" },
+    { data: "DivCAGR_5Y_%" },
+    { data: "DividendStreak" },
+    { data: "DividendClass" },
+    { data: "Score" },
+    { data: "Signal" }
+  ],
+  rowCallback: function(row, data) {
+    if (data.DividendClass === "King") $(row).addClass("king");
+    if (data.DividendClass === "Aristocrat") $(row).addClass("aristocrat");
+    if (data.DividendClass === "Contender") $(row).addClass("contender");
+  }
+});
 
-    function uniqSorted(arr) {
-      return [...new Set(arr.filter(x => x !== null && x !== undefined && String(x).trim() !== ""))]
-        .map(x => String(x))
-        .sort((a, b) => a.localeCompare(b));
-    }
+// === FILTERS ===
+function buildFilter(col, selector) {
+  let values = new Set();
+  table.column(col).data().each(v => values.add(v));
+  values.forEach(v => selector.append(`<option>${v}</option>`));
+}
 
-    function fillSelect(sel, values) {
-      const el = document.querySelector(sel);
-      // keep first "All"
-      while (el.options.length > 1) el.remove(1);
-      values.forEach(v => {
-        const opt = document.createElement("option");
-        opt.value = v;
-        opt.textContent = v;
-        el.appendChild(opt);
-      });
-    }
+buildFilter(2, $("#countryFilter"));
+buildFilter(3, $("#sectorFilter"));
 
-    Papa.parse(CSV_PATH, {
-      download: true,
-      header: true,
-      dynamicTyping: false,
-      skipEmptyLines: true,
-      complete: function(res) {
-        const rows = (res.data || []).filter(r => r && r.Ticker);
+$("#countryFilter").on("change", function(){
+  table.column(2).search(this.value).draw();
+});
+$("#sectorFilter").on("change", function(){
+  table.column(3).search(this.value).draw();
+});
+$("#signalFilter").on("change", function(){
+  table.column(13).search(this.value).draw();
+});
 
-        // Build filter option lists
-        fillSelect("#filterSignal", uniqSorted(rows.map(r => r.Signal)));
-        fillSelect("#filterCountry", uniqSorted(rows.map(r => r.Country)));
-        fillSelect("#filterSector", uniqSorted(rows.map(r => r.Sector)));
+});
+</script>
 
-        const table = $("#screener").DataTable({
-          data: rows,
-          columns: [
-            { data: "Ticker" },
-            { data: "Name" },
-            { data: "Country" },
-            { data: "Sector" },
-            { data: "Price", render: d => safeNum(d) ? safeNum(d).toFixed(2) : "" },
-            { data: "DividendYield_%", render: d => safeNum(d).toFixed(2) },
-            { data: "PayoutRatio_%", render: d => safeNum(d).toFixed(2) },
-            { data: "ROE_%", render: d => safeNum(d).toFixed(2) },
-            { data: "YearsGrowing", render: d => String(Math.trunc(safeNum(d))) },
-            { data: "DivCAGR_5Y_%", render: d => safeNum(d).toFixed(2) },
-            { data: "DividendStreak", render: d => String(Math.trunc(safeNum(d))) },
-            { data: "DividendClass" },
-            { data: "Score", render: d => safeNum(d).toFixed(2) },
-            { data: "Signal" }
-          ],
-          createdRow: function(row, data) {
-            const cls = (data.DividendClass || "").toLowerCase();
-            if (cls === "king") row.classList.add("king");
-            if (cls === "aristocrat") row.classList.add("aristocrat");
-            if (cls === "contender") row.classList.add("contender");
-          },
-          pageLength: 50,
-          order: [[10, "desc"]], // DividendStreak desc
-          deferRender: true
-        });
-
-        // Hook up dropdown filters (exact match)
-        function applyFilter(colIndex, value) {
-          if (!value) {
-            table.column(colIndex).search("").draw();
-            return;
-          }
-          const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          table.column(colIndex).search("^" + escaped + "$", true, false).draw();
-        }
-
-        document.querySelector("#filterSignal").addEventListener("change", (e) => {
-          applyFilter(13, e.target.value); // Signal column index
-        });
-        document.querySelector("#filterCountry").addEventListener("change", (e) => {
-          applyFilter(2, e.target.value); // Country
-        });
-        document.querySelector("#filterSector").addEventListener("change", (e) => {
-          applyFilter(3, e.target.value); // Sector
-        });
-      }
-    });
-  </script>
 </body>
 </html>

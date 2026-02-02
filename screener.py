@@ -1,102 +1,153 @@
+# screener.py
 import yfinance as yf
 import pandas as pd
-from datetime import datetime
+import numpy as np
+from datetime import datetime, timedelta
 
-# ======================
-# UNIVERSE (FASE 3A)
-# ======================
+# =========================
+# 1. UNIVERS (STORT + SE)
+# =========================
 TICKERS = [
-    # ---------- USA ----------
-    "AAPL","MSFT","JNJ","PG","KO","PEP","CL","KMB","WM","HD","LOW","COST",
-    "CVX","XOM","V","MA","ABBV","ABT","ADP","NEE","DUK","SO","D","ED","EMR",
-    "O","WPC","SPG","VICI","AVGO","TXN","UNH","TROW","MCD","MMM","CAT",
-    # ---------- CANADA ----------
-    "RY.TO","TD.TO","BMO.TO","BNS.TO","CM.TO","ENB.TO","TRP.TO","FTS.TO",
-    # ---------- SWEDEN ----------
-    "SHB-A.ST","SEB-A.ST","SWED-A.ST","NDA-SE.ST","ATCO-A.ST","ATCO-B.ST",
-    "VOLV-B.ST","ASSA-B.ST","TEL2-B.ST","TELIA.ST","EQT.ST",
-    # ---------- DENMARK ----------
-    "NOVO-B.CO","ORSTED.CO","CARL-B.CO","PNDORA.CO"
+    # USA
+    "AAPL","MSFT","GOOGL","META","AMZN","NVDA","AVGO",
+    "JNJ","PG","KO","PEP","CL","KMB",
+    "O","VICI","PLD",
+    "XOM","CVX","COP",
+    "NEE","DUK","SO",
+    "JPM","BAC","WFC","V","MA","UNH","HD","WM",
+
+    # Sverige
+    "ATCO-A.ST","ATCO-B.ST","VOLV-A.ST","VOLV-B.ST",
+    "ASSA-B.ST","INVE-A.ST","INVE-B.ST",
+    "SEB-A.ST","SHB-A.ST","SWED-A.ST",
+    "TEL2-B.ST","TELIA.ST",
+    "SCA-B.ST","ESSITY-B.ST","SKF-B.ST",
+    "EQT.ST","INDU-C.ST","LATO-B.ST",
+
+    # Danmark
+    "NOVO-B.CO","CARL-B.CO","ORSTED.CO","PNDORA.CO","DSV.CO",
+
+    # Canada
+    "RY.TO","TD.TO","BMO.TO","BNS.TO",
+    "ENB.TO","TRP.TO","CNQ.TO",
+
+    # Norge
+    "DNB.OL","ORK.OL","YAR.OL"
 ]
 
-# ======================
-# HELPERS
-# ======================
-def get_ttm_dividend(divs: pd.Series) -> float:
+# =========================
+# 2. HJÆLPEFUNKTIONER
+# =========================
+def country_from_ticker(t):
+    if t.endswith(".ST"): return "Sweden"
+    if t.endswith(".CO"): return "Denmark"
+    if t.endswith(".TO"): return "Canada"
+    if t.endswith(".OL"): return "Norway"
+    return "United States"
+
+def calc_ltm_dividend(divs: pd.Series) -> float:
     if divs is None or divs.empty:
-        return float("nan")
-    last_year = divs.index.max()
-    one_year_ago = last_year - pd.Timedelta(days=365)
-    return divs[divs.index >= one_year_ago].sum()
+        return 0.0
+    cutoff = datetime.utcnow() - timedelta(days=365)
+    return divs[divs.index >= cutoff].sum()
 
 def calc_years_growing(divs: pd.Series) -> int:
     if divs is None or divs.empty:
-        return float("nan")
-    yearly = divs.resample("Y").sum()
-    yearly = yearly[yearly > 0]
-    if len(yearly) < 2:
         return 0
-    growth = 0
+    yearly = divs.resample("Y").sum()
+    years = 0
     for i in range(len(yearly)-1, 0, -1):
-        if yearly.iloc[i] > yearly.iloc[i-1]:
-            growth += 1
+        if yearly.iloc[i] > yearly.iloc[i-1] > 0:
+            years += 1
         else:
             break
-    return growth
+    return years
 
 def calc_cagr_5y(divs: pd.Series) -> float:
     if divs is None or divs.empty:
-        return float("nan")
+        return 0.0
     yearly = divs.resample("Y").sum()
-    yearly = yearly[yearly > 0]
     if len(yearly) < 6:
-        return float("nan")
+        return 0.0
     start = yearly.iloc[-6]
     end = yearly.iloc[-1]
     if start <= 0:
-        return float("nan")
-    return ((end / start) ** (1/5) - 1) * 100
+        return 0.0
+    return (end / start) ** (1/5) - 1
 
-# ======================
-# MAIN
-# ======================
+# =========================
+# 3. DATAINDSAMLING
+# =========================
 rows = []
 
 for t in TICKERS:
     try:
-        y = yf.Ticker(t)
-        info = y.info
-        price = info.get("currentPrice") or info.get("regularMarketPrice")
-        divs = y.dividends
+        yf_t = yf.Ticker(t)
+        info = yf_t.info or {}
+        divs = yf_t.dividends
 
-        ttm_div = get_ttm_dividend(divs)
-        div_yield = (ttm_div / price * 100) if price and ttm_div else float("nan")
+        price = info.get("regularMarketPrice") or info.get("currentPrice") or np.nan
+
+        ltm_div = calc_ltm_dividend(divs)
+        div_yield = (ltm_div / price * 100) if price and price > 0 else 0.0
+
+        payout = info.get("payoutRatio")
+        payout = payout * 100 if isinstance(payout, (int, float)) else 0.0
+
+        roe = info.get("returnOnEquity")
+        roe = roe * 100 if isinstance(roe, (int, float)) else 0.0
+
+        years_growing = calc_years_growing(divs)
+        div_cagr = calc_cagr_5y(divs) * 100
+
+        score = (
+            min(div_yield, 6) * 6 +
+            min(roe, 25) * 1.2 +
+            min(years_growing, 25) * 1.0
+        )
+
+        signal = "BUY" if score >= 70 else "HOLD" if score >= 40 else "WATCH"
 
         rows.append({
             "Ticker": t,
-            "Name": info.get("shortName"),
-            "Country": info.get("country"),
-            "Sector": info.get("sector"),
-            "Price": price,
-            "DividendYield_%": round(div_yield, 2) if pd.notna(div_yield) else float("nan"),
-            "PayoutRatio_%": info.get("payoutRatio") * 100 if info.get("payoutRatio") else float("nan"),
-            "ROE_%": info.get("returnOnEquity") * 100 if info.get("returnOnEquity") else float("nan"),
-            "YearsGrowing": calc_years_growing(divs),
-            "DivCAGR_5Y_%": round(calc_cagr_5y(divs), 2),
-            "Score": float("nan"),
-            "Signal": "WATCH"
+            "Name": info.get("shortName", t),
+            "Country": country_from_ticker(t),
+            "Sector": info.get("sector", "Unknown"),
+            "Price": round(price, 2) if price else 0,
+            "DividendYield_%": round(div_yield, 2),
+            "PayoutRatio_%": round(payout, 2),
+            "ROE_%": round(roe, 2),
+            "YearsGrowing": years_growing,
+            "DivCAGR_5Y_%": round(div_cagr, 2),
+            "Score": round(score, 1),
+            "Signal": signal
         })
-    except Exception:
-        continue
 
+    except Exception as e:
+        print(f"Skip {t}: {e}")
+
+# =========================
+# 4. CSV OUTPUT (ALTID!)
+# =========================
 df = pd.DataFrame(rows)
-df["GeneratedUTC"] = datetime.utcnow().isoformat()
 
-# Drop helt tomme rækker
-df = df.dropna(subset=["Price"], how="all")
+if df.empty:
+    df = pd.DataFrame([{
+        "Ticker": "INFO",
+        "Name": "No data",
+        "Country": "",
+        "Sector": "",
+        "Price": 0,
+        "DividendYield_%": 0,
+        "PayoutRatio_%": 0,
+        "ROE_%": 0,
+        "YearsGrowing": 0,
+        "DivCAGR_5Y_%": 0,
+        "Score": 0,
+        "Signal": "WATCH"
+    }])
 
-# Output (ROOT + /data for Pages)
 df.to_csv("screener_results.csv", index=False)
-df.to_csv("data/screener_results.csv", index=False)
+df.to_csv("docs/data/screener_results.csv", index=False)
 
 print(f"Generated {len(df)} rows")

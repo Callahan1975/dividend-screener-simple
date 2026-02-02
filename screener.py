@@ -1,91 +1,121 @@
 import yfinance as yf
 import pandas as pd
-from datetime import datetime
-from pathlib import Path
+import numpy as np
+from datetime import datetime, timedelta
 
-# =========================
-# UNIVERSE (kan udvides)
-# =========================
+# -------------------------
+# CONFIG
+# -------------------------
 TICKERS = [
-    # USA
-    "AAPL","MSFT","KO","PG","PEP","JNJ","ABBV","CVX","XOM","O","ARCC",
-    "COST","WM","CAT","ADP","AMGN","CL","D","DUK","ED","EMR",
-    # Canada
-    "RY.TO","TD.TO","BMO.TO","BNS.TO","ENB.TO","CNQ.TO","TRP.TO",
-    # Sweden
-    "ATCO-A.ST","ATCO-B.ST","ASSA-B.ST","VOLV-B.ST","SHB-A.ST",
-    "SEB-A.ST","SWED-A.ST","TEL2-B.ST","TELIA.ST","EQNR.OL",
-    # Denmark / Nordics
-    "NOVO-B.CO","CARL-B.CO","ORSTED.CO","DNB.OL"
+    "AAPL","ABBV","ADP","AMGN","ARCC",
+    "ASSA-B.ST","ATCO-A.ST","ATCO-B.ST",
+    "BMO.TO","BNS.TO","CARL-B.CO","CAT","CL",
+    "CNQ.TO","COST","CVX","D","DNB.OL","DUK",
+    "ED","EMR","ENB.TO","EQNR.OL","JNJ","KO",
+    "MSFT","NOVO-B.CO","O","ORSTED.CO","PEP",
+    "PG","RY.TO","SEB-A.ST","SHB-A.ST","SWED-A.ST",
+    "TD.TO","TEL2-B.ST","TELIA.ST","TRP.TO",
+    "VOLV-B.ST","WM","XOM"
 ]
 
-# =========================
-# HELPERS
-# =========================
-def safe(v):
-    return None if v in [None, "None"] else v
+OUTPUT_PATHS = [
+    "data/screener_results/screener_results.csv",
+    "docs/data/screener_results/screener_results.csv"
+]
 
+MIN_YEARS_CAGR = 5
+
+# -------------------------
+# HELPERS
+# -------------------------
+def annualize_dividends(dividends: pd.Series) -> pd.Series:
+    if dividends.empty:
+        return pd.Series(dtype=float)
+
+    df = dividends.to_frame(name="div")
+    df["year"] = df.index.year
+    annual = df.groupby("year")["div"].sum()
+    return annual.sort_index()
+
+def calculate_years_growing(annual_divs: pd.Series) -> int:
+    if len(annual_divs) < 2:
+        return 0
+
+    # Exclude current year
+    current_year = datetime.now().year
+    annual_divs = annual_divs[annual_divs.index < current_year]
+
+    if len(annual_divs) < 2:
+        return 0
+
+    years = 0
+    values = annual_divs.values
+
+    for i in range(len(values)-1, 0, -1):
+        if values[i] > values[i-1]:
+            years += 1
+        else:
+            break
+
+    return years
+
+def calculate_div_cagr(annual_divs: pd.Series, years: int) -> float:
+    if years < MIN_YEARS_CAGR:
+        return 0.0
+
+    recent = annual_divs.tail(years + 1)
+    if len(recent) < years + 1:
+        return 0.0
+
+    start = recent.iloc[0]
+    end = recent.iloc[-1]
+
+    if start <= 0 or end <= 0:
+        return 0.0
+
+    return round(((end / start) ** (1 / years) - 1) * 100, 2)
+
+# -------------------------
+# MAIN
+# -------------------------
 rows = []
 
-for t in TICKERS:
+for ticker in TICKERS:
     try:
-        tk = yf.Ticker(t)
-        info = tk.info
+        stock = yf.Ticker(ticker)
+        info = stock.info
+        dividends = stock.dividends
 
-        price = info.get("currentPrice") or info.get("regularMarketPrice")
-        if not price:
-            continue
+        annual_divs = annualize_dividends(dividends)
+        years_growing = calculate_years_growing(annual_divs)
+        div_cagr_5y = calculate_div_cagr(annual_divs, 5)
 
-        dividend = info.get("dividendRate") or 0
-        yield_pct = round((dividend / price) * 100, 2) if dividend else 0
+        row = {
+            "Ticker": ticker,
+            "Name": info.get("shortName", ""),
+            "Country": info.get("country", ""),
+            "Sector": info.get("sector", ""),
+            "Price": info.get("currentPrice", 0),
+            "DividendYield_%": round((info.get("dividendYield", 0) or 0) * 100, 2),
+            "PayoutRatio_%": round((info.get("payoutRatio", 0) or 0) * 100, 2),
+            "ROE_%": round((info.get("returnOnEquity", 0) or 0) * 100, 2),
+            "YearsGrowing": years_growing,
+            "DivCAGR_5Y_%": div_cagr_5y,
+            "Score": 0,
+            "Signal": "WATCH"
+        }
 
-        payout = info.get("payoutRatio")
-        roe = info.get("returnOnEquity")
-
-        rows.append({
-            "Ticker": t,
-            "Name": info.get("shortName"),
-            "Country": info.get("country"),
-            "Sector": info.get("sector"),
-            "Price": round(price, 2),
-            "DividendYield_%": yield_pct,
-            "PayoutRatio_%": round(payout * 100, 2) if payout else None,
-            "ROE_%": round(roe * 100, 2) if roe else None,
-            "YearsGrowing": 0,            # klar til fase 3b
-            "DivCAGR_5Y_%": 0,             # klar til fase 3b
-        })
+        rows.append(row)
 
     except Exception as e:
-        print(f"Skip {t}: {e}")
+        print(f"Error processing {ticker}: {e}")
 
 df = pd.DataFrame(rows)
 
-if df.empty:
-    raise SystemExit("No data collected")
-
-# =========================
-# SCORE + SIGNAL
-# =========================
-df["Score"] = (
-    df["DividendYield_%"].fillna(0) * 6 +
-    df["ROE_%"].fillna(0) * 0.2
-).round(1)
-
-def signal(row):
-    if row["Score"] >= 45:
-        return "BUY"
-    if row["Score"] >= 35:
-        return "HOLD"
-    return "WATCH"
-
-df["Signal"] = df.apply(signal, axis=1)
-
-df["GeneratedUTC"] = datetime.utcnow().isoformat()
-
-# =========================
+# -------------------------
 # SAVE
-# =========================
-Path("data").mkdir(exist_ok=True)
-df.to_csv("data/screener_results.csv", index=False)
+# -------------------------
+for path in OUTPUT_PATHS:
+    df.to_csv(path, index=False)
 
-print(f"Saved {len(df)} rows")
+print("Fase 2A complete – dividend history calculated.")

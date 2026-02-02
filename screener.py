@@ -1,155 +1,62 @@
 import yfinance as yf
 import pandas as pd
 from datetime import datetime
+import numpy as np
 
-# =========================
-# Ticker-univers
-# =========================
-
-US_TICKERS = [
-    "AAPL","MSFT","JNJ","PG","KO","PEP","MCD","WMT","COST","HD","LOW",
-    "UNH","CVX","XOM","IBM","ADP","MMM","CL","KMB","ABT","ABBV",
-    "T","VZ","CSCO","INTC","TXN","QCOM","AMGN","MDT","BDX","SYK",
-    "UPS","FDX","CAT","DE","EMR","ETN","PH","HON","RTX","LMT",
-    "NOC","GD","BA","GE","NEE","DUK","SO","D","AEP","ED",
-    "SRE","EXC","XEL","PEG","WEC","DTE",
-    "O","WPC","SPG","AVB","EQR","ESS","MAA","VTR","VICI",
-    "TROW","BLK","BEN","AMP","MS","GS","JPM","BAC","PNC","USB",
-    "SCHW","AFL","MET","PRU","ALL","TRV",
-    "MO","PM","BTI",
-    "WM","RSG","AWK","ATO","ECL","SHW","APD","LIN","NUE","VMC",
-    "SBUX","YUM","CMI","ITW","ROP","FAST","GPC","ORCL","INTU"
+TICKERS = [
+    # US
+    "AAPL","MSFT","JNJ","PG","KO","PEP","MCD","HD","V","MA","UNH","ALL","TRV","VZ","T","O","WM",
+    # Canada
+    "BCE.TO","RCI-B.TO","ENB.TO","BMO.TO","TD.TO",
+    # Nordic
+    "NOVO-B.CO","PNDORA.CO","ORSTED.CO","ORK.OL","DNB.OL"
 ]
 
-CA_TICKERS = [
-    "BMO.TO","RY.TO","TD.TO","BNS.TO","CM.TO","NA.TO",
-    "ENB.TO","TRP.TO","PPL.TO",
-    "FTS.TO","EMA.TO","CU.TO",
-    "CNQ.TO","SU.TO","IMO.TO",
-    "T.TO","BCE.TO","RCI-B.TO",
-    "CP.TO","CNR.TO",
-    "SLF.TO","MFC.TO","GWO.TO",
-    "AQN.TO","KEY.TO","POW.TO","IFC.TO","BIP-UN.TO"
-]
+def dividend_years_and_cagr(divs):
+    if divs.empty:
+        return 0, 0.0
 
-NORDIC_TICKERS = [
-    "SHB-A.ST","SWED-A.ST","SEB-A.ST","NDA-SE.ST","TEL2-B.ST",
-    "ATCO-A.ST","VOLV-B.ST","CIBUS.ST",
-    "NOVO-B.CO","COLO-B.CO","ORSTED.CO","DSV.CO","TRYG.CO","PNDORA.CO",
-    "NDA-FI.HE","KNEBV.HE","FORTUM.HE",
-    "DNB.OL","ORK.OL"
-]
-
-TICKERS = US_TICKERS + CA_TICKERS + NORDIC_TICKERS
-
-
-# =========================
-# Helpers
-# =========================
-
-def pct(v):
-    try:
-        return round(float(v), 2)
-    except:
-        return 0.0
-
-
-def dividend_growth_metrics(divs: pd.Series):
-    """
-    Returns (cagr_5y, years_growing)
-    """
-    if divs is None or len(divs) < 5:
-        return 0.0, 0
-
-    # yearly totals
     yearly = divs.resample("Y").sum()
-    yearly.index = yearly.index.year
+    yearly = yearly[yearly > 0]
 
-    # drop current year (often incomplete)
-    current_year = datetime.utcnow().year
-    yearly = yearly[yearly.index < current_year]
+    years = len(yearly)
+    if years < 2:
+        return years, 0.0
 
-    if len(yearly) < 5:
-        return 0.0, 0
-
-    # Years growing
-    years = list(yearly.values)
-    growing = 0
-    for i in range(len(years) - 1, 0, -1):
-        if years[i] > years[i - 1]:
-            growing += 1
-        else:
-            break
-
-    # 5Y CAGR
-    try:
-        start = yearly.iloc[-5]
-        end = yearly.iloc[-1]
-        cagr = ((end / start) ** (1 / 4) - 1) * 100 if start > 0 else 0.0
-    except:
-        cagr = 0.0
-
-    return pct(cagr), growing
-
-
-# =========================
-# Screener
-# =========================
+    start = yearly.iloc[0]
+    end = yearly.iloc[-1]
+    cagr = (end / start) ** (1 / (years - 1)) - 1
+    return years, round(cagr * 100, 2)
 
 rows = []
 
 for ticker in TICKERS:
     try:
-        t = yf.Ticker(ticker)
-        info = t.info
-
-        price = info.get("currentPrice")
+        stock = yf.Ticker(ticker)
+        info = stock.info
+        price = info.get("currentPrice") or info.get("regularMarketPrice")
         if not price:
             continue
 
-        # ---------- Dividend Yield (TTM approx) ----------
-        dividend_yield = 0.0
-        divs = t.dividends
-        if divs is not None and len(divs) > 0:
-            dividend_yield = pct((divs.tail(4).sum() / price) * 100)
+        divs = stock.dividends
+        years_growing, div_cagr = dividend_years_and_cagr(divs)
 
-        # ---------- Dividend Growth ----------
-        div_cagr_5y, years_growing = dividend_growth_metrics(divs)
+        dividend_yield = info.get("dividendYield", 0) * 100 if info.get("dividendYield") else 0
+        payout = info.get("payoutRatio", 0) * 100 if info.get("payoutRatio") else 0
+        roe = info.get("returnOnEquity", 0) * 100 if info.get("returnOnEquity") else 0
 
-        payout = pct((info.get("payoutRatio") or 0) * 100)
-        roe = pct((info.get("returnOnEquity") or 0) * 100)
+        score = (
+            min(years_growing * 5, 40) +
+            min(div_cagr * 2, 30) +
+            min(roe, 20) -
+            min(max(payout - 75, 0), 20)
+        )
 
-        eps = info.get("trailingEps")
-        sector = info.get("sector") or ""
-
-        fair_pe_map = {
-            "Technology": 22,
-            "Consumer Defensive": 20,
-            "Healthcare": 20,
-            "Industrials": 18,
-            "Financial Services": 12,
-            "Energy": 12,
-            "Utilities": 16,
-            "Real Estate": 16,
-            "Basic Materials": 14,
-            "Communication Services": 18
-        }
-        fair_pe = fair_pe_map.get(sector, 18)
-
-        fair_value = eps * fair_pe if eps else None
-        upside = pct(((fair_value / price) - 1) * 100) if fair_value else 0.0
-
-        flags = []
-        if payout > 90:
-            flags.append("Payout high")
-        if payout > 110:
-            flags.append("Payout extreme")
-
-        if upside >= 20 and payout <= 75:
+        if years_growing >= 10 and div_cagr >= 5 and payout <= 75 and roe >= 15:
             signal = "GOLD"
-        elif upside >= 10 and payout <= 85:
+        elif years_growing >= 5 and div_cagr >= 3:
             signal = "BUY"
-        elif upside > 0:
+        elif years_growing >= 2:
             signal = "HOLD"
         else:
             signal = "WATCH"
@@ -158,27 +65,30 @@ for ticker in TICKERS:
             "Ticker": ticker,
             "Name": info.get("shortName"),
             "Country": info.get("country"),
-            "Sector": sector,
+            "Sector": info.get("sector"),
             "Industry": info.get("industry"),
             "Price": round(price, 2),
-            "DividendYield_%": dividend_yield,
-            "DivCAGR_5Y_%": div_cagr_5y,
+            "DividendYield_%": round(dividend_yield, 2),
+            "PayoutRatio_%": round(payout, 2),
+            "ROE_%": round(roe, 2),
             "YearsGrowing": years_growing,
-            "PayoutRatio_%": payout,
-            "ROE_%": roe,
-            "Upside_%": upside,
-            "Quality_ROE_10p": roe >= 10,
+            "DivCAGR_5Y_%": div_cagr,
+            "Score": round(score, 1),
             "Signal": signal,
-            "Flags": ", ".join(flags)
+            "GeneratedUTC": datetime.utcnow().isoformat()
         })
 
     except Exception as e:
-        print(f"Error on {ticker}: {e}")
+        print(f"Error {ticker}: {e}")
 
 df = pd.DataFrame(rows)
-df["GeneratedUTC"] = datetime.utcnow().isoformat()
+
+if df.empty:
+    df = pd.DataFrame([{
+        "Ticker": "NO_DATA",
+        "Name": "No data generated",
+        "GeneratedUTC": datetime.utcnow().isoformat()
+    }])
 
 df.to_csv("data/screener_results.csv", index=False)
-df.to_csv("screener_results.csv", index=False)
-
-print(f"Done. {len(df)} tickers processed.")
+print("✅ screener_results.csv generated")

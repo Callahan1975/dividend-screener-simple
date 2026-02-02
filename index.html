@@ -4,14 +4,15 @@
 <meta charset="UTF-8">
 <title>Dividend Screener</title>
 
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
 
 <style>
-.king { background:#e6f7e6; }
-.aristocrat { background:#e6f0ff; }
-.contender { background:#fff3e6; }
+body { font-family: -apple-system, BlinkMacSystemFont; padding:20px; }
+.king { background:#e9f9e9 !important; }
+.aristocrat { background:#e8f1ff !important; }
+.contender { background:#fff3e0 !important; }
 </style>
 </head>
 
@@ -19,87 +20,63 @@
 
 <h2>Dividend Screener</h2>
 
+<div style="margin-bottom:10px">
 Signal:
-<select id="signalFilter">
-  <option value="">All</option>
-  <option value="BUY">BUY</option>
-  <option value="HOLD">HOLD</option>
-</select>
-
+<select id="signalFilter"><option value="">All</option></select>
 Country:
-<select id="countryFilter"></select>
-
+<select id="countryFilter"><option value="">All</option></select>
 Sector:
-<select id="sectorFilter"></select>
+<select id="sectorFilter"><option value="">All</option></select>
+</div>
 
 <table id="table" class="display" style="width:100%">
 <thead>
 <tr>
-<th>Ticker</th>
-<th>Name</th>
-<th>Country</th>
-<th>Sector</th>
-<th>Price</th>
-<th>DividendYield_%</th>
-<th>PayoutRatio_%</th>
-<th>ROE_%</th>
-<th>YearsGrowing</th>
-<th>DivCAGR_5Y_%</th>
-<th>DividendStreak</th>
-<th>DividendClass</th>
-<th>Score</th>
-<th>Signal</th>
+<th>Ticker</th><th>Name</th><th>Country</th><th>Sector</th>
+<th>Price</th><th>DividendYield_%</th><th>PayoutRatio_%</th><th>ROE_%</th>
+<th>YearsGrowing</th><th>DivCAGR_5Y_%</th><th>DividendStreak</th>
+<th>DividendClass</th><th>Score</th><th>Signal</th>
 </tr>
 </thead>
 </table>
 
 <script>
-$(function () {
+$(document).ready(function () {
 
-const table = $('#table').DataTable({
-  ajax: "data/screener_results.csv",
-  deferRender: true,
-  columns: [
-    { data: "Ticker" },
-    { data: "Name" },
-    { data: "Country" },
-    { data: "Sector" },
-    { data: "Price" },
-    { data: "DividendYield_%" },
-    { data: "PayoutRatio_%" },
-    { data: "ROE_%" },
-    { data: "YearsGrowing" },
-    { data: "DivCAGR_5Y_%" },
-    { data: "DividendStreak" },
-    { data: "DividendClass" },
-    { data: "Score" },
-    { data: "Signal" }
-  ],
-  rowCallback: function(row, data) {
-    if (data.DividendClass === "King") $(row).addClass("king");
-    if (data.DividendClass === "Aristocrat") $(row).addClass("aristocrat");
-    if (data.DividendClass === "Contender") $(row).addClass("contender");
+$.getCSV = function(url, callback){
+  $.get(url, function(data){
+    let rows = data.split("\n").slice(1).filter(r => r.trim() !== "");
+    callback(rows.map(r => r.split(",")));
+  });
+};
+
+$.getCSV("data/screener_results.csv", function(data){
+
+  let table = $('#table').DataTable({
+    data: data,
+    pageLength: 50,
+    columns: Array(14).fill({title:""})
+  });
+
+  function unique(col){
+    return [...new Set(table.column(col).data())].filter(v=>v);
   }
-});
 
-// === FILTERS ===
-function buildFilter(col, selector) {
-  let values = new Set();
-  table.column(col).data().each(v => values.add(v));
-  values.forEach(v => selector.append(`<option>${v}</option>`));
-}
+  unique(13).forEach(v=>$('#signalFilter').append(`<option>${v}</option>`));
+  unique(2).forEach(v=>$('#countryFilter').append(`<option>${v}</option>`));
+  unique(3).forEach(v=>$('#sectorFilter').append(`<option>${v}</option>`));
 
-buildFilter(2, $("#countryFilter"));
-buildFilter(3, $("#sectorFilter"));
+  $('#signalFilter').on('change',()=>table.column(13).search($('#signalFilter').val()).draw());
+  $('#countryFilter').on('change',()=>table.column(2).search($('#countryFilter').val()).draw());
+  $('#sectorFilter').on('change',()=>table.column(3).search($('#sectorFilter').val()).draw());
 
-$("#countryFilter").on("change", function(){
-  table.column(2).search(this.value).draw();
-});
-$("#sectorFilter").on("change", function(){
-  table.column(3).search(this.value).draw();
-});
-$("#signalFilter").on("change", function(){
-  table.column(13).search(this.value).draw();
+  table.rows().every(function(){
+    let d = this.data();
+    if(d[11]==="King") $(this.node()).addClass("king");
+    if(d[11]==="Aristocrat") $(this.node()).addClass("aristocrat");
+    if(d[11]==="Contender") $(this.node()).addClass("contender");
+  });
+
 });
 
 });

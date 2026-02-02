@@ -1,5 +1,5 @@
-import yfinance as yf
 import pandas as pd
+import yfinance as yf
 import os
 from datetime import datetime
 
@@ -18,33 +18,30 @@ TICKERS = [
     "VOLV-B.ST","WM","XOM"
 ]
 
+DIVIDEND_HISTORY_PATH = "data/dividend_history/dividend_history.csv"
+
 OUTPUT_PATHS = [
     "data/screener_results/screener_results.csv",
     "docs/data/screener_results/screener_results.csv"
 ]
 
 # =========================
-# DIVIDEND HELPERS
+# LOAD DIVIDEND HISTORY
 # =========================
-def get_annual_dividends(ticker):
-    hist = yf.Ticker(ticker).history(period="max", actions=True)
+if os.path.exists(DIVIDEND_HISTORY_PATH):
+    div_hist = pd.read_csv(DIVIDEND_HISTORY_PATH)
+else:
+    div_hist = pd.DataFrame(columns=["Ticker", "Year", "Dividend"])
 
-    if "Dividends" not in hist or hist["Dividends"].sum() == 0:
-        return pd.Series(dtype=float)
-
-    df = hist[hist["Dividends"] > 0][["Dividends"]].copy()
-    df["Year"] = df.index.year
-
-    return df.groupby("Year")["Dividends"].sum().sort_index()
-
-def years_growing(annual):
-    current_year = datetime.now().year
-    annual = annual[annual.index < current_year]
-
-    if len(annual) < 2:
+# =========================
+# DIVIDEND METRICS
+# =========================
+def years_growing(ticker):
+    df = div_hist[div_hist["Ticker"] == ticker].sort_values("Year")
+    if len(df) < 2:
         return 0
 
-    values = annual.values
+    values = df["Dividend"].values
     count = 0
 
     for i in range(len(values) - 1, 0, -1):
@@ -55,15 +52,14 @@ def years_growing(annual):
 
     return count
 
-def div_cagr_5y(annual):
-    current_year = datetime.now().year
-    annual = annual[annual.index < current_year]
-
-    if len(annual) < 6:
+def div_cagr_5y(ticker):
+    df = div_hist[div_hist["Ticker"] == ticker].sort_values("Year")
+    if len(df) < 6:
         return 0.0
 
-    recent = annual.tail(6)
-    start, end = recent.iloc[0], recent.iloc[-1]
+    recent = df.tail(6)
+    start = recent.iloc[0]["Dividend"]
+    end = recent.iloc[-1]["Dividend"]
 
     if start <= 0 or end <= 0:
         return 0.0
@@ -80,8 +76,6 @@ for ticker in TICKERS:
         stock = yf.Ticker(ticker)
         info = stock.info
 
-        annual_divs = get_annual_dividends(ticker)
-
         rows.append({
             "Ticker": ticker,
             "Name": info.get("shortName", ""),
@@ -91,8 +85,8 @@ for ticker in TICKERS:
             "DividendYield_%": round((info.get("dividendYield", 0) or 0) * 100, 2),
             "PayoutRatio_%": round((info.get("payoutRatio", 0) or 0) * 100, 2),
             "ROE_%": round((info.get("returnOnEquity", 0) or 0) * 100, 2),
-            "YearsGrowing": years_growing(annual_divs),
-            "DivCAGR_5Y_%": div_cagr_5y(annual_divs),
+            "YearsGrowing": years_growing(ticker),
+            "DivCAGR_5Y_%": div_cagr_5y(ticker),
             "Score": 0,
             "Signal": "WATCH"
         })
@@ -109,4 +103,4 @@ for path in OUTPUT_PATHS:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     df.to_csv(path, index=False)
 
-print("Fase 2A complete – dividends loaded via history()")
+print("Hybrid model complete – dividend history loaded from CSV")

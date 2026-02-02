@@ -1,19 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Dividend Screener</title>
 
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    .king { background-color: #e6ffe6; font-weight: bold; }
-    .aristocrat { background-color: #f0f8ff; }
-    .contender { background-color: #fff7e6; }
+    body { font-family: Arial, sans-serif; padding: 18px; }
+    h2 { margin: 0 0 12px 0; }
+
+    /* Row highlights by DividendClass */
+    tr.king td { background: #e9ffe9 !important; font-weight: 600; }
+    tr.aristocrat td { background: #eef6ff !important; }
+    tr.contender td { background: #fff7e6 !important; }
+
+    /* Make it feel like your old clean table */
+    table.dataTable thead th { font-weight: 600; }
   </style>
 </head>
-
 <body>
   <h2>Dividend Screener</h2>
 
@@ -36,6 +42,7 @@
         <th>Signal</th>
       </tr>
     </thead>
+    <tbody></tbody>
   </table>
 
   <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
@@ -43,43 +50,51 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
-    Papa.parse("docs/data/screener_results/screener_results.csv", {
+    const CSV_PATH = "data/screener_results.csv"; // ✅ matches your repo structure
+
+    function safeNum(v) {
+      if (v === null || v === undefined || v === "") return 0;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    Papa.parse(CSV_PATH, {
       download: true,
       header: true,
-      dynamicTyping: true,
-      complete: function(results) {
+      dynamicTyping: false, // keep simple; we coerce where needed
+      skipEmptyLines: true,
+      complete: function(res) {
+        const data = (res && res.data) ? res.data.filter(r => r && r.Ticker) : [];
 
-        $('#screener').DataTable({
-          data: results.data,
+        // If CSV path is wrong or file missing, you'll see empty table.
+        // But at least the page renders.
+        $("#screener").DataTable({
+          data,
           columns: [
             { data: "Ticker" },
             { data: "Name" },
             { data: "Country" },
             { data: "Sector" },
-            { data: "Price" },
-            { data: "DividendYield_%" },
-            { data: "PayoutRatio_%" },
-            { data: "ROE_%" },
-            { data: "YearsGrowing" },
-            { data: "DivCAGR_5Y_%" },
-            { data: "DividendStreak" },
+            { data: "Price", render: d => safeNum(d) ? safeNum(d).toFixed(2) : "" },
+            { data: "DividendYield_%", render: d => safeNum(d) ? safeNum(d).toFixed(2) : "0" },
+            { data: "PayoutRatio_%", render: d => safeNum(d) ? safeNum(d).toFixed(2) : "0" },
+            { data: "ROE_%", render: d => safeNum(d) ? safeNum(d).toFixed(2) : "0" },
+            { data: "YearsGrowing", render: d => safeNum(d).toString() },
+            { data: "DivCAGR_5Y_%", render: d => safeNum(d) ? safeNum(d).toFixed(2) : "0" },
+            { data: "DividendStreak", render: d => safeNum(d).toString() },
             { data: "DividendClass" },
-            { data: "Score" },
+            { data: "Score", render: d => safeNum(d) ? safeNum(d).toFixed(1) : "0" },
             { data: "Signal" }
           ],
-          createdRow: function(row, data) {
-            if (data.DividendClass === "King") {
-              $(row).addClass("king");
-            }
-            if (data.DividendClass === "Aristocrat") {
-              $(row).addClass("aristocrat");
-            }
-            if (data.DividendClass === "Contender") {
-              $(row).addClass("contender");
-            }
+          createdRow: function(row, rowData) {
+            const cls = (rowData.DividendClass || "").toLowerCase();
+            if (cls === "king") row.classList.add("king");
+            if (cls === "aristocrat") row.classList.add("aristocrat");
+            if (cls === "contender") row.classList.add("contender");
           },
           pageLength: 25,
-          order: [[10, "desc"]]
+          order: [[10, "desc"]], // DividendStreak desc
+          deferRender: true
         });
       }
     });
